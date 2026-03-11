@@ -59,7 +59,7 @@ export default function AdminRekap() {
       const sender = mockUsers.find((u) => u.id === r.user_id);
       return [
         r.case_id,
-        r.is_anonymous ? "Anonim" : sender?.name ?? "-",
+        sender?.name ?? "-",
         CATEGORY_LABELS[r.category],
         r.urgency,
         STATUS_LABELS[r.status],

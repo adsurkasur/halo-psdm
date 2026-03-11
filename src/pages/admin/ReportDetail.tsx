@@ -104,8 +104,8 @@ export default function ReportDetail() {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs">Pengirim</p>
-                <p className="font-medium">{report.is_anonymous ? "Anonim" : sender?.name ?? "-"}</p>
-                {!report.is_anonymous && sender && (
+                <p className="font-medium">{sender?.name ?? "-"}</p>
+                {sender && (
                   <p className="text-[10px] text-muted-foreground">{sender.biro} · {sender.jabatan}</p>
                 )}
               </div>
