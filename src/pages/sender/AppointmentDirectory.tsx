@@ -1,81 +1,121 @@
-import { Phone, Clock, CalendarDays } from "lucide-react";
+import { Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { mockAdminProfiles } from "@/data/mockData";
+import { useAuth } from "@/contexts/AuthContext";
+import { useData } from "@/contexts/DataContext";
+import { mockUsers, AVAILABILITY_LABELS } from "@/data/mockData";
 
 export default function AppointmentDirectory() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { adminProfiles, appointments, addAppointment } = useData();
 
-  const handleContact = (name: string, day: string, time: string) => {
+  if (!user) return null;
+
+  const handleContact = (adminProfile: typeof adminProfiles[0]) => {
+    const admin = mockUsers.find((u) => u.id === adminProfile.user_id);
+    if (!admin) return;
+
+    // Check 24h duplicate
+    const recentApt = appointments.find(
+      (a) =>
+        a.user_id === user.id &&
+        a.target_admin_id === adminProfile.user_id &&
+        Date.now() - new Date(a.created_at).getTime() < 24 * 60 * 60 * 1000
+    );
+
+    if (recentApt) {
+      toast({
+        title: "Perhatian",
+        description: `Anda baru saja menghubungi ${admin.name}. Pastikan janji temu sebelumnya sudah selesai.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Log appointment
+    addAppointment(user.id, adminProfile.user_id);
+
+    // Build WA link
+    const message = encodeURIComponent(
+      `Halo Kak ${admin.name}, saya ${user.name} dari ${user.biro} ingin mengajukan janji temu melalui Halo PSDM ARSC.`
+    );
+    const waUrl = `https://wa.me/${adminProfile.wa_number}?text=${message}`;
+
     toast({
       title: "Mengalihkan ke WhatsApp",
-      description: `"Halo Kak ${name}, saya ingin mengajukan janji temu pada ${day} pukul ${time} melalui Halo PSDM."`,
+      description: `Membuka chat dengan ${admin.name}...`,
     });
+
+    // Open WA in new tab
+    window.open(waUrl, "_blank");
   };
 
   return (
     <div className="animate-fade-in space-y-4">
       <h1 className="text-xl font-bold">Order Janji Temu</h1>
-      <p className="text-sm text-muted-foreground">Pilih admin dan jadwal yang tersedia untuk mengajukan janji temu</p>
+      <p className="text-sm text-muted-foreground">
+        Pilih admin PSDM yang ingin dihubungi. Anda akan diarahkan ke WhatsApp secara otomatis.
+      </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-4">
-        {mockAdminProfiles.map((admin) => (
-          <Card key={admin.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="py-5 space-y-4">
-              {/* Profile header */}
-              <div className="flex items-center gap-3">
-                <Avatar className="h-14 w-14">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
-                    {admin.avatar}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold text-base">{admin.name}</h3>
-                  <p className="text-xs text-muted-foreground">{admin.jabatan}</p>
-                </div>
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+        {adminProfiles.map((profile) => {
+          const admin = mockUsers.find((u) => u.id === profile.user_id);
+          if (!admin) return null;
 
-              {/* Schedule */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                  <CalendarDays className="h-4 w-4" />
-                  Jadwal Tersedia
+          const initials = profile.display_name
+            .split(" ")
+            .map((w) => w[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase();
+
+          const availabilityColor =
+            profile.availability_status === "ONLINE"
+              ? "bg-green-500"
+              : profile.availability_status === "AWAY"
+              ? "bg-yellow-500"
+              : "bg-gray-400";
+
+          return (
+            <Card key={profile.user_id} className="hover:shadow-md transition-shadow">
+              <CardContent className="py-5 space-y-4">
+                {/* Profile */}
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Avatar className="h-14 w-14">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span
+                      className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-card ${availabilityColor}`}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-base">{profile.display_name}</h3>
+                    <p className="text-xs text-muted-foreground">{profile.jabatan_display}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityColor}`} />
+                      {AVAILABILITY_LABELS[profile.availability_status]}
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  {admin.schedule.map((slot, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between rounded-lg border bg-card px-3 py-2.5"
-                    >
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="font-medium">{slot.day}</span>
-                        <span className="text-muted-foreground">{slot.time}</span>
-                      </div>
-                      {slot.available ? (
-                        <Button
-                          size="sm"
-                          className="gap-1.5 h-8 text-xs"
-                          onClick={() => handleContact(admin.name, slot.day, slot.time)}
-                        >
-                          <Phone className="h-3.5 w-3.5" />
-                          Hubungi
-                        </Button>
-                      ) : (
-                        <Badge variant="secondary" className="text-xs">
-                          Penuh
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+
+                {/* Contact button */}
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => handleContact(profile)}
+                >
+                  <Phone className="h-4 w-4" />
+                  Hubungi via WhatsApp
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

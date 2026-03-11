@@ -1,6 +1,8 @@
-import { LayoutDashboard, FileText, MessageCircle, Calendar, ClipboardList, MessagesSquare } from "lucide-react";
-import { useRole } from "@/contexts/RoleContext";
+import { LayoutDashboard, FileText, MessageCircle, Calendar, ClipboardList, MessagesSquare, BarChart3, Users } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useData } from "@/contexts/DataContext";
 import { NavLink } from "@/components/NavLink";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -13,23 +15,41 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const senderNav = [
-  { title: "Dasbor", url: "/", icon: LayoutDashboard },
-  { title: "Pelaporan Saya", url: "/laporan/buat", icon: FileText },
-  { title: "Ruang Curhat", url: "/chat/room", icon: MessageCircle },
-  { title: "Janji Temu", url: "/janji-temu", icon: Calendar },
-];
-
-const adminNav = [
-  { title: "Dasbor Admin", url: "/admin/dasbor", icon: LayoutDashboard },
-  { title: "Kelola Laporan", url: "/admin/laporan", icon: ClipboardList },
-  { title: "Antrean Chat", url: "/admin/chat", icon: MessagesSquare },
-];
-
 export function AppSidebar() {
-  const { isSender } = useRole();
+  const { user, isSender, isAdmin, isSuperAdmin } = useAuth();
+  const { chatSessions, reports, getUnreadCount } = useData();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+
+  if (!user) return null;
+
+  // Compute badge counts
+  const openChatsCount = chatSessions.filter(
+    (s) => s.status === "OPEN" && (isSender ? s.user_id === user.id : true)
+  ).length;
+  const pendingReportsCount = isAdmin
+    ? reports.filter((r) => r.status === "RECEIVED").length
+    : 0;
+
+  const senderNav = [
+    { title: "Dasbor", url: "/", icon: LayoutDashboard, badge: 0 },
+    { title: "Laporan Saya", url: "/laporan", icon: FileText, badge: 0 },
+    { title: "Ruang Curhat", url: "/chat", icon: MessageCircle, badge: openChatsCount },
+    { title: "Janji Temu", url: "/janji-temu", icon: Calendar, badge: 0 },
+  ];
+
+  const adminNav = [
+    { title: "Dasbor Admin", url: "/admin/dasbor", icon: LayoutDashboard, badge: 0 },
+    { title: "Kelola Laporan", url: "/admin/laporan", icon: ClipboardList, badge: pendingReportsCount },
+    { title: "Antrean Chat", url: "/admin/chat", icon: MessagesSquare, badge: openChatsCount },
+    ...(isSuperAdmin
+      ? [
+          { title: "Rekap & Analitik", url: "/admin/rekap", icon: BarChart3, badge: 0 },
+          { title: "Kelola Admin", url: "/admin/kelola-admin", icon: Users, badge: 0 },
+        ]
+      : []),
+  ];
+
   const items = isSender ? senderNav : adminNav;
 
   return (
@@ -51,7 +71,12 @@ export function AppSidebar() {
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                     >
                       <item.icon className="mr-2 h-4 w-4 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && <span className="flex-1">{item.title}</span>}
+                      {!collapsed && item.badge > 0 && (
+                        <Badge className="bg-destructive text-destructive-foreground h-5 min-w-[20px] px-1.5 flex items-center justify-center text-[10px] ml-auto">
+                          {item.badge}
+                        </Badge>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

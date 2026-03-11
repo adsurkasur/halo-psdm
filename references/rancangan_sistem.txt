@@ -1,0 +1,145 @@
+RANCANGAN SISTEM HALO PSDM BERBASIS WEBSITE  
+AGRITECH RESEARCH AND STUDY CLUB (ARSC) 
+PERIODE 2025/2026 
+ 
+Latar Belakang 
+Halo PSDM hadir sebagai solusi atas evaluasi periode sebelumnya terkait lambatnya 
+penanganan laporan akibat alur yang terlalu panjang dan bertahap. Sistem ini dikembangkan 
+agar laporan dan permasalahan dapat diidentifikasi serta ditangani lebih cepat dan lebih dini 
+oleh PH PSDM, sehingga tidak mengganggu ekosistem organisasi. Melalui pengembangan 
+berbasis website, Halo PSDM memungkinkan akses yang lebih fleksibel serta komunikasi 
+yang lebih responsif dan terarah bagi seluruh anggota aktif ARSC. 
+ 
+Tujuan Pengembangan Website Halo PSDM 
+1.​ Menyediakan ruang komunikasi dua arah yang aman dan responsif. 
+2.​ Meningkatkan efektivitas penanganan laporan dan pendampingan anggota. 
+3.​ Mewujudkan sistem human relations yang terstruktur dan terdokumentasi. 
+4.​ Mengintegrasikan sistem janji temu secara langsung dengan kontak WhatsApp 
+terkait. 
+ 
+Struktur Akses Sistem 
+Website Halo PSDM memiliki dua jenis akses: 
+a. Akses Sender (Pengirim) 
+Digunakan oleh: 
+●​ PH 
+●​ Staf Ahli 
+●​ Anggota Muda 
+Fungsi: 
+●​ Mengirim laporan 
+●​ Mengirim cerita/curhat (chat dua arah) 
+●​ Mengajukan janji temu 
+ 
+b. Akses Admin (PH PSDM) 
+Digunakan oleh: 
+●​ PH PSDM 
+Fungsi: 
+●​ Menerima notifikasi laporan/cerita masuk 
+●​ Membalas pesan secara real-time 
+●​ Mengelola database kasus 
+●​ Memberi status penanganan kasus 
+ 
+Alur Sistem Berdasarkan Tujuan 
+a. Pelaporan / Pengaduan Masalah 
+- Alur Sender: 
+1.​ Login / akses Halo PSDM 
+2.​ Pilih menu: “Pelaporan / Pengaduan” 
+3.​ Mengisi: 
+o​
+Identitas  
+o​ Nama 
+o​ Biro/Bidang 
+o​ Jabatan 
+o​
+Kronologi Permasalahan 
+4.​ Submit laporan 
+Sistem Otomatis: 
+●​ Laporan masuk ke dashboard admin 
+●​ Sistem memberi nomor tiket kasus (Case ID) 
+●​ Sender mendapat notifikasi: 
+“Laporan Anda telah diterima dan sedang diproses” 
+Alur Admin: 
+1.​ Menerima notifikasi real-time (dashboard + email) 
+2.​ Memberi status: 
+o​
+Diterima 
+o​
+Dalam Proses 
+o​
+Membutuhkan Klarifikasi 
+o​
+Selesai 
+3.​ Dapat membuka fitur chat jika perlu klarifikasi 
+4.​ Semua aktivitas terdokumentasi dalam sistem 
+ 
+b. Cerita / Curhat (Live Chat System) 
+Model sistem seperti Halodoc (chat-based). 
+Alur Sender: 
+1.​ Pilih menu: “Cerita / Curhat” 
+2.​ Mengisi identitas pengirim 
+o​
+Nama 
+o​
+Biro/Bidang 
+o​
+Jabatan 
+3.​ Langsung masuk ke ruang chat 
+Sistem: 
+●​ Menghubungkan sender dengan admin 
+●​ Jika admin offline → pesan tetap terkirim (asynchronous chat) 
+●​ Sender dapat melihat: 
+o​
+Status admin (Online/Offline) 
+o​
+Status pesan (Terkirim/Dibaca) 
+Alur Admin: 
+●​ Admin menerima notifikasi pop-up + email 
+●​ Admin dapat membalas secara langsung 
+●​ Semua chat tersimpan sebagai arsip 
+ 
+c. Permintaan Janji Temu 
+Alur Sender: 
+1.​ Pilih menu: “Order Janji Temu” 
+2.​ Ditampilkan daftar nama (contohnya bisa dilihat di google form): 
+o​
+PH PSDM 
+o​
+HR PSDM (Staf Ahli PSDM) 
+3.​ Klik salah satu nama 
+Sistem: 
+●​ Muncul tombol: 
+“Hubungi via WhatsApp” 
+●​ Saat diklik:​
+→ otomatis redirect ke link: 
+https://wa.me/62XXXXXXXXXX 
+→ langsung membuka room chat WhatsApp 
+Optional: 
+●​ Template pesan otomatis: 
+“Halo Kak, saya ingin mengajukan janji temu melalui Halo PSDM.” 
+ 
+Sistem Notifikasi 
+Untuk Admin: 
+●​ Notifikasi real-time dashboard 
+●​ Email notifikasi setiap ada: 
+o​
+Laporan baru 
+o​
+Chat baru 
+●​ Badge indikator jumlah kasus belum ditangani 
+ 
+ 
+Untuk Sender: 
+●​ Notifikasi email jika: 
+o​
+Laporan diproses 
+o​
+Ada balasan chat 
+●​ Indikator status kasus 
+ 
+Monitoring dan Evaluasi 
+Pada akhir periode: 
+●​ Rekap jumlah laporan 
+●​ Rekap jumlah sesi chat 
+●​ Rekap janji temu 
+●​ Analisis kategori permasalahan 
+●​ Evaluasi response time 
+ 

@@ -9,26 +9,50 @@ import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useData } from "@/contexts/DataContext";
+import { CATEGORY_LABELS, type ReportCategory, type Urgency } from "@/data/mockData";
 
-const categories = ["Konflik Antar Anggota", "Beban Kerja", "Kesejahteraan", "Akademik", "Lainnya"];
+const categories = Object.entries(CATEGORY_LABELS) as [ReportCategory, string][];
 
 export default function ReportForm() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [category, setCategory] = useState("");
-  const [urgency, setUrgency] = useState("Rendah");
+  const { user } = useAuth();
+  const { addReport } = useData();
+
+  const [category, setCategory] = useState<ReportCategory | "">("");
+  const [urgency, setUrgency] = useState<Urgency>("RENDAH");
   const [chronology, setChronology] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+
+  if (!user) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!category || chronology.length < 50) {
-      toast({ title: "Peringatan", description: "Mohon lengkapi semua kolom. Kronologi minimal 50 karakter.", variant: "destructive" });
+      toast({
+        title: "Peringatan",
+        description: "Mohon lengkapi semua kolom. Kronologi minimal 50 karakter.",
+        variant: "destructive",
+      });
       return;
     }
-    const caseId = `HP-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`;
-    toast({ title: "Berhasil! ✅", description: `Laporan berhasil dikirim dengan ID: ${caseId}` });
-    setTimeout(() => navigate("/"), 1500);
+
+    const report = addReport({
+      user_id: user.id,
+      category: category as ReportCategory,
+      urgency,
+      kronologi: chronology,
+      is_anonymous: anonymous,
+    });
+
+    toast({
+      title: "Berhasil! ✅",
+      description: `Laporan berhasil dikirim dengan ID: ${report.case_id}`,
+    });
+
+    setTimeout(() => navigate(`/laporan/${report.id}`), 800);
   };
 
   return (
@@ -43,28 +67,28 @@ export default function ReportForm() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
               <div>
                 <Label className="text-xs text-muted-foreground">Nama</Label>
-                <Input value="Ade Surya Ananda" readOnly className="mt-1 bg-card" />
+                <Input value={user.name} readOnly className="mt-1 bg-card" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Biro/Bidang</Label>
-                <Input value="Media" readOnly className="mt-1 bg-card" />
+                <Input value={user.biro} readOnly className="mt-1 bg-card" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Jabatan</Label>
-                <Input value="Anggota Muda" readOnly className="mt-1 bg-card" />
+                <Input value={user.jabatan} readOnly className="mt-1 bg-card" />
               </div>
             </div>
 
             {/* Category */}
             <div>
               <Label>Kategori Masalah</Label>
-              <Select value={category} onValueChange={setCategory}>
+              <Select value={category} onValueChange={(v) => setCategory(v as ReportCategory)}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Pilih kategori..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  {categories.map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -73,17 +97,17 @@ export default function ReportForm() {
             {/* Urgency */}
             <div>
               <Label>Tingkat Urgensi</Label>
-              <RadioGroup value={urgency} onValueChange={setUrgency} className="flex gap-4 mt-2">
+              <RadioGroup value={urgency} onValueChange={(v) => setUrgency(v as Urgency)} className="flex gap-4 mt-2">
                 <div className="flex items-center gap-2">
-                  <RadioGroupItem value="Rendah" id="low" />
-                  <Label htmlFor="low" className="text-status-done font-medium cursor-pointer">Rendah</Label>
+                  <RadioGroupItem value="RENDAH" id="low" />
+                  <Label htmlFor="low" className="text-green-600 font-medium cursor-pointer">Rendah</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <RadioGroupItem value="Sedang" id="med" />
-                  <Label htmlFor="med" className="text-status-process font-medium cursor-pointer">Sedang</Label>
+                  <RadioGroupItem value="SEDANG" id="med" />
+                  <Label htmlFor="med" className="text-yellow-600 font-medium cursor-pointer">Sedang</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <RadioGroupItem value="Tinggi" id="high" />
+                  <RadioGroupItem value="TINGGI" id="high" />
                   <Label htmlFor="high" className="text-destructive font-medium cursor-pointer">Tinggi</Label>
                 </div>
               </RadioGroup>
@@ -95,10 +119,10 @@ export default function ReportForm() {
               <Textarea
                 value={chronology}
                 onChange={(e) => setChronology(e.target.value)}
-                placeholder="Ceritakan detail permasalahan yang Anda alami..."
+                placeholder="Ceritakan detail permasalahan yang Anda alami (min. 50 karakter)..."
                 className="mt-1 min-h-[120px]"
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className={`text-xs mt-1 ${chronology.length >= 50 ? "text-green-600" : "text-muted-foreground"}`}>
                 {chronology.length}/50 karakter minimum
               </p>
             </div>

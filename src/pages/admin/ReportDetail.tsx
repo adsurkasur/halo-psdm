@@ -8,27 +8,82 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useToast } from "@/hooks/use-toast";
-import { mockReports } from "@/data/mockData";
+import { useAuth } from "@/contexts/AuthContext";
+import { useData } from "@/contexts/DataContext";
+import { CATEGORY_LABELS, STATUS_LABELS, mockUsers, type ReportStatus } from "@/data/mockData";
 
-const statusOptions = ["Diterima", "Dalam Proses", "Membutuhkan Klarifikasi", "Selesai"];
+const statusOptions: ReportStatus[] = ["RECEIVED", "IN_PROGRESS", "NEEDS_CLARIFICATION", "DONE"];
 
 export default function ReportDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const report = mockReports.find((r) => r.id === id) || mockReports[0];
-  const [status, setStatus] = useState(report.status);
-  const [notes, setNotes] = useState("");
+  const { user } = useAuth();
+  const {
+    reports,
+    statusHistory,
+    chatSessions,
+    updateReportStatus,
+    updateReportNotes,
+    createChatSession,
+  } = useData();
 
-  const handleUpdate = () => {
-    toast({ title: "Berhasil! ✅", description: `Status laporan ${report.id} diperbarui menjadi "${status}"` });
+  const report = reports.find((r) => r.id === id);
+  const [newStatus, setNewStatus] = useState<ReportStatus | "">(report?.status ?? "");
+  const [notes, setNotes] = useState(report?.admin_notes ?? "");
+  const [statusNote, setStatusNote] = useState("");
+
+  if (!user || !report) {
+    return (
+      <div className="animate-fade-in text-center py-20">
+        <p className="text-muted-foreground">Laporan tidak ditemukan.</p>
+        <Button variant="outline" className="mt-4" onClick={() => navigate("/admin/laporan")}>
+          Kembali
+        </Button>
+      </div>
+    );
+  }
+
+  const history = statusHistory
+    .filter((h) => h.report_id === report.id)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+  const sender = mockUsers.find((u) => u.id === report.user_id);
+  const linkedChat = chatSessions.find(
+    (cs) => cs.report_id === report.id && cs.status === "OPEN"
+  );
+
+  const handleUpdateStatus = () => {
+    if (!newStatus || newStatus === report.status) return;
+
+    // Validation: can't skip to DONE from RECEIVED for TINGGI urgency
+    if (report.urgency === "TINGGI" && report.status === "RECEIVED" && newStatus === "DONE") {
+      toast({
+        title: "Tidak Diperbolehkan",
+        description: "Laporan urgensi Tinggi harus melewati status Dalam Proses sebelum diselesaikan.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateReportStatus(report.id, newStatus as ReportStatus, user.id, statusNote || undefined);
+
+    // If NEEDS_CLARIFICATION, auto-create chat session
+    if (newStatus === "NEEDS_CLARIFICATION" && !linkedChat) {
+      createChatSession(report.user_id, report.id);
+    }
+
+    toast({
+      title: "Berhasil! ✅",
+      description: `Status laporan diperbarui ke "${STATUS_LABELS[newStatus as ReportStatus]}"`,
+    });
+    setStatusNote("");
   };
 
-  const timeline = [
-    { label: "Diterima", date: report.date, active: true },
-    { label: "Dalam Proses", date: status === "Dalam Proses" || status === "Membutuhkan Klarifikasi" || status === "Selesai" ? report.date : null, active: status !== "Diterima" },
-    { label: "Selesai", date: status === "Selesai" ? report.date : null, active: status === "Selesai" },
-  ];
+  const handleSaveNotes = () => {
+    updateReportNotes(report.id, notes);
+    toast({ title: "Tersimpan ✅", description: "Catatan internal telah disimpan." });
+  };
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -40,99 +95,139 @@ export default function ReportDetail() {
         {/* Left: Report Info */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Detail Laporan — {report.id}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Detail Laporan — {report.case_id}</CardTitle>
+              <StatusBadge status={report.status} />
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs">Pengirim</p>
-                <p className="font-medium">{report.isAnonymous ? "Anonim" : report.sender}</p>
+                <p className="font-medium">{report.is_anonymous ? "Anonim" : sender?.name ?? "-"}</p>
+                {!report.is_anonymous && sender && (
+                  <p className="text-[10px] text-muted-foreground">{sender.biro} · {sender.jabatan}</p>
+                )}
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Kategori</p>
-                <p className="font-medium">{report.category}</p>
+                <p className="font-medium">{CATEGORY_LABELS[report.category]}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Urgensi</p>
                 <UrgencyBadge urgency={report.urgency} />
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">Status</p>
-                <StatusBadge status={status} />
+                <p className="text-muted-foreground text-xs">Tanggal</p>
+                <p className="text-xs font-medium">{new Date(report.created_at).toLocaleString("id-ID")}</p>
               </div>
             </div>
 
             <div>
               <p className="text-muted-foreground text-xs mb-1">Kronologi</p>
-              <p className="text-sm bg-muted p-3 rounded-lg">{report.chronology}</p>
+              <p className="text-sm bg-muted p-3 rounded-lg">{report.kronologi}</p>
             </div>
 
             {/* Timeline */}
             <div>
-              <p className="text-muted-foreground text-xs mb-2">Timeline</p>
-              <div className="flex items-center gap-0">
-                {timeline.map((step, i) => (
-                  <div key={step.label} className="flex items-center">
-                    <div className="flex flex-col items-center">
-                      <div className={`h-3 w-3 rounded-full ${step.active ? "bg-primary" : "bg-border"}`} />
-                      <p className={`text-[10px] mt-1 ${step.active ? "text-primary font-medium" : "text-muted-foreground"}`}>
-                        {step.label}
-                      </p>
+              <p className="text-muted-foreground text-xs mb-2">Timeline Status</p>
+              <div className="space-y-0">
+                {history.map((h, i) => {
+                  const changer = h.changed_by === "system"
+                    ? "Sistem"
+                    : mockUsers.find((u) => u.id === h.changed_by)?.name ?? "Admin";
+                  return (
+                    <div key={h.id} className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className={`h-3 w-3 rounded-full shrink-0 mt-1 ${
+                          i === history.length - 1 ? "bg-primary" : "bg-border"
+                        }`} />
+                        {i < history.length - 1 && <div className="w-0.5 flex-1 bg-border" />}
+                      </div>
+                      <div className="pb-3">
+                        <p className="text-xs font-medium">{STATUS_LABELS[h.new_status]}</p>
+                        {h.note && <p className="text-[10px] text-muted-foreground">{h.note}</p>}
+                        <p className="text-[10px] text-muted-foreground/70">
+                          {changer} · {new Date(h.created_at).toLocaleString("id-ID")}
+                        </p>
+                      </div>
                     </div>
-                    {i < timeline.length - 1 && (
-                      <div className={`h-0.5 w-12 mx-1 ${step.active && timeline[i + 1].active ? "bg-primary" : "bg-border"}`} />
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Right: Processing */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Tindak Lanjut</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Update Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Tindak Lanjut</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Update Status</Label>
+                <Select value={newStatus} onValueChange={(v) => setNewStatus(v as ReportStatus)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((s) => (
+                      <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label>Catatan Internal</Label>
+              <div>
+                <Label>Catatan Perubahan Status</Label>
+                <Textarea
+                  value={statusNote}
+                  onChange={(e) => setStatusNote(e.target.value)}
+                  placeholder="(opsional) Alasan perubahan status..."
+                  className="mt-1 min-h-[60px]"
+                />
+              </div>
+
+              <Button
+                onClick={handleUpdateStatus}
+                className="w-full"
+                disabled={!newStatus || newStatus === report.status}
+              >
+                Perbarui Status
+              </Button>
+
+              {linkedChat && (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 border-primary text-primary"
+                  onClick={() => navigate(`/admin/chat`)}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Buka Chat Klarifikasi
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Catatan Internal</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Catatan ini hanya bisa dilihat oleh sesama Admin."
-                className="mt-1 min-h-[100px]"
+                className="min-h-[100px]"
               />
-            </div>
-
-            <Button onClick={handleUpdate} className="w-full">Simpan Perubahan</Button>
-
-            {status === "Membutuhkan Klarifikasi" && (
-              <Button
-                variant="outline"
-                className="w-full gap-2 border-primary text-primary"
-                onClick={() => navigate("/admin/chat")}
-              >
-                <MessageCircle className="h-4 w-4" />
-                Buka Sesi Chat dengan Pengirim
+              <Button variant="outline" onClick={handleSaveNotes} className="w-full">
+                Simpan Catatan
               </Button>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
