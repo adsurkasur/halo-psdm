@@ -19,13 +19,19 @@ export interface ChatMessage {
   read: boolean;
 }
 
+export interface AdminScheduleSlot {
+  day: string;
+  time: string;
+  available: boolean;
+}
+
 export interface AdminProfile {
   id: string;
   name: string;
   jabatan: string;
   avatar: string;
-  online: boolean;
   phone: string;
+  schedule: AdminScheduleSlot[];
 }
 
 export const mockReports: Report[] = [
