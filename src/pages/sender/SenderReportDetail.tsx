@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { CATEGORY_LABELS, STATUS_LABELS, mockUsers } from "@/data/mockData";
+import { CATEGORY_LABELS, STATUS_LABELS, BIRO_LABELS, JABATAN_LABELS, mockUsers } from "@/data/mockData";
 
 export default function SenderReportDetail() {
   const { id } = useParams();
@@ -18,7 +18,7 @@ export default function SenderReportDetail() {
   const report = reports.find((r) => r.id === id);
   if (!report) {
     return (
-      <div className="animate-fade-in text-center py-20">
+      <div className="page-enter text-center py-20">
         <p className="text-muted-foreground">Laporan tidak ditemukan.</p>
         <Button variant="outline" className="mt-4" onClick={() => navigate("/laporan")}>
           Kembali
@@ -38,13 +38,13 @@ export default function SenderReportDetail() {
   const senderUser = mockUsers.find((u) => u.id === report.user_id);
 
   return (
-    <div className="space-y-4 animate-fade-in max-w-3xl mx-auto">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/laporan")} className="gap-1">
+    <div className="space-y-4 page-enter max-w-3xl mx-auto">
+      <Button variant="ghost" size="sm" onClick={() => navigate("/laporan")} className="gap-1 transition-transform duration-200 hover:scale-105">
         <ArrowLeft className="h-4 w-4" /> Kembali
       </Button>
 
       {/* Report Info */}
-      <Card>
+      <Card className="animate-scale-in">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Detail Laporan — {report.case_id}</CardTitle>
@@ -52,10 +52,11 @@ export default function SenderReportDetail() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm stagger-children">
             <div>
               <p className="text-muted-foreground text-xs">Pengirim</p>
-              <p className="font-medium">{report.is_anonymous ? "Anonim" : senderUser?.name}</p>
+              <p className="font-medium">{senderUser?.name ?? "-"}</p>
+              {senderUser && <p className="text-[10px] text-muted-foreground">{BIRO_LABELS[senderUser.biro]}</p>}
             </div>
             <div>
               <p className="text-muted-foreground text-xs">Kategori</p>
@@ -71,7 +72,7 @@ export default function SenderReportDetail() {
             </div>
           </div>
 
-          <div>
+          <div className="animate-slide-up" style={{ animationDelay: "200ms" }}>
             <p className="text-muted-foreground text-xs mb-1">Kronologi</p>
             <p className="text-sm bg-muted p-3 rounded-lg">{report.kronologi}</p>
           </div>
@@ -80,7 +81,7 @@ export default function SenderReportDetail() {
           {report.status === "NEEDS_CLARIFICATION" && linkedChat && (
             <Button
               variant="outline"
-              className="w-full gap-2 border-primary text-primary"
+              className="w-full gap-2 border-primary text-primary transition-all duration-200 hover:shadow-md"
               onClick={() => navigate(`/chat/${linkedChat.id}`)}
             >
               <MessageCircle className="h-4 w-4" />
@@ -91,7 +92,7 @@ export default function SenderReportDetail() {
       </Card>
 
       {/* Status Timeline */}
-      <Card>
+      <Card className="animate-slide-up" style={{ animationDelay: "100ms" }}>
         <CardHeader>
           <CardTitle className="text-base">Timeline Status</CardTitle>
         </CardHeader>
@@ -104,8 +105,8 @@ export default function SenderReportDetail() {
               return (
                 <div key={h.id} className="flex gap-3">
                   <div className="flex flex-col items-center">
-                    <div className={`h-3 w-3 rounded-full shrink-0 mt-1 ${
-                      i === history.length - 1 ? "bg-primary" : "bg-border"
+                    <div className={`h-3 w-3 rounded-full shrink-0 mt-1 transition-all duration-300 ${
+                      i === history.length - 1 ? "bg-primary animate-pulse-glow" : "bg-border"
                     }`} />
                     {i < history.length - 1 && <div className="w-0.5 flex-1 bg-border" />}
                   </div>

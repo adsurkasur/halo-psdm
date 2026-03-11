@@ -5,13 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { CATEGORY_LABELS, type ReportCategory, type Urgency } from "@/data/mockData";
+import { CATEGORY_LABELS, BIRO_LABELS, JABATAN_LABELS, type ReportCategory, type Urgency } from "@/data/mockData";
 
 const categories = Object.entries(CATEGORY_LABELS) as [ReportCategory, string][];
 
@@ -24,7 +23,6 @@ export default function ReportForm() {
   const [category, setCategory] = useState<ReportCategory | "">("");
   const [urgency, setUrgency] = useState<Urgency>("RENDAH");
   const [chronology, setChronology] = useState("");
-  const [anonymous, setAnonymous] = useState(false);
 
   if (!user) return null;
 
@@ -44,7 +42,6 @@ export default function ReportForm() {
       category: category as ReportCategory,
       urgency,
       kronologi: chronology,
-      is_anonymous: anonymous,
     });
 
     toast({
@@ -56,28 +53,32 @@ export default function ReportForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto animate-fade-in">
-      <Card>
+    <div className="max-w-2xl mx-auto page-enter">
+      <Card className="animate-scale-in">
         <CardHeader>
           <CardTitle>Buat Laporan / Pengaduan</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Read-only identity */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
+            {/* Identity — always shown, read-only */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-muted rounded-lg animate-slide-up">
               <div>
                 <Label className="text-xs text-muted-foreground">Nama</Label>
                 <Input value={user.name} readOnly className="mt-1 bg-card" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Biro/Bidang</Label>
-                <Input value={user.biro} readOnly className="mt-1 bg-card" />
+                <Input value={BIRO_LABELS[user.biro]} readOnly className="mt-1 bg-card" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Jabatan</Label>
-                <Input value={user.jabatan} readOnly className="mt-1 bg-card" />
+                <Input value={JABATAN_LABELS[user.jabatan]} readOnly className="mt-1 bg-card" />
               </div>
             </div>
+
+            <p className="text-xs text-muted-foreground bg-accent/50 p-2.5 rounded-lg">
+              ℹ️ Identitas Anda akan tercatat dalam laporan ini. Semua laporan bersifat <strong>confidential</strong> dan hanya bisa diakses oleh admin PSDM.
+            </p>
 
             {/* Category */}
             <div>
@@ -122,21 +123,14 @@ export default function ReportForm() {
                 placeholder="Ceritakan detail permasalahan yang Anda alami (min. 50 karakter)..."
                 className="mt-1 min-h-[120px]"
               />
-              <p className={`text-xs mt-1 ${chronology.length >= 50 ? "text-green-600" : "text-muted-foreground"}`}>
+              <p className={`text-xs mt-1 transition-colors duration-300 ${chronology.length >= 50 ? "text-green-600" : "text-muted-foreground"}`}>
                 {chronology.length}/50 karakter minimum
               </p>
             </div>
 
-            {/* Anonymous */}
-            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-              <div>
-                <Label className="font-medium">Kirim Anonim</Label>
-                <p className="text-xs text-muted-foreground">Sembunyikan identitas saya dari admin</p>
-              </div>
-              <Switch checked={anonymous} onCheckedChange={setAnonymous} />
-            </div>
-
-            <Button type="submit" className="w-full">Kirim Laporan</Button>
+            <Button type="submit" className="w-full h-11 text-base font-semibold transition-all duration-200 hover:shadow-lg hover:shadow-primary/30">
+              Kirim Laporan
+            </Button>
           </form>
         </CardContent>
       </Card>

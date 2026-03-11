@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useData } from "@/contexts/DataContext";
-import { CATEGORY_LABELS, mockUsers, type ReportStatus, type Urgency } from "@/data/mockData";
+import { useAuth } from "@/contexts/AuthContext";
+import { CATEGORY_LABELS, type Urgency } from "@/data/mockData";
 
 export default function ReportManagement() {
   const navigate = useNavigate();
   const { reports } = useData();
+  const { allUsers } = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const [urgencyFilter, setUrgencyFilter] = useState("all");
 
@@ -77,12 +79,12 @@ export default function ReportManagement() {
               </TableHeader>
               <TableBody>
                 {filtered.map((r) => {
-                  const sender = mockUsers.find((u) => u.id === r.user_id);
+                  const sender = allUsers.find((u) => u.id === r.user_id);
                   return (
-                    <TableRow key={r.id}>
+                    <TableRow key={r.id} className="transition-colors duration-200">
                       <TableCell className="font-mono text-xs">{r.case_id}</TableCell>
                       <TableCell className="text-sm">
-                        {r.is_anonymous ? "Anonim" : sender?.name ?? "-"}
+                        {sender?.name ?? "-"}
                       </TableCell>
                       <TableCell className="text-sm">{CATEGORY_LABELS[r.category]}</TableCell>
                       <TableCell><UrgencyBadge urgency={r.urgency} /></TableCell>
@@ -91,7 +93,7 @@ export default function ReportManagement() {
                         {new Date(r.created_at).toLocaleDateString("id-ID")}
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/admin/laporan/${r.id}`)}>
+                        <Button size="sm" variant="outline" className="transition-all duration-200 hover:shadow-sm" onClick={() => navigate(`/admin/laporan/${r.id}`)}>
                           Lihat Detail
                         </Button>
                       </TableCell>

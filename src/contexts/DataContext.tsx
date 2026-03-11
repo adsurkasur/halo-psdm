@@ -16,6 +16,7 @@ import {
   type ReportStatusHistory,
   type ChatSession,
   type ChatMessage,
+  type ChatMessageType,
   type AdminProfile,
   type Appointment,
   type Notification,
@@ -26,7 +27,6 @@ import {
 } from "@/data/mockData";
 
 interface DataContextType {
-  // Reports
   reports: Report[];
   statusHistory: ReportStatusHistory[];
   addReport: (data: {
@@ -34,29 +34,24 @@ interface DataContextType {
     category: ReportCategory;
     urgency: Urgency;
     kronologi: string;
-    is_anonymous: boolean;
   }) => Report;
   updateReportStatus: (reportId: string, newStatus: ReportStatus, adminId: string, note?: string) => void;
   updateReportNotes: (reportId: string, notes: string) => void;
 
-  // Chat
   chatSessions: ChatSession[];
   chatMessages: ChatMessage[];
   createChatSession: (userId: string, reportId?: string | null) => ChatSession;
   assignAdminToSession: (sessionId: string, adminId: string) => void;
   closeChatSession: (sessionId: string) => void;
-  addChatMessage: (sessionId: string, senderId: string, content: string) => ChatMessage;
+  addChatMessage: (sessionId: string, senderId: string, content: string, type?: ChatMessageType, mediaUrl?: string, mediaName?: string) => ChatMessage;
   markMessagesRead: (sessionId: string, readerId: string) => void;
 
-  // Admin Profiles
   adminProfiles: AdminProfile[];
   updateAvailability: (adminUserId: string, status: AvailabilityStatus) => void;
 
-  // Appointments
   appointments: Appointment[];
   addAppointment: (userId: string, targetAdminId: string) => Appointment;
 
-  // Notifications
   notifications: Notification[];
   addNotification: (data: {
     user_id: string;
@@ -81,8 +76,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
 
-  // ---- Reports ----
-
   const addNotification = useCallback(
     (data: { user_id: string; type: NotificationType; title: string; message: string; link?: string }) => {
       const notif: Notification = {
@@ -101,7 +94,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   const addReport = useCallback(
-    (data: { user_id: string; category: ReportCategory; urgency: Urgency; kronologi: string; is_anonymous: boolean }) => {
+    (data: { user_id: string; category: ReportCategory; urgency: Urgency; kronologi: string }) => {
       const now = new Date().toISOString();
       const report: Report = {
         id: generateId("r"),
@@ -110,7 +103,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         category: data.category,
         urgency: data.urgency,
         kronologi: data.kronologi,
-        is_anonymous: data.is_anonymous,
         status: "RECEIVED",
         admin_notes: "",
         created_at: now,
@@ -118,7 +110,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       };
       setReports((prev) => [report, ...prev]);
 
-      // Add initial status history
       const historyEntry: ReportStatusHistory = {
         id: generateId("sh"),
         report_id: report.id,
@@ -130,9 +121,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       };
       setStatusHistory((prev) => [...prev, historyEntry]);
 
-      // Notify all admins
       const senderUser = mockUsers.find((u) => u.id === data.user_id);
-      const senderName = data.is_anonymous ? "Anonim" : senderUser?.name ?? "Pengirim";
+      const senderName = senderUser?.name ?? "Pengirim";
       const admins = mockUsers.filter((u) => u.role === "ADMIN" || u.role === "SUPER_ADMIN");
       admins.forEach((admin) => {
         addNotification({
@@ -174,7 +164,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       };
       setStatusHistory((prev) => [...prev, historyEntry]);
 
-      // Notify sender
       if (report) {
         addNotification({
           user_id: report.user_id,
@@ -188,16 +177,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [reports, addNotification]
   );
 
-  const updateReportNotes = useCallback(
-    (reportId: string, notes: string) => {
-      setReports((prev) =>
-        prev.map((r) => (r.id === reportId ? { ...r, admin_notes: notes } : r))
-      );
-    },
-    []
-  );
-
-  // ---- Chat ----
+  const updateReportNotes = useCallback((reportId: string, notes: string) => {
+    setReports((prev) =>
+      prev.map((r) => (r.id === reportId ? { ...r, admin_notes: notes } : r))
+    );
+  }, []);
 
   const createChatSession = useCallback(
     (userId: string, reportId: string | null = null) => {
@@ -212,7 +196,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       };
       setChatSessions((prev) => [session, ...prev]);
 
-      // Notify admins
       const senderUser = mockUsers.find((u) => u.id === userId);
       const admins = mockUsers.filter((u) => u.role === "ADMIN" || u.role === "SUPER_ADMIN");
       admins.forEach((admin) => {
@@ -261,31 +244,41 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   const addChatMessage = useCallback(
-    (sessionId: string, senderId: string, content: string) => {
+    (
+      sessionId: string,
+      senderId: string,
+      content: string,
+      type: ChatMessageType = "TEXT",
+      mediaUrl?: string,
+      mediaName?: string
+    ) => {
       const msg: ChatMessage = {
         id: generateId("cm"),
         session_id: sessionId,
         sender_id: senderId,
         content,
+        type,
+        media_url: mediaUrl,
+        media_name: mediaName,
         is_read: false,
         read_at: null,
         created_at: new Date().toISOString(),
       };
       setChatMessages((prev) => [...prev, msg]);
 
-      // Notify the other party
       const session = chatSessions.find((s) => s.id === sessionId);
       if (session) {
         const senderUser = mockUsers.find((u) => u.id === senderId);
         const isSender = senderId === session.user_id;
         const targetUserId = isSender ? session.assigned_admin_id : session.user_id;
+        const preview = type === "TEXT" ? content.slice(0, 60) : `📎 ${mediaName ?? "Media"}`;
 
         if (targetUserId) {
           addNotification({
             user_id: targetUserId,
             type: isSender ? "NEW_CHAT_MESSAGE" : "NEW_CHAT_REPLY",
             title: isSender ? "Pesan Baru" : "Balasan Chat",
-            message: `${senderUser?.name ?? "Pengguna"}: ${content.slice(0, 60)}${content.length > 60 ? "..." : ""}`,
+            message: `${senderUser?.name ?? "Pengguna"}: ${preview}${type === "TEXT" && content.length > 60 ? "..." : ""}`,
             link: isSender ? "/admin/chat" : `/chat/${sessionId}`,
           });
         }
@@ -307,15 +300,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  // ---- Admin Profiles ----
-
   const updateAvailability = useCallback((adminUserId: string, status: AvailabilityStatus) => {
     setAdminProfiles((prev) =>
       prev.map((p) => (p.user_id === adminUserId ? { ...p, availability_status: status } : p))
     );
   }, []);
-
-  // ---- Appointments ----
 
   const addAppointment = useCallback(
     (userId: string, targetAdminId: string) => {
@@ -327,7 +316,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       };
       setAppointments((prev) => [...prev, apt]);
 
-      // Notify target admin
       const senderUser = mockUsers.find((u) => u.id === userId);
       addNotification({
         user_id: targetAdminId,
@@ -340,8 +328,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     [addNotification]
   );
-
-  // ---- Notifications ----
 
   const markNotificationRead = useCallback((notificationId: string) => {
     setNotifications((prev) =>
@@ -356,36 +342,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getUnreadCount = useCallback(
-    (userId: string) => {
-      return notifications.filter((n) => n.user_id === userId && !n.is_read).length;
-    },
+    (userId: string) => notifications.filter((n) => n.user_id === userId && !n.is_read).length,
     [notifications]
   );
 
   return (
     <DataContext.Provider
       value={{
-        reports,
-        statusHistory,
-        addReport,
-        updateReportStatus,
-        updateReportNotes,
-        chatSessions,
-        chatMessages,
-        createChatSession,
-        assignAdminToSession,
-        closeChatSession,
-        addChatMessage,
-        markMessagesRead,
-        adminProfiles,
-        updateAvailability,
-        appointments,
-        addAppointment,
-        notifications,
-        addNotification,
-        markNotificationRead,
-        markAllNotificationsRead,
-        getUnreadCount,
+        reports, statusHistory, addReport, updateReportStatus, updateReportNotes,
+        chatSessions, chatMessages, createChatSession, assignAdminToSession, closeChatSession, addChatMessage, markMessagesRead,
+        adminProfiles, updateAvailability,
+        appointments, addAppointment,
+        notifications, addNotification, markNotificationRead, markAllNotificationsRead, getUnreadCount,
       }}
     >
       {children}
