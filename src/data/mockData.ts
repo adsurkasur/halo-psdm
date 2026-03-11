@@ -19,13 +19,19 @@ export interface ChatMessage {
   read: boolean;
 }
 
+export interface AdminScheduleSlot {
+  day: string;
+  time: string;
+  available: boolean;
+}
+
 export interface AdminProfile {
   id: string;
   name: string;
   jabatan: string;
   avatar: string;
-  online: boolean;
   phone: string;
+  schedule: AdminScheduleSlot[];
 }
 
 export const mockReports: Report[] = [
@@ -105,10 +111,36 @@ export const mockChatMessages: ChatMessage[] = [
 ];
 
 export const mockAdminProfiles: AdminProfile[] = [
-  { id: "1", name: "Sarah Amelia", jabatan: "PH PSDM", avatar: "SA", online: true, phone: "6281234567890" },
-  { id: "2", name: "Dimas Prayoga", jabatan: "Staf Ahli PSDM", avatar: "DP", online: true, phone: "6281234567891" },
-  { id: "3", name: "Nadia Putri", jabatan: "Staf Ahli PSDM", avatar: "NP", online: false, phone: "6281234567892" },
-  { id: "4", name: "Rafi Hidayat", jabatan: "PH PSDM", avatar: "RH", online: false, phone: "6281234567893" },
+  {
+    id: "1", name: "Sarah Amelia", jabatan: "PH PSDM", avatar: "SA", phone: "6281234567890",
+    schedule: [
+      { day: "Senin", time: "09:00 - 11:00", available: true },
+      { day: "Rabu", time: "13:00 - 15:00", available: true },
+      { day: "Jumat", time: "10:00 - 12:00", available: false },
+    ],
+  },
+  {
+    id: "2", name: "Dimas Prayoga", jabatan: "Staf Ahli PSDM", avatar: "DP", phone: "6281234567891",
+    schedule: [
+      { day: "Selasa", time: "10:00 - 12:00", available: true },
+      { day: "Kamis", time: "14:00 - 16:00", available: true },
+    ],
+  },
+  {
+    id: "3", name: "Nadia Putri", jabatan: "Staf Ahli PSDM", avatar: "NP", phone: "6281234567892",
+    schedule: [
+      { day: "Senin", time: "13:00 - 15:00", available: true },
+      { day: "Rabu", time: "09:00 - 11:00", available: false },
+      { day: "Jumat", time: "13:00 - 15:00", available: true },
+    ],
+  },
+  {
+    id: "4", name: "Rafi Hidayat", jabatan: "PH PSDM", avatar: "RH", phone: "6281234567893",
+    schedule: [
+      { day: "Selasa", time: "08:00 - 10:00", available: false },
+      { day: "Kamis", time: "10:00 - 12:00", available: true },
+    ],
+  },
 ];
 
 export const mockChatSessions = [

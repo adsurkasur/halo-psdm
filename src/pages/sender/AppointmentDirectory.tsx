@@ -1,4 +1,4 @@
-import { Phone } from "lucide-react";
+import { Phone, Clock, CalendarDays } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -9,42 +9,70 @@ import { mockAdminProfiles } from "@/data/mockData";
 export default function AppointmentDirectory() {
   const { toast } = useToast();
 
-  const handleContact = (name: string) => {
+  const handleContact = (name: string, day: string, time: string) => {
     toast({
       title: "Mengalihkan ke WhatsApp",
-      description: `"Halo Kak ${name}, saya ingin mengajukan janji temu melalui Halo PSDM."`,
+      description: `"Halo Kak ${name}, saya ingin mengajukan janji temu pada ${day} pukul ${time} melalui Halo PSDM."`,
     });
   };
 
   return (
     <div className="animate-fade-in space-y-4">
       <h1 className="text-xl font-bold">Order Janji Temu</h1>
-      <p className="text-sm text-muted-foreground">Pilih admin untuk mengajukan janji temu via WhatsApp</p>
+      <p className="text-sm text-muted-foreground">Pilih admin dan jadwal yang tersedia untuk mengajukan janji temu</p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-4">
         {mockAdminProfiles.map((admin) => (
           <Card key={admin.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="py-6 flex flex-col items-center text-center gap-3">
-              <Avatar className="h-16 w-16">
-                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
-                  {admin.avatar}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-semibold">{admin.name}</h3>
-                <p className="text-xs text-muted-foreground">{admin.jabatan}</p>
+            <CardContent className="py-5 space-y-4">
+              {/* Profile header */}
+              <div className="flex items-center gap-3">
+                <Avatar className="h-14 w-14">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+                    {admin.avatar}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-semibold text-base">{admin.name}</h3>
+                  <p className="text-xs text-muted-foreground">{admin.jabatan}</p>
+                </div>
               </div>
-              <Badge className={`${admin.online ? "bg-online" : "bg-offline"} text-primary-foreground text-xs`}>
-                {admin.online ? "Online" : "Offline"}
-              </Badge>
-              <Button
-                className="w-full mt-2 gap-2"
-                variant={admin.online ? "default" : "secondary"}
-                onClick={() => handleContact(admin.name)}
-              >
-                <Phone className="h-4 w-4" />
-                Hubungi via WhatsApp
-              </Button>
+
+              {/* Schedule */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                  <CalendarDays className="h-4 w-4" />
+                  Jadwal Tersedia
+                </div>
+                <div className="space-y-2">
+                  {admin.schedule.map((slot, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between rounded-lg border bg-card px-3 py-2.5"
+                    >
+                      <div className="flex items-center gap-2 text-sm">
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-medium">{slot.day}</span>
+                        <span className="text-muted-foreground">{slot.time}</span>
+                      </div>
+                      {slot.available ? (
+                        <Button
+                          size="sm"
+                          className="gap-1.5 h-8 text-xs"
+                          onClick={() => handleContact(admin.name, slot.day, slot.time)}
+                        >
+                          <Phone className="h-3.5 w-3.5" />
+                          Hubungi
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          Penuh
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}
