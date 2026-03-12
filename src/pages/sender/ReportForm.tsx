@@ -14,24 +14,41 @@ import { CATEGORY_LABELS, BIRO_LABELS, JABATAN_LABELS, type ReportCategory, type
 
 const categories = Object.entries(CATEGORY_LABELS) as [ReportCategory, string][];
 
-export default function ReportForm() {
+interface ReportFormProps {
+  initialCategory?: ReportCategory | "";
+  initialChronology?: string;
+}
+
+export default function ReportForm({
+  initialCategory = "",
+  initialChronology = "",
+}: ReportFormProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const { addReport } = useData();
 
-  const [category, setCategory] = useState<ReportCategory | "">("");
+  const [category, setCategory] = useState<ReportCategory | "">(initialCategory);
   const [urgency, setUrgency] = useState<Urgency>("RENDAH");
-  const [chronology, setChronology] = useState("");
+  const [chronology, setChronology] = useState(initialChronology);
 
   if (!user) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!category || chronology.length < 50) {
+    // give more specific feedback rather than a catchall message
+    if (!category) {
       toast({
         title: "Peringatan",
-        description: "Mohon lengkapi semua kolom. Kronologi minimal 50 karakter.",
+        description: "Mohon pilih kategori laporan.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (chronology.length < 50) {
+      toast({
+        title: "Peringatan",
+        description: "Kronologi minimal 50 karakter.",
         variant: "destructive",
       });
       return;

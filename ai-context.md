@@ -4,8 +4,8 @@
 
 | Property | Value |
 | --- | --- |
-| Phase | Plan |
-| Task | fix /dashboard routing, add profile settings, dark mode, and translate biro/bidang codes |
+| Phase | Implement |
+| Task | fix ReportForm validation messages and add tests |
 | Started | 2026-03-12 00:00 |
 | Last Updated | 2026-03-12 00:00 |
 | Session ID | 20260312-0000 |
@@ -85,6 +85,9 @@
 - [x] Step 13: Add search box to Kelola Admin with filtering logic
 - [x] Step 14: Add searchable "add admin" input; make status column read‑only text
 - [x] Step 15: Fix missing closing div in AdminManagement (syntax error)
+- [x] Step 16: Examine ReportForm validation logic after user reported uniform toast
+- [x] Step 17: Refactor ReportForm to provide specific error messages and add initial props for testing
+- [x] Step 18: Add comprehensive unit tests for ReportForm validation and update existing suite
 
 ## Change Manifest
 
