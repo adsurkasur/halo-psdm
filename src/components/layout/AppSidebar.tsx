@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, MessageCircle, Calendar, ClipboardList, MessagesSquare, BarChart3, Users } from "lucide-react";
+import { LayoutDashboard, FileText, MessageCircle, Calendar, ClipboardList, MessagesSquare, BarChart3, Users, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { NavLink } from "@/components/NavLink";
@@ -50,7 +50,10 @@ export function AppSidebar() {
       : []),
   ];
 
-  const items = isSender ? senderNav : adminNav;
+  const items = isSender ? [...senderNav] : [...adminNav];
+
+  // always offer profile/settings link at bottom
+  items.push({ title: "Profil Saya", url: "/profile", icon: User, badge: 0 });
 
   return (
     <Sidebar collapsible="icon">

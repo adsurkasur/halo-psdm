@@ -1,4 +1,4 @@
-import { Bell, LogOut, Check } from "lucide-react";
+import { Bell, LogOut, Check, Sun, Moon, User, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,11 +12,14 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "next-themes";
+import { JABATAN_LABELS } from "@/data/mockData";
 
 export function AppHeader() {
   const { user, isAdmin, logout } = useAuth();
   const { notifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } = useData();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   if (!user) return null;
 
@@ -42,6 +45,8 @@ export function AppHeader() {
     : user.role === "ADMIN"
     ? { label: "Admin", cls: "bg-orange-100 text-orange-700" }
     : { label: "Super Admin", cls: "bg-purple-100 text-purple-700" };
+
+  const isDark = theme === "dark";
 
   return (
     <header className="h-14 border-b bg-card flex items-center justify-between px-4 sticky top-0 z-30">
@@ -125,22 +130,55 @@ export function AppHeader() {
           </PopoverContent>
         </Popover>
 
-        {/* User */}
-        <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <div className="hidden md:block">
-            <p className="text-xs font-medium leading-none">{user.name}</p>
-            <p className="text-[10px] text-muted-foreground">{user.jabatan}</p>
-          </div>
-        </div>
-
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 text-muted-foreground" />
-        </Button>
+        {/* Profile card with popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="flex items-start gap-2">
+              <span className="relative flex shrink-0 overflow-hidden rounded-full h-8 w-8">
+                <span className="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                  {initials}
+                </span>
+              </span>
+              <div className="hidden md:block">
+                <p className="text-xs font-medium leading-none">{user.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {JABATAN_LABELS[user.jabatan]}
+                </p>
+              </div>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-48 p-2">
+            <div className="flex flex-col space-y-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start"
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+              >
+                {isDark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                {isDark ? "Light Mode" : "Dark Mode"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start"
+                onClick={() => navigate("/profile")}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Pengaturan Akun
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start text-destructive"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Keluar
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </header>
   );

@@ -306,6 +306,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const addAdminProfile = useCallback((profile: AdminProfile) => {
+    setAdminProfiles((prev) => [...prev, profile]);
+  }, []);
+
+  const removeAdminProfile = useCallback((userId: string) => {
+    setAdminProfiles((prev) => prev.filter((p) => p.user_id !== userId));
+  }, []);
+
   const addAppointment = useCallback(
     (userId: string, targetAdminId: string) => {
       const apt: Appointment = {
@@ -351,7 +359,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       value={{
         reports, statusHistory, addReport, updateReportStatus, updateReportNotes,
         chatSessions, chatMessages, createChatSession, assignAdminToSession, closeChatSession, addChatMessage, markMessagesRead,
-        adminProfiles, updateAvailability,
+        adminProfiles, updateAvailability, addAdminProfile, removeAdminProfile,
         appointments, addAppointment,
         notifications, addNotification, markNotificationRead, markAllNotificationsRead, getUnreadCount,
       }}

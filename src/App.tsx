@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { ThemeProvider } from "next-themes";
 
 // Pages
 import LoginPage from "@/pages/LoginPage";
@@ -13,6 +14,7 @@ import SenderDashboard from "@/pages/sender/SenderDashboard";
 import ReportForm from "@/pages/sender/ReportForm";
 import SenderReportList from "@/pages/sender/SenderReportList";
 import SenderReportDetail from "@/pages/sender/SenderReportDetail";
+import ProfilePage from "@/pages/ProfilePage";
 import ChatSessionList from "@/pages/sender/ChatSessionList";
 import ChatRoom from "@/pages/sender/ChatRoom";
 import AppointmentDirectory from "@/pages/sender/AppointmentDirectory";
@@ -26,7 +28,7 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoutes() {
+export function ProtectedRoutes() {
   const { isAuthenticated, isSender, isAdmin, isSuperAdmin } = useAuth();
 
   if (!isAuthenticated) {
@@ -41,12 +43,16 @@ function ProtectedRoutes() {
           path="/"
           element={isSender ? <SenderDashboard /> : <Navigate to="/admin/dasbor" replace />}
         />
+        {/* alias for legacy /dashboard path */}
+        <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/laporan" element={isSender ? <SenderReportList /> : <Navigate to="/admin/laporan" replace />} />
         <Route path="/laporan/buat" element={<ReportForm />} />
         <Route path="/laporan/:id" element={<SenderReportDetail />} />
         <Route path="/chat" element={<ChatSessionList />} />
         <Route path="/chat/:sessionId" element={<ChatRoom />} />
         <Route path="/janji-temu" element={<AppointmentDirectory />} />
+        {/* profile settings for all users */}
+        <Route path="/profile" element={<ProfilePage />} />
 
         {/* Admin routes */}
         <Route
@@ -80,7 +86,7 @@ function ProtectedRoutes() {
   );
 }
 
-function AppRoutes() {
+export function AppRoutes() {
   const { isAuthenticated } = useAuth();
 
   return (
@@ -96,17 +102,19 @@ function AppRoutes() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-        <DataProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </DataProvider>
-      </AuthProvider>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="system">
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <DataProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </DataProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

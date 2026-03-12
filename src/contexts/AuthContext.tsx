@@ -24,6 +24,8 @@ interface AuthContextType {
   }) => { success: boolean; error?: string };
   logout: () => void;
   allUsers: User[];
+  updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan">>) => void;
+  changeUserRole: (userId: string, newRole: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -77,6 +79,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const changeUserRole = useCallback(
+    (userId: string, newRole: UserRole) => {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+      );
+      if (user && user.id === userId) {
+        setUser({ ...user, role: newRole });
+      }
+    },
+    [user]
+  );
+
+  const updateProfile = useCallback(
+    (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan">>) => {
+      if (!user) return;
+      const updated: User = { ...user, ...updates } as User;
+      setUser(updated);
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+    },
+    [user]
+  );
+
   const role: UserRole | null = user?.role ?? null;
 
   return (
@@ -91,6 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         allUsers: users,
+        updateProfile,
+        changeUserRole,
       }}
     >
       {children}

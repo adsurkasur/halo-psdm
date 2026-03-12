@@ -35,8 +35,7 @@ export default function LoginPage() {
   const redirectAfterAuth = () => {
     setTimeout(() => {
       if (isSender) navigate("/dashboard");
-      else if (isSuperAdmin) navigate("/admin");
-      else if (isAdmin) navigate("/admin");
+      else if (isSuperAdmin || isAdmin) navigate("/admin/dasbor");
       else navigate("/dashboard");
     }, 100);
   };
@@ -100,7 +99,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-700 p-4">
       <div className="w-full max-w-md animate-scale-in">
         {/* Logo */}
         <div className="text-center mb-8 animate-float">
