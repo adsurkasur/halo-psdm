@@ -11,6 +11,7 @@ import {
   generateCaseId,
   mockUsers,
   STATUS_LABELS,
+  URGENCY_LABELS,
   type Report,
   type ReportStatus,
   type ReportStatusHistory,
@@ -36,6 +37,7 @@ interface DataContextType {
     kronologi: string;
   }) => Report;
   updateReportStatus: (reportId: string, newStatus: ReportStatus, adminId: string, note?: string) => void;
+  updateReportUrgency: (reportId: string, newUrgency: Urgency, adminId: string) => void;
   updateReportNotes: (reportId: string, notes: string) => void;
 
   chatSessions: ChatSession[];
@@ -170,6 +172,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
           type: newStatus === "DONE" ? "REPORT_DONE" : "STATUS_UPDATED",
           title: newStatus === "DONE" ? "Kasus Selesai" : "Status Diperbarui",
           message: `Laporan ${report.case_id} telah diperbarui ke ${STATUS_LABELS[newStatus]}`,
+          link: "/laporan",
+        });
+      }
+    },
+    [reports, addNotification]
+  );
+
+  const updateReportUrgency = useCallback(
+    (reportId: string, newUrgency: Urgency, adminId: string) => {
+      setReports((prev) =>
+        prev.map((r) =>
+          r.id === reportId
+            ? { ...r, urgency: newUrgency, updated_at: new Date().toISOString() }
+            : r
+        )
+      );
+      const report = reports.find((r) => r.id === reportId);
+      if (report) {
+        addNotification({
+          user_id: report.user_id,
+          type: "STATUS_UPDATED",
+          title: "Urgensi Diperbarui",
+          message: `Urgensi laporan ${report.case_id} diubah menjadi ${URGENCY_LABELS[newUrgency]}`,
           link: "/laporan",
         });
       }
@@ -357,7 +382,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return (
     <DataContext.Provider
       value={{
-        reports, statusHistory, addReport, updateReportStatus, updateReportNotes,
+        reports, statusHistory, addReport, updateReportStatus, updateReportUrgency, updateReportNotes,
         chatSessions, chatMessages, createChatSession, assignAdminToSession, closeChatSession, addChatMessage, markMessagesRead,
         adminProfiles, updateAvailability, addAdminProfile, removeAdminProfile,
         appointments, addAppointment,

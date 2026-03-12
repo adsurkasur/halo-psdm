@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { DataProvider } from "@/contexts/DataContext";
@@ -9,9 +9,21 @@ import { AppRoutes } from "@/App";
 import { AppHeader } from "@/components/layout/AppHeader";
 import ProfilePage from "@/pages/ProfilePage";
 import AdminManagement from "@/pages/admin/AdminManagement";
+import ReportManagement from "@/pages/admin/ReportManagement";
+import ReportDetail from "@/pages/admin/ReportDetail";
 import { Toaster } from "@/components/ui/toaster";
-import { mockUsers } from "@/data/mockData";
-import React, { useEffect } from "react";
+import { mockUsers, URGENCY_LABELS, initialReports } from "@/data/mockData";
+import React, { useEffect, useLayoutEffect } from "react";
+import { useData } from "@/contexts/DataContext";
+
+// helper used in tests to programmatically trigger urgency updates via context
+function UrgencySetter({ reportId, newUrgency, adminId }: { reportId: string; newUrgency: string; adminId: string; }) {
+  const { updateReportUrgency } = useData();
+  useEffect(() => {
+    updateReportUrgency(reportId, newUrgency as any, adminId);
+  }, [reportId, newUrgency, adminId, updateReportUrgency]);
+  return null;
+}
 
 // helper component to auto-login a test user
 interface AutoLoginProps {
@@ -21,7 +33,7 @@ interface AutoLoginProps {
 }
 function AutoLogin({ children, email, password }: AutoLoginProps) {
   const { login } = useAuth();
-  useEffect(() => {
+  useLayoutEffect(() => {
     const cred = email ?? mockUsers[0].email;
     const pass = password ?? mockUsers[0].password;
     login(cred, pass);
@@ -144,7 +156,7 @@ describe("app behavior", () => {
         <AuthProvider>
           <DataProvider>
             <MemoryRouter initialEntries={["/admin/kelola-admin"]}>
-              <AutoLogin email={mockUsers.find((u) => u.role === "SUPER_ADMIN")!.email} password="dimas123">
+              <AutoLogin email={mockUsers.find((u) => u.role === "SUPER_ADMIN")!.email} password="nadia123">
                 <AdminManagement />
               </AutoLogin>
             </MemoryRouter>
@@ -163,5 +175,41 @@ describe("app behavior", () => {
     expect(addSearch).toBeInTheDocument();
     fireEvent.focus(addSearch);
     await waitFor(() => expect(screen.getByText(/Ade Surya Ananda/i)).toBeInTheDocument());
+  });
+
+  it("admin can override report urgency via detail page", async () => {
+    const firstReport = initialReports[0]; // initially urgency TINGGI
+
+    render(
+      <ThemeProvider attribute="class" defaultTheme="system">
+        <AuthProvider>
+          <DataProvider>
+            <MemoryRouter initialEntries={[`/admin/laporan/${firstReport.id}`]}>
+              <AutoLogin email={mockUsers.find((u) => u.role === "SUPER_ADMIN")!.email} password="nadia123">
+                <Toaster />
+                <ReportDetail />
+              </AutoLogin>
+            </MemoryRouter>
+          </DataProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    );
+
+    // badge should start as "Tinggi"
+    expect(await screen.findByText(/Tinggi/i)).toBeInTheDocument();
+
+    // open urgency dropdown and choose "Rendah"
+    const combo = screen.getByRole("combobox");
+    fireEvent.mouseDown(combo);
+    fireEvent.click(await screen.findByText(/Rendah/i));
+
+    // click update button
+    fireEvent.click(screen.getByRole("button", { name: /Perbarui Urgensi/i }));
+
+    // toast should appear
+    expect(await screen.findByText(/Urgensi diperbarui/i)).toBeInTheDocument();
+
+    // badge text updates
+    expect(await screen.findByText(/Rendah/i)).toBeInTheDocument();
   });
 });

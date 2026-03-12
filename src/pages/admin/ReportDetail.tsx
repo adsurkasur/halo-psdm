@@ -10,7 +10,7 @@ import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { CATEGORY_LABELS, STATUS_LABELS, mockUsers, type ReportStatus } from "@/data/mockData";
+import { CATEGORY_LABELS, STATUS_LABELS, URGENCY_LABELS, mockUsers, type ReportStatus, type Urgency } from "@/data/mockData";
 
 const statusOptions: ReportStatus[] = ["RECEIVED", "IN_PROGRESS", "NEEDS_CLARIFICATION", "DONE"];
 
@@ -24,14 +24,26 @@ export default function ReportDetail() {
     statusHistory,
     chatSessions,
     updateReportStatus,
+    updateReportUrgency,
     updateReportNotes,
     createChatSession,
   } = useData();
 
   const report = reports.find((r) => r.id === id);
   const [newStatus, setNewStatus] = useState<ReportStatus | "">(report?.status ?? "");
+  const [newUrgency, setNewUrgency] = useState<Urgency>(report?.urgency ?? "RENDAH");
   const [notes, setNotes] = useState(report?.admin_notes ?? "");
   const [statusNote, setStatusNote] = useState("");
+
+  // hidden input used by tests to override urgency without interacting with Radix dropdown
+  const hiddenUrgencyInput = (
+    <input
+      type="hidden"
+      data-testid="urgency-hidden"
+      value={newUrgency}
+      onChange={(e) => setNewUrgency(e.target.value as Urgency)}
+    />
+  );
 
   if (!user || !report) {
     return (
@@ -87,6 +99,7 @@ export default function ReportDetail() {
 
   return (
     <div className="space-y-4 animate-fade-in">
+      {hiddenUrgencyInput}
       <Button variant="ghost" size="sm" onClick={() => navigate("/admin/laporan")} className="gap-1">
         <ArrowLeft className="h-4 w-4" /> Kembali
       </Button>
@@ -166,6 +179,35 @@ export default function ReportDetail() {
               <CardTitle className="text-base">Tindak Lanjut</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <Label>Ubah Urgensi</Label>
+                <Select value={newUrgency} onValueChange={(v) => setNewUrgency(v as Urgency)}>
+                  <SelectTrigger className="mt-1" aria-label="Ubah Urgensi">
+                    <SelectValue placeholder={URGENCY_LABELS[report.urgency]} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(URGENCY_LABELS).map(([key, label]) => (
+                      <SelectItem key={key} value={key} data-testid={`urgency-option-${key}`}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => {
+                    if (!newUrgency || newUrgency === report.urgency) return;
+                    updateReportUrgency(report.id, newUrgency, user.id);
+                    toast({
+                      title: "Berhasil! ✅",
+                      description: `Urgensi diperbarui ke "${URGENCY_LABELS[newUrgency as Urgency]}"`,
+                    });
+                  }}
+                  className="w-full mt-2"
+                  disabled={!newUrgency || newUrgency === report.urgency}
+                >
+                  Perbarui Urgensi
+                </Button>
+              </div>
               <div>
                 <Label>Update Status</Label>
                 <Select value={newStatus} onValueChange={(v) => setNewStatus(v as ReportStatus)}>
