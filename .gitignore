@@ -11,8 +11,24 @@ node_modules
 dist
 dist-ssr
 .next
+out
 next-env.d.ts
+
+# Environment files
+.env
+.env.*
 *.local
+!.env.example
+
+# Test and coverage outputs
+coverage
+playwright-report
+test-results
+
+# Build cache
+*.tsbuildinfo
+.turbo
+.vercel
 
 # Editor directories and files
 .vscode/*
