@@ -11,7 +11,7 @@ import {
   JABATAN_LABELS,
   type BiroBidang,
   type Jabatan,
-} from "@/data/mockData";
+} from "@/data/domain";
 
 type AuthMode = "login" | "register";
 
@@ -40,12 +40,12 @@ export default function LoginPage() {
     }, 100);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      const result = login(email, password);
+    setTimeout(async () => {
+      const result = await login(email, password);
       setLoading(false);
       if (!result.success) {
         setError(result.error ?? "Login gagal.");
@@ -57,7 +57,7 @@ export default function LoginPage() {
     }, 400);
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -69,8 +69,8 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      const result = register({ name: name.trim(), email: email.trim(), password, biro, jabatan });
+    setTimeout(async () => {
+      const result = await register({ name: name.trim(), email: email.trim(), password, biro, jabatan });
       setLoading(false);
       if (!result.success) {
         setError(result.error ?? "Registrasi gagal.");
@@ -80,12 +80,6 @@ export default function LoginPage() {
       }
       redirectAfterAuth();
     }, 600);
-  };
-
-  const fillDemo = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setError("");
   };
 
   const switchMode = (newMode: AuthMode) => {
@@ -106,7 +100,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary text-primary-foreground text-2xl font-bold shadow-lg shadow-primary/30">
             HP
           </div>
-          <h1 className="text-2xl font-bold mt-4">Halo PSDM</h1>
+          <h1 className="text-2xl font-bold mt-4">Halo PSDM - ARSC FTP UB</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Sistem Komunikasi Dua Arah — ARSC 2025/2026
           </p>
@@ -256,74 +250,8 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Demo accounts — only show in login mode */}
-        {mode === "login" && (
-          <Card className="mt-4 border-0 shadow-md animate-slide-up" style={{ animationDelay: "200ms" }}>
-            <CardContent className="pt-4 pb-4">
-              <p className="text-xs text-muted-foreground text-center mb-3 font-medium">Akun Demo</p>
-              <div className="space-y-1.5 stagger-children">
-                {[
-                  { name: "Ade Surya Ananda", email: "ade@arsc.org", pass: "ade123", role: "Sender" },
-                  { name: "Rizky Pratama", email: "rizky@arsc.org", pass: "rizky123", role: "Sender" },
-                  { name: "Fatimah Zahra", email: "fatimah@arsc.org", pass: "fatimah123", role: "Sender" },
-                  { name: "Sarah Amelia", email: "sarah@arsc.org", pass: "sarah123", role: "Admin" },
-                ].map((a) => (
-                  <button
-                    key={a.email}
-                    type="button"
-                    className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/50 text-left transition-all duration-200 hover-lift"
-                    onClick={() => fillDemo(a.email, a.pass)}
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{a.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{a.email}</p>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      a.role === "Admin"
-                        ? "bg-destructive/10 text-destructive"
-                        : "bg-primary/10 text-primary"
-                    }`}>
-                      {a.role}
-                    </span>
-                  </button>
-                ))}
-                <details className="text-center">
-                  <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-primary transition-colors inline-flex items-center gap-1">
-                    ▸ +2 akun lainnya
-                  </summary>
-                  <div className="mt-1.5 space-y-1.5">
-                    {[
-                      { name: "Dimas Prayoga", email: "dimas@arsc.org", pass: "dimas123", role: "Admin" },
-                      { name: "Nadia Putri", email: "nadia@arsc.org", pass: "nadia123", role: "Super Admin" },
-                    ].map((a) => (
-                      <button
-                        key={a.email}
-                        type="button"
-                        className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/50 text-left transition-all duration-200 hover-lift"
-                        onClick={() => fillDemo(a.email, a.pass)}
-                      >
-                        <div>
-                          <p className="text-sm font-medium">{a.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{a.email}</p>
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          a.role === "Super Admin"
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-destructive/10 text-destructive"
-                        }`}>
-                          {a.role}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </details>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <p className="text-center text-xs text-muted-foreground mt-6">
-          ARSC · Divisi Pengembangan Sumber Daya Manusia · 2025/2026
+          ARSC · Cakra Prakasa · 2025/2026
         </p>
       </div>
     </div>

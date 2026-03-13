@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
-import type { ReportStatus, Urgency } from "@/data/mockData";
-import { STATUS_LABELS, URGENCY_LABELS } from "@/data/mockData";
+import type { ReportStatus, Urgency } from "@/data/domain";
+import { STATUS_LABELS, URGENCY_LABELS } from "@/data/domain";
 
 const urgencyStyles: Record<Urgency, string> = {
   TINGGI: "bg-red-100 text-red-700 border-red-200",

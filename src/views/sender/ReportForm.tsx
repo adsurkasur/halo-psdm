@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { CATEGORY_LABELS, BIRO_LABELS, JABATAN_LABELS, type ReportCategory, type Urgency } from "@/data/mockData";
+import { CATEGORY_LABELS, BIRO_LABELS, JABATAN_LABELS, type ReportCategory, type Urgency } from "@/data/domain";
 
 const categories = Object.entries(CATEGORY_LABELS) as [ReportCategory, string][];
 
@@ -34,7 +34,7 @@ export default function ReportForm({
 
   if (!user) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // give more specific feedback rather than a catchall message
     if (!category) {
@@ -54,19 +54,27 @@ export default function ReportForm({
       return;
     }
 
-    const report = addReport({
-      user_id: user.id,
-      category: category as ReportCategory,
-      urgency,
-      kronologi: chronology,
-    });
+    try {
+      const report = await addReport({
+        user_id: user.id,
+        category: category as ReportCategory,
+        urgency,
+        kronologi: chronology,
+      });
 
-    toast({
-      title: "Berhasil! ✅",
-      description: `Laporan berhasil dikirim dengan ID: ${report.case_id}`,
-    });
+      toast({
+        title: "Berhasil! ✅",
+        description: `Laporan berhasil dikirim dengan ID: ${report.case_id}`,
+      });
 
-    setTimeout(() => navigate(`/laporan/${report.id}`), 800);
+      setTimeout(() => navigate(`/laporan/${report.id}`), 800);
+    } catch {
+      toast({
+        title: "Gagal",
+        description: "Laporan gagal dikirim. Periksa koneksi Supabase lalu coba lagi.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

@@ -16,13 +16,15 @@ import { ThemeProvider } from "next-themes";
 import ReportForm from "@/views/sender/ReportForm";
 import { Toaster } from "@/components/ui/toaster";
 import React, { useEffect } from "react";
-import { mockUsers, CATEGORY_LABELS } from "@/data/mockData";
+import { CATEGORY_LABELS } from "@/data/domain";
+
+const TEST_SENDER = { email: "ade@arsc.org", password: "ade123" };
 
 // helper to auto-login a default user
 function AutoLogin({ children }: { children: React.ReactNode }) {
   const { login } = useAuth();
   useEffect(() => {
-    login(mockUsers[0].email, mockUsers[0].password);
+    void login(TEST_SENDER.email, TEST_SENDER.password);
   }, [login]);
   return <>{children}</>;
 }

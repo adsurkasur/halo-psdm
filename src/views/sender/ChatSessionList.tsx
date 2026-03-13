@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { mockUsers, AVAILABILITY_LABELS } from "@/data/mockData";
+import { AVAILABILITY_LABELS } from "@/data/domain";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ChatSessionList() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, allUsers } = useAuth();
   const { chatSessions, chatMessages, adminProfiles, createChatSession } = useData();
   const { toast } = useToast();
 
@@ -23,7 +23,7 @@ export default function ChatSessionList() {
 
   const hasOpenSession = mySessions.some((s) => s.status === "OPEN");
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     if (hasOpenSession) {
       toast({
         title: "Sesi Aktif",
@@ -32,7 +32,7 @@ export default function ChatSessionList() {
       });
       return;
     }
-    const session = createChatSession(user.id);
+    const session = await createChatSession(user.id);
     navigate(`/chat/${session.id}`);
   };
 
@@ -85,11 +85,12 @@ export default function ChatSessionList() {
             const lastMsg = msgs[msgs.length - 1];
             const unreadCount = msgs.filter((m) => m.sender_id !== user.id && !m.is_read).length;
             const admin = session.assigned_admin_id
-              ? mockUsers.find((u) => u.id === session.assigned_admin_id)
+              ? allUsers.find((u) => u.id === session.assigned_admin_id)
               : null;
             const adminProfile = session.assigned_admin_id
               ? adminProfiles.find((p) => p.user_id === session.assigned_admin_id)
               : null;
+            const adminName = adminProfile?.display_name ?? admin?.name ?? "Menunggu admin...";
 
             return (
               <Card
@@ -100,13 +101,13 @@ export default function ChatSessionList() {
                 <CardContent className="py-4 flex items-center gap-3">
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {admin ? admin.name.slice(0, 2).toUpperCase() : "HP"}
+                      {adminName.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium truncate">
-                        {admin ? admin.name : "Menunggu admin..."}
+                        {adminName}
                       </p>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
                         {session.status === "CLOSED" && (

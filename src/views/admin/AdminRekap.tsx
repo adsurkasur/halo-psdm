@@ -2,7 +2,8 @@ import { Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useData } from "@/contexts/DataContext";
-import { CATEGORY_LABELS, STATUS_LABELS, mockUsers, type ReportCategory, type ReportStatus } from "@/data/mockData";
+import { useAuth } from "@/contexts/AuthContext";
+import { CATEGORY_LABELS, STATUS_LABELS, type ReportStatus } from "@/data/domain";
 import { useToast } from "@/hooks/use-toast";
 import {
   PieChart,
@@ -29,6 +30,7 @@ const CATEGORY_COLORS = ["#f97316", "#3b82f6", "#ef4444", "#22c55e", "#8b5cf6"];
 
 export default function AdminRekap() {
   const { reports, chatSessions, chatMessages, appointments } = useData();
+  const { allUsers } = useAuth();
   const { toast } = useToast();
 
   // Status distribution
@@ -56,7 +58,7 @@ export default function AdminRekap() {
   const handleExport = () => {
     const header = "Case ID,Pengirim,Kategori,Urgensi,Status,Tanggal\n";
     const rows = reports.map((r) => {
-      const sender = mockUsers.find((u) => u.id === r.user_id);
+      const sender = allUsers.find((u) => u.id === r.user_id);
       return [
         r.case_id,
         sender?.name ?? "-",

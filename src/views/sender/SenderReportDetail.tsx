@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { CATEGORY_LABELS, STATUS_LABELS, BIRO_LABELS, JABATAN_LABELS, mockUsers } from "@/data/mockData";
+import { CATEGORY_LABELS, STATUS_LABELS, BIRO_LABELS } from "@/data/domain";
 
 export default function SenderReportDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, allUsers } = useAuth();
   const { reports, statusHistory, chatSessions } = useData();
 
   if (!user) return null;
@@ -35,7 +35,7 @@ export default function SenderReportDetail() {
     (cs) => cs.report_id === report.id && cs.status === "OPEN"
   );
 
-  const senderUser = mockUsers.find((u) => u.id === report.user_id);
+  const senderUser = allUsers.find((u) => u.id === report.user_id);
 
   return (
     <div className="space-y-4 page-enter max-w-3xl mx-auto">
@@ -101,7 +101,7 @@ export default function SenderReportDetail() {
             {history.map((h, i) => {
               const changer = h.changed_by === "system"
                 ? "Sistem"
-                : mockUsers.find((u) => u.id === h.changed_by)?.name ?? "Admin";
+                : allUsers.find((u) => u.id === h.changed_by)?.name ?? "Admin";
               return (
                 <div key={h.id} className="flex gap-3">
                   <div className="flex flex-col items-center">

@@ -9,12 +9,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { mockUsers, AVAILABILITY_LABELS, type ChatMessageType } from "@/data/mockData";
+import { AVAILABILITY_LABELS, type ChatMessageType } from "@/data/domain";
 
 export default function ChatRoom() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, allUsers } = useAuth();
   const { chatSessions, chatMessages, adminProfiles, addChatMessage, markMessagesRead } = useData();
 
   const [input, setInput] = useState("");
@@ -33,12 +33,13 @@ export default function ChatRoom() {
       ? session.assigned_admin_id
       : session.user_id
     : null;
-  const otherUser = otherUserId ? mockUsers.find((u) => u.id === otherUserId) : null;
+  const otherUser = otherUserId ? allUsers.find((u) => u.id === otherUserId) : null;
   const otherProfile = otherUserId ? adminProfiles.find((p) => p.user_id === otherUserId) : null;
+  const otherDisplayName = otherProfile?.display_name ?? otherUser?.name ?? "Menunggu admin...";
 
   useEffect(() => {
     if (user && sessionId) {
-      markMessagesRead(sessionId, user.id);
+      void markMessagesRead(sessionId, user.id);
     }
   }, [user, sessionId, messages.length, markMessagesRead]);
 
@@ -59,17 +60,17 @@ export default function ChatRoom() {
     );
   }
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (isClosed) return;
 
     if (mediaPreview) {
-      addChatMessage(session.id, user.id, "", mediaPreview.type, mediaPreview.url, mediaPreview.name);
+      await addChatMessage(session.id, user.id, "", mediaPreview.type, mediaPreview.url, mediaPreview.name);
       setMediaPreview(null);
       return;
     }
 
     if (!input.trim()) return;
-    addChatMessage(session.id, user.id, input.trim());
+    await addChatMessage(session.id, user.id, input.trim());
     setInput("");
   };
 
@@ -100,12 +101,12 @@ export default function ChatRoom() {
           </Button>
           <Avatar className="h-9 w-9">
             <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-              {otherUser ? otherUser.name.slice(0, 2).toUpperCase() : "HP"}
+              {otherDisplayName.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-sm truncate">
-              {otherUser ? otherUser.name : "Menunggu admin..."}
+              {otherDisplayName}
             </h3>
             <div className="flex items-center gap-1.5">
               {otherProfile ? (

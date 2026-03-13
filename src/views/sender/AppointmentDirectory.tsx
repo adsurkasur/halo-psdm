@@ -5,18 +5,18 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { mockUsers, AVAILABILITY_LABELS } from "@/data/mockData";
+import { AVAILABILITY_LABELS } from "@/data/domain";
 
 export default function AppointmentDirectory() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, allUsers } = useAuth();
   const { adminProfiles, appointments, addAppointment } = useData();
 
   if (!user) return null;
 
-  const handleContact = (adminProfile: typeof adminProfiles[0]) => {
-    const admin = mockUsers.find((u) => u.id === adminProfile.user_id);
-    if (!admin) return;
+  const handleContact = async (adminProfile: typeof adminProfiles[0]) => {
+    const admin = allUsers.find((u) => u.id === adminProfile.user_id);
+    const adminName = adminProfile.display_name || admin?.name || "Admin";
 
     // Check 24h duplicate
     const recentApt = appointments.find(
@@ -29,24 +29,24 @@ export default function AppointmentDirectory() {
     if (recentApt) {
       toast({
         title: "Perhatian",
-        description: `Anda baru saja menghubungi ${admin.name}. Pastikan janji temu sebelumnya sudah selesai.`,
+        description: `Anda baru saja menghubungi ${adminName}. Pastikan janji temu sebelumnya sudah selesai.`,
         variant: "destructive",
       });
       return;
     }
 
     // Log appointment
-    addAppointment(user.id, adminProfile.user_id);
+    await addAppointment(user.id, adminProfile.user_id);
 
     // Build WA link
     const message = encodeURIComponent(
-      `Halo Kak ${admin.name}, saya ${user.name} dari ${user.biro} ingin mengajukan janji temu melalui Halo PSDM ARSC.`
+      `Halo Kak ${adminName}, saya ${user.name} dari ${user.biro} ingin mengajukan janji temu melalui Halo PSDM ARSC.`
     );
     const waUrl = `https://wa.me/${adminProfile.wa_number}?text=${message}`;
 
     toast({
       title: "Mengalihkan ke WhatsApp",
-      description: `Membuka chat dengan ${admin.name}...`,
+      description: `Membuka chat dengan ${adminName}...`,
     });
 
     // Open WA in new tab
@@ -62,9 +62,6 @@ export default function AppointmentDirectory() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
         {adminProfiles.map((profile) => {
-          const admin = mockUsers.find((u) => u.id === profile.user_id);
-          if (!admin) return null;
-
           const initials = profile.display_name
             .split(" ")
             .map((w) => w[0])

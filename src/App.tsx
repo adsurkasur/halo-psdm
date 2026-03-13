@@ -29,7 +29,11 @@ import NotFound from "./views/NotFound";
 const queryClient = new QueryClient();
 
 export function ProtectedRoutes() {
-  const { isAuthenticated, isSender, isAdmin, isSuperAdmin } = useAuth();
+  const { isAuthenticated, isSender, isAdmin, isSuperAdmin, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="min-h-[40vh]" />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -87,7 +91,11 @@ export function ProtectedRoutes() {
 }
 
 export function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="min-h-[40vh]" />;
+  }
 
   return (
     <Routes>

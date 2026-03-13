@@ -5,29 +5,30 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Final cleanup: enhance gitignore and finalize repository state |
+| Task | Productionization: remove mock/demo flow and integrate Supabase-backed behavior |
 | Started | 2026-03-13 10:00 |
-| Last Updated | 2026-03-13 20:27 |
-| Session ID | 20260313-2005 |
+| Last Updated | 2026-03-13 19:50 |
+| Session ID | 20260313-2045 |
 
 ## User Request
 
-> enhance the .gitignore
->
-> i updated .env.local, it should be working now
->
-> finalize everything
+> 1. remove mock data
+> 2. remove demo account
+> 3. change "halo psdm prototype" to "Halo PSDM - ARSC FTP UB"
+> 4. change "ARSC · Divisi Pengembangan Sumber Daya Manusia · 2025/2026" to "ARSC · Cakra Prakasa · 2025/2026"
+> 5. fully test the supabase functionality
+> 6. we are to make this production ready, not only prototype
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
-| Intended Phases | Study → Implement |
-| Evidence to Produce | Updated .gitignore patterns, clean git status behavior for local secrets and build artifacts, validation output |
-| Anticipated Stops | Potentially tracked local files that should now be ignored |
-| Known Information | User has updated .env.local and expects local env values to work |
-| Unknown Information | Current tracked/untracked state after .env.local edits |
-| Initial Risk Level | Low - gitignore hardening and verification only |
+| Intended Phases | Study → Propose → Implement |
+| Evidence to Produce | Removed mock/demo code paths, Supabase client integration files, updated UI copy, passing lint/build/tests, Supabase smoke/integration test evidence |
+| Anticipated Stops | Missing Supabase schema/migrations, auth policy constraints, inability to run live Supabase tests without valid env or schema |
+| Known Information | Project currently still references mock data and historical prototype copy in UI/metadata. |
+| Unknown Information | Exact Supabase table schema and auth flow needed to replace mock contexts with production data. |
+| Initial Risk Level | High - replacing data layer and auth/demo logic can impact most routes and core workflows. |
 
 ## File Context
 
@@ -97,6 +98,15 @@
 - **20:20** - PLAN - User requested gitignore enhancement and finalization check
 - **20:24** - STUDY - Verified local env is untracked and reviewed current git status
 - **20:27** - IMPLEMENT - Enhanced gitignore patterns and expanded .env.example for Supabase/DB variables
+- **20:45** - PLAN - User requested full productionization: remove mock/demo, update branding copy, and validate Supabase functionality
+- **20:50** - STUDY - Confirmed no Supabase usage in source files and mock-first architecture in AuthContext/DataContext
+- **20:52** - STUDY - Identified demo account UI and branding string touchpoints in LoginPage
+- **20:54** - STUDY - Collected official Supabase SSR and Next.js env docs for production-aligned integration plan
+- **21:00** - APPROVAL - User approved full production migration proposal to replace mock flows with Supabase-backed runtime
+- **21:05** - IMPLEMENT - Added Supabase client utilities and domain module, then recovered from failed bulk replacement by switching to file-by-file refactor
+- **21:20** - IMPLEMENT - Rewrote AuthContext and DataContext to Supabase-backed async read/write operations and local auth session persistence
+- **21:35** - IMPLEMENT - Removed demo account UI, updated requested branding/footer copy, and removed mock runtime module
+- **21:48** - IMPLEMENT - Stabilized tests with in-memory Supabase mock and revalidated Bun lint/test/build all passing
 
 ## Research Evidence
 

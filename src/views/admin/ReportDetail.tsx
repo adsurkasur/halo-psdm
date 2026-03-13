@@ -10,7 +10,7 @@ import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { CATEGORY_LABELS, STATUS_LABELS, URGENCY_LABELS, mockUsers, type ReportStatus, type Urgency } from "@/data/mockData";
+import { BIRO_LABELS, JABATAN_LABELS, CATEGORY_LABELS, STATUS_LABELS, URGENCY_LABELS, type ReportStatus, type Urgency } from "@/data/domain";
 
 const statusOptions: ReportStatus[] = ["RECEIVED", "IN_PROGRESS", "NEEDS_CLARIFICATION", "DONE"];
 
@@ -18,7 +18,7 @@ export default function ReportDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, allUsers } = useAuth();
   const {
     reports,
     statusHistory,
@@ -60,12 +60,12 @@ export default function ReportDetail() {
     .filter((h) => h.report_id === report.id)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-  const sender = mockUsers.find((u) => u.id === report.user_id);
+  const sender = allUsers.find((u) => u.id === report.user_id);
   const linkedChat = chatSessions.find(
     (cs) => cs.report_id === report.id && cs.status === "OPEN"
   );
 
-  const handleUpdateStatus = () => {
+  const handleUpdateStatus = async () => {
     if (!newStatus || newStatus === report.status) return;
 
     // Validation: can't skip to DONE from RECEIVED for TINGGI urgency
@@ -78,11 +78,11 @@ export default function ReportDetail() {
       return;
     }
 
-    updateReportStatus(report.id, newStatus as ReportStatus, user.id, statusNote || undefined);
+    await updateReportStatus(report.id, newStatus as ReportStatus, user.id, statusNote || undefined);
 
     // If NEEDS_CLARIFICATION, auto-create chat session
     if (newStatus === "NEEDS_CLARIFICATION" && !linkedChat) {
-      createChatSession(report.user_id, report.id);
+      await createChatSession(report.user_id, report.id);
     }
 
     toast({
@@ -92,8 +92,8 @@ export default function ReportDetail() {
     setStatusNote("");
   };
 
-  const handleSaveNotes = () => {
-    updateReportNotes(report.id, notes);
+  const handleSaveNotes = async () => {
+    await updateReportNotes(report.id, notes);
     toast({ title: "Tersimpan ✅", description: "Catatan internal telah disimpan." });
   };
 
@@ -119,7 +119,7 @@ export default function ReportDetail() {
                 <p className="text-muted-foreground text-xs">Pengirim</p>
                 <p className="font-medium">{sender?.name ?? "-"}</p>
                 {sender && (
-                  <p className="text-[10px] text-muted-foreground">{sender.biro} · {sender.jabatan}</p>
+                  <p className="text-[10px] text-muted-foreground">{BIRO_LABELS[sender.biro]} · {JABATAN_LABELS[sender.jabatan]}</p>
                 )}
               </div>
               <div>
@@ -148,7 +148,7 @@ export default function ReportDetail() {
                 {history.map((h, i) => {
                   const changer = h.changed_by === "system"
                     ? "Sistem"
-                    : mockUsers.find((u) => u.id === h.changed_by)?.name ?? "Admin";
+                    : allUsers.find((u) => u.id === h.changed_by)?.name ?? "Admin";
                   return (
                     <div key={h.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
@@ -196,7 +196,7 @@ export default function ReportDetail() {
                 <Button
                   onClick={() => {
                     if (!newUrgency || newUrgency === report.urgency) return;
-                    updateReportUrgency(report.id, newUrgency, user.id);
+                    void updateReportUrgency(report.id, newUrgency, user.id);
                     toast({
                       title: "Berhasil! ✅",
                       description: `Urgensi diperbarui ke "${URGENCY_LABELS[newUrgency as Urgency]}"`,

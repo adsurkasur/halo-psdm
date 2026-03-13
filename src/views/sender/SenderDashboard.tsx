@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { CATEGORY_LABELS } from "@/data/mockData";
+import { CATEGORY_LABELS } from "@/data/domain";
 
 const quickActions = [
   { title: "Buat Laporan / Pengaduan", desc: "Laporkan masalah yang Anda alami", icon: FileText, url: "/laporan/buat", color: "bg-primary" },

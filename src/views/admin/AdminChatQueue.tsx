@@ -10,11 +10,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { mockUsers, AVAILABILITY_LABELS, type AvailabilityStatus } from "@/data/mockData";
+import { AVAILABILITY_LABELS, type AvailabilityStatus } from "@/data/domain";
 
 export default function AdminChatQueue() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, allUsers } = useAuth();
   const {
     chatSessions,
     chatMessages,
@@ -54,7 +54,7 @@ export default function AdminChatQueue() {
   // Mark messages read when selecting a session
   useEffect(() => {
     if (selectedSession && user) {
-      markMessagesRead(selectedSession.id, user.id);
+      void markMessagesRead(selectedSession.id, user.id);
     }
   }, [selectedSession, sessionMessages.length, user, markMessagesRead]);
 
@@ -65,21 +65,21 @@ export default function AdminChatQueue() {
     }
   }, [sessionMessages.length]);
 
-  const handleAssign = (sessionId: string) => {
-    assignAdminToSession(sessionId, user.id);
+  const handleAssign = async (sessionId: string) => {
+    await assignAdminToSession(sessionId, user.id);
     toast({ title: "Berhasil", description: "Anda telah mengambil sesi ini." });
   };
 
-  const handleCloseSession = () => {
+  const handleCloseSession = async () => {
     if (!selectedSession) return;
-    closeChatSession(selectedSession.id);
+    await closeChatSession(selectedSession.id);
     setSelectedSessionId(null);
     toast({ title: "Sesi Ditutup", description: "Sesi chat telah berhasil ditutup." });
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input.trim() || !selectedSession) return;
-    addChatMessage(selectedSession.id, user.id, input.trim());
+    await addChatMessage(selectedSession.id, user.id, input.trim());
     setInput("");
   };
 
@@ -95,7 +95,7 @@ export default function AdminChatQueue() {
               <h3 className="font-semibold text-sm">Antrean Chat</h3>
               <Select
                 value={adminStatus}
-                onValueChange={(v) => updateAvailability(user.id, v as AvailabilityStatus)}
+                onValueChange={(v) => void updateAvailability(user.id, v as AvailabilityStatus)}
               >
                 <SelectTrigger className="w-[100px] h-7 text-xs">
                   <SelectValue />
@@ -116,7 +116,8 @@ export default function AdminChatQueue() {
                 </p>
               ) : (
                 openSessions.map((session) => {
-                  const sender = mockUsers.find((u) => u.id === session.user_id);
+                  const sender = allUsers.find((u) => u.id === session.user_id);
+                  const senderName = sender?.name ?? "Pengirim";
                   const msgs = chatMessages.filter((m) => m.session_id === session.id);
                   const lastMsg = msgs[msgs.length - 1];
                   const unreadCount = msgs.filter(
@@ -135,13 +136,13 @@ export default function AdminChatQueue() {
                     >
                       <Avatar className="h-9 w-9 shrink-0">
                         <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                          {sender?.name.slice(0, 2).toUpperCase() ?? "??"}
+                          {senderName.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center">
                           <p className={`text-sm truncate ${unreadCount > 0 ? "font-bold" : "font-medium"}`}>
-                            {sender?.name ?? "Pengirim"}
+                            {senderName}
                           </p>
                           <span className="text-[10px] text-muted-foreground shrink-0 ml-1">
                             {lastMsg
@@ -182,12 +183,12 @@ export default function AdminChatQueue() {
                 <div className="flex items-center gap-3">
                   <Avatar className="h-9 w-9">
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {mockUsers.find((u) => u.id === selectedSession.user_id)?.name.slice(0, 2).toUpperCase() ?? "??"}
+                      {(allUsers.find((u) => u.id === selectedSession.user_id)?.name ?? "Pengirim").slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <h3 className="font-semibold text-sm">
-                      {mockUsers.find((u) => u.id === selectedSession.user_id)?.name ?? "Pengirim"}
+                      {allUsers.find((u) => u.id === selectedSession.user_id)?.name ?? "Pengirim"}
                     </h3>
                     {selectedSession.report_id && (
                       <p className="text-[10px] text-muted-foreground">Klarifikasi laporan terkait</p>
@@ -211,7 +212,7 @@ export default function AdminChatQueue() {
                     </Button>
                   ) : (
                     <Badge variant="secondary" className="text-xs">
-                      Ditangani: {mockUsers.find((u) => u.id === selectedSession.assigned_admin_id)?.name}
+                      Ditangani: {allUsers.find((u) => u.id === selectedSession.assigned_admin_id)?.name}
                     </Badge>
                   )}
                 </div>
@@ -227,7 +228,7 @@ export default function AdminChatQueue() {
                   )}
                   {sessionMessages.map((msg) => {
                     const isMine = msg.sender_id === user.id;
-                    const msgSender = mockUsers.find((u) => u.id === msg.sender_id);
+                    const msgSender = allUsers.find((u) => u.id === msg.sender_id);
                     return (
                       <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[75%] ${isMine ? "chat-bubble-sender" : "chat-bubble-receiver"}`}>

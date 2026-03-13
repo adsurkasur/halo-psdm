@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { CATEGORY_LABELS } from "@/data/mockData";
+import { CATEGORY_LABELS } from "@/data/domain";
 
 export default function SenderReportList() {
   const navigate = useNavigate();

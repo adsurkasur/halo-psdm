@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { CATEGORY_LABELS, type Urgency } from "@/data/mockData";
+import { CATEGORY_LABELS, type Urgency } from "@/data/domain";
 
 export default function ReportManagement() {
   const navigate = useNavigate();

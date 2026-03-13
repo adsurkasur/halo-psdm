@@ -13,7 +13,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { JABATAN_LABELS } from "@/data/mockData";
+import { JABATAN_LABELS } from "@/data/domain";
 
 export function AppHeader() {
   const { user, isAdmin, logout } = useAuth();
@@ -81,7 +81,7 @@ export function AppHeader() {
                   variant="ghost"
                   size="sm"
                   className="text-xs h-7 gap-1"
-                  onClick={() => markAllNotificationsRead(user.id)}
+                  onClick={() => void markAllNotificationsRead(user.id)}
                 >
                   <Check className="h-3 w-3" />
                   Tandai semua
@@ -102,7 +102,7 @@ export function AppHeader() {
                         !n.is_read ? "bg-accent/30" : ""
                       }`}
                       onClick={() => {
-                        markNotificationRead(n.id);
+                        void markNotificationRead(n.id);
                         if (n.link) navigate(n.link);
                       }}
                     >

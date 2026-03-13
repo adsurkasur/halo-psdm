@@ -11,7 +11,7 @@ import {
   JABATAN_LABELS,
   type BiroBidang,
   type Jabatan,
-} from "@/data/mockData";
+} from "@/data/domain";
 
 export default function ProfilePage() {
   const { user, updateProfile } = useAuth();
@@ -35,7 +35,7 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (password && password !== confirm) {
       toast({
         title: "Password dan konfirmasi tidak cocok",
@@ -52,15 +52,26 @@ export default function ProfilePage() {
     }
     setSaving(true);
     setTimeout(() => {
-      updateProfile({
+      void (async () => {
+        const result = await updateProfile({
         name,
         email,
         biro: biro as BiroBidang,
         jabatan: jabatan as Jabatan,
         ...(password ? { password } : {}),
-      });
-      toast({ title: "Profil diperbarui" });
-      setSaving(false);
+        });
+        if (!result.success) {
+          toast({
+            title: result.error ?? "Gagal memperbarui profil",
+            variant: "destructive",
+          });
+          setSaving(false);
+          return;
+        }
+
+        toast({ title: "Profil diperbarui" });
+        setSaving(false);
+      })();
     }, 400);
   };
 

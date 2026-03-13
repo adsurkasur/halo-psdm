@@ -7,13 +7,10 @@ import { Button } from "@/components/ui/button";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  mockUsers,
   AVAILABILITY_LABELS,
-  type AvailabilityStatus,
   JABATAN_LABELS,
   type UserRole,
-  type User,
-} from "@/data/mockData";
+} from "@/data/domain";
 import { Input } from "@/components/ui/input";
 
 export default function AdminManagement() {
@@ -80,11 +77,11 @@ export default function AdminManagement() {
             </div>
             <Button
               disabled={!newAdminId}
-              onClick={() => {
+              onClick={async () => {
                 const user = allUsers.find((u) => u.id === newAdminId);
                 if (user) {
-                  changeUserRole(user.id, "ADMIN");
-                  addAdminProfile({
+                  await changeUserRole(user.id, "ADMIN");
+                  await addAdminProfile({
                     user_id: user.id,
                     display_name: user.name,
                     jabatan_display: JABATAN_LABELS[user.jabatan],
@@ -176,17 +173,17 @@ export default function AdminManagement() {
                       {adminUser && (
                         <Select
                           value={adminUser.role}
-                          onValueChange={(v) => {
+                          onValueChange={async (v) => {
                             const newRole = v as UserRole;
-                            changeUserRole(adminUser.id, newRole);
+                            await changeUserRole(adminUser.id, newRole);
                             if (newRole === "SENDER") {
-                              removeAdminProfile(adminUser.id);
+                              await removeAdminProfile(adminUser.id);
                             } else {
                               // ensure profile exists
                               if (
                                 !adminProfiles.find((p) => p.user_id === adminUser.id)
                               ) {
-                                addAdminProfile({
+                                await addAdminProfile({
                                   user_id: adminUser.id,
                                   display_name: adminUser.name,
                                   jabatan_display: JABATAN_LABELS[adminUser.jabatan],
