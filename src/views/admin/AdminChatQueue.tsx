@@ -30,8 +30,6 @@ export default function AdminChatQueue() {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  if (!user) return null;
-
   const myProfile = adminProfiles.find((p) => p.user_id === user.id);
   const adminStatus = myProfile?.availability_status ?? "ONLINE";
 
@@ -58,7 +56,7 @@ export default function AdminChatQueue() {
     if (selectedSession && user) {
       markMessagesRead(selectedSession.id, user.id);
     }
-  }, [selectedSession?.id, sessionMessages.length, user, markMessagesRead]);
+  }, [selectedSession, sessionMessages.length, user, markMessagesRead]);
 
   // Auto-scroll
   useEffect(() => {
@@ -84,6 +82,8 @@ export default function AdminChatQueue() {
     addChatMessage(selectedSession.id, user.id, input.trim());
     setInput("");
   };
+
+  if (!user) return null;
 
   return (
     <div className="animate-fade-in h-[calc(100vh-8rem)]">

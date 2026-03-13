@@ -5,34 +5,44 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | fix ReportForm validation messages and add tests |
-| Started | 2026-03-12 00:00 |
-| Last Updated | 2026-03-12 00:00 |
-| Session ID | 20260312-0000 |
+| Task | Finalize cleanup, contextual docs update, commit, and merge to main |
+| Started | 2026-03-13 10:00 |
+| Last Updated | 2026-03-13 19:50 |
+| Session ID | 20260313-1940 |
 
 ## User Request
 
-> 1. fix /dashboard routing, it is unused
-> 2. add profile settings option
-> 3. add dark mode
-> 4. fix biro/bidang like ANGGOTA_MUDA, STAF_AHLI, etc. it should be proper string with user facing "language", i mean, not "code like"
+> 1. do cleanups
+> 2. merge to main
+> 3. update all docs not only technically but also contextually (like readme, etc. use files from /references for reference)
+> 4. commit with message
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
-| Intended Phases | Study → Propose → Implement |
-| Evidence to Produce | Issue analysis, code reading, new components/routes, context updates, tests, translations |
-| Anticipated Stops | Need to verify routing structure; design for dark mode; confirm how roles are stored/mapped |
-| Known Information | React + Vite TS project; existing pages under src/pages, context components, use of enums or constants for roles; navigation likely using components/NavLink, layout, router (react-router?). |
-| Unknown Information | current implementation of routing; where profile settings should go; theme management approach; how biro/bidang codes are used and stored; translation/localization strategy. |
-| Initial Risk Level | Medium - multiple features touching different areas, potential UI complexity. |
+| Intended Phases | Study → Implement |
+| Evidence to Produce | Updated docs files, cleanup diffs, Bun validation output, commit hash, merge result on main |
+| Anticipated Stops | Merge conflict risk on main, stale lockfile policy decisions, doc-reference mismatch |
+| Known Information | Migration branch passes Bun lint/test/build and user requires Bun-first usage. |
+| Unknown Information | Whether local main has diverged and whether merge can fast-forward cleanly. |
+| Initial Risk Level | Medium - implementation is stable, but merge/finalization can fail on branch divergence. |
 
 ## File Context
 
 | File Path | Status | Purpose |
 | --- | --- | --- |
 | src/App.tsx | read/edited | Routing, theme provider, export of routes |
+| package.json | read | Verified Next dependency already present and scripts still Vite-based |
+| src/main.tsx | read | Current Vite entrypoint mounting App |
+| vite.config.ts | read | Vite alias and dev server settings to replace |
+| src/components/NavLink.tsx | read | React Router NavLink compatibility implementation |
+| src/components/layout/AppHeader.tsx | read | Programmatic navigation usage and notification links |
+| src/pages/LoginPage.tsx | read | Auth redirect logic and navigation paths |
+| src/pages/NotFound.tsx | read | Router location usage for 404 logging |
+| tsconfig.json | read | TS settings requiring Next alignment |
+| vitest.config.ts | read | Test harness currently tied to Vite plugin |
+| .gitignore | read | Missing Next generated artifact ignores |
 | src/contexts/AuthContext.tsx | read/edited | Added updateProfile API with email/jabatan/biro |
 | src/components/layout/AppHeader.tsx | read/edited | Profile card popover, theme toggle moved, UI tweaks, aligned text left |
 | src/components/layout/AppSidebar.tsx | read/edited | Added profile nav link |
@@ -58,9 +68,70 @@
 - **01:00** - IMPLEMENT - Added real dark mode CSS and profile card popover
 - **01:05** - IMPLEMENT - Updated tests to cover new behaviors and ensured all pass
 
+### Session: 2026-03-13
+
+- **10:00** - PLAN - Started migration plan for Next.js
+- **10:10** - PLAN - Refreshed execution plan and session state for user-requested in-place Next.js migration
+- **10:14** - STUDY - Audited package, entrypoint, routing tree, and Vite configuration
+- **10:18** - STUDY - Confirmed heavy React Router API usage across pages/layouts
+- **10:20** - STUDY - Collected Next.js migration guidance and redirect/navigation references from official docs
+- **10:22** - PROPOSE - Preparing implementation options and recommendation
+- **10:24** - APPROVAL - User approved with: "yes, you are to use latest version of all things, use latest, mosts stable, most reliable, most compatible. use nextjs 16"
+- **10:30** - IMPLEMENT - Confirmed active migration branch `nextjs16-parity-migration`
+- **10:36** - IMPLEMENT - Continuing in-place migration with Next app entry and config finalization
+- **10:46** - IMPLEMENT - User requested to proceed after stuck test run; resuming validation and fixes
+- **19:10** - IMPLEMENT - Fixed flaky/infinite test behavior in app.test.tsx and confirmed single-run pass
+- **19:18** - IMPLEMENT - User requested Bun-only command usage; switching all validation/build steps to Bun
+- **19:12** - IMPLEMENT - Bun lint executed; fixed lint blockers and .next ignore handling
+- **19:14** - IMPLEMENT - Bun test executed successfully (10/10)
+- **19:15** - IMPLEMENT - Bun build succeeded after removing final legacy `src/pages` route file
+- **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
+- **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
+- **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references
+- **19:47** - IMPLEMENT - Enforced Bun-only lockfile policy cleanup (`package-lock.json`, `bun.lockb` removed)
+- **19:50** - IMPLEMENT - Revalidated with Bun (`lint`, `test`, `build`) and all checks passed
+
 ## Research Evidence
 
+### Source 1: Next.js official migration guide
+
+- **Type**: Official documentation
+- **Key Findings**: Recommended low-risk migration path is to run existing app as SPA first, then incrementally move from React Router to App Router.
+- **Relevance**: Supports 1:1 behavior preservation during framework switch in same workspace.
+
+### Source 2: Next.js redirecting guide
+
+- **Type**: Official documentation
+- **Key Findings**: Client event navigation should use `useRouter` in Client Components; static route redirects can be declared in `next.config`.
+- **Relevance**: Needed to preserve existing redirect behavior such as `/dashboard` alias and role-based flows.
+
+### Source 3: Next.js `useRouter` API reference
+
+- **Type**: Official documentation
+- **Key Findings**: `useRouter` from `next/navigation` replaces App Router client navigation APIs and supports `push`, `replace`, `back`.
+- **Relevance**: Informs possible full router migration path if React Router removal is included.
+
 ## Codebase Evidence
+
+### Patterns Identified
+
+- **Pattern**: Route graph and auth guards are centralized in `src/App.tsx` using `BrowserRouter`, `Routes`, and `Navigate`.
+- **Location**: `src/App.tsx`
+- **Application**: Preserve current guard logic and paths during migration to avoid access regressions.
+
+- **Pattern**: Programmatic navigation is widely used in feature pages (`useNavigate`, `useParams`, `useLocation`).
+- **Location**: `src/pages/**/*`, `src/components/layout/AppHeader.tsx`, `src/components/NavLink.tsx`
+- **Application**: A direct full App Router migration requires broad code updates; SPA-host migration avoids this risk.
+
+### Integration Points
+
+- **Component**: `AuthProvider` and `DataProvider`
+- **Affected Files**: `src/contexts/AuthContext.tsx`, `src/contexts/DataContext.tsx`, `src/App.tsx`
+- **Risk**: Incorrect wrapping order or hydration mismatch can break authentication and in-memory state.
+
+- **Component**: Global styling and theme provider
+- **Affected Files**: `src/index.css`, `tailwind.config.ts`, `src/App.tsx`
+- **Risk**: Missing global CSS import path in Next entry layout can break UI appearance.
 
 ## Decisions Log
 
@@ -68,7 +139,25 @@
 
 ## Issues and Resolutions
 
+### Issue 1: Test run appeared endless in admin tests
+
+- **Problem**: `UrgencySetter` helper in tests could repeatedly retrigger context updates through effect dependencies, and one UI assertion depended on unstable dropdown timing.
+- **Resolution**: Added one-shot guard for urgency helper and replaced fragile assertions with deterministic checks.
+- **Status**: Resolved
+- **Date**: 2026-03-13
+
 ## Implementation Progress
+
+- [x] Step 1: Create and switch to migration branch - evidence: active branch is `nextjs16-parity-migration`
+- [x] Step 2: Update package scripts for Next.js runtime
+- [x] Step 3: Align TypeScript and Vitest configuration for Next.js-compatible setup
+- [ ] Step 4: Add Next app entrypoint and root layout for SPA-style parity
+- [ ] Step 5: Remove Vite-only runtime artifacts and stale configs
+- [x] Step 4: Add Next app entrypoint and root layout for SPA-style parity
+- [x] Step 5: Remove Vite-only runtime artifacts and stale configs
+- [x] Step 6: Validate build, lint, and tests
+- [x] Step 6: Validate targeted stuck tests - evidence: `npx vitest run src/test/app.test.tsx` passed (6/6)
+- [ ] Step 7: Summarize parity mapping and migration status
 
 - [x] Step 1: Study current routing and identify unused /dashboard
 - [x] Step 2: Determine where to add profile settings option and details

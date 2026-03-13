@@ -9,22 +9,22 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ThemeProvider } from "next-themes";
 
 // Pages
-import LoginPage from "@/pages/LoginPage";
-import SenderDashboard from "@/pages/sender/SenderDashboard";
-import ReportForm from "@/pages/sender/ReportForm";
-import SenderReportList from "@/pages/sender/SenderReportList";
-import SenderReportDetail from "@/pages/sender/SenderReportDetail";
-import ProfilePage from "@/pages/ProfilePage";
-import ChatSessionList from "@/pages/sender/ChatSessionList";
-import ChatRoom from "@/pages/sender/ChatRoom";
-import AppointmentDirectory from "@/pages/sender/AppointmentDirectory";
-import AdminDashboard from "@/pages/admin/AdminDashboard";
-import ReportManagement from "@/pages/admin/ReportManagement";
-import ReportDetail from "@/pages/admin/ReportDetail";
-import AdminChatQueue from "@/pages/admin/AdminChatQueue";
-import AdminRekap from "@/pages/admin/AdminRekap";
-import AdminManagement from "@/pages/admin/AdminManagement";
-import NotFound from "./pages/NotFound";
+import LoginPage from "@/views/LoginPage";
+import SenderDashboard from "@/views/sender/SenderDashboard";
+import ReportForm from "@/views/sender/ReportForm";
+import SenderReportList from "@/views/sender/SenderReportList";
+import SenderReportDetail from "@/views/sender/SenderReportDetail";
+import ProfilePage from "@/views/ProfilePage";
+import ChatSessionList from "@/views/sender/ChatSessionList";
+import ChatRoom from "@/views/sender/ChatRoom";
+import AppointmentDirectory from "@/views/sender/AppointmentDirectory";
+import AdminDashboard from "@/views/admin/AdminDashboard";
+import ReportManagement from "@/views/admin/ReportManagement";
+import ReportDetail from "@/views/admin/ReportDetail";
+import AdminChatQueue from "@/views/admin/AdminChatQueue";
+import AdminRekap from "@/views/admin/AdminRekap";
+import AdminManagement from "@/views/admin/AdminManagement";
+import NotFound from "./views/NotFound";
 
 const queryClient = new QueryClient();
 

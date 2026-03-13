@@ -13,7 +13,7 @@ import { MemoryRouter } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { ThemeProvider } from "next-themes";
-import ReportForm from "@/pages/sender/ReportForm";
+import ReportForm from "@/views/sender/ReportForm";
 import { Toaster } from "@/components/ui/toaster";
 import React, { useEffect } from "react";
 import { mockUsers, CATEGORY_LABELS } from "@/data/mockData";

@@ -6,14 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { BIRO_LABELS, JABATAN_LABELS } from "@/data/mockData";
+import {
+  BIRO_LABELS,
+  JABATAN_LABELS,
+  type BiroBidang,
+  type Jabatan,
+} from "@/data/mockData";
 
 export default function ProfilePage() {
   const { user, updateProfile } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [biro, setBiro] = useState("");
-  const [jabatan, setJabatan] = useState("");
+  const [biro, setBiro] = useState<BiroBidang | "">("");
+  const [jabatan, setJabatan] = useState<Jabatan | "">("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [saving, setSaving] = useState(false);
@@ -32,16 +37,28 @@ export default function ProfilePage() {
 
   const handleSave = () => {
     if (password && password !== confirm) {
-      toast.error("Password dan konfirmasi tidak cocok");
+      toast({
+        title: "Password dan konfirmasi tidak cocok",
+        variant: "destructive",
+      });
       return;
     }
     if (!biro || !jabatan) {
-      toast.error("Biro dan jabatan harus dipilih.");
+      toast({
+        title: "Biro dan jabatan harus dipilih.",
+        variant: "destructive",
+      });
       return;
     }
     setSaving(true);
     setTimeout(() => {
-      updateProfile({ name, email, biro, jabatan, ...(password ? { password } : {}) });
+      updateProfile({
+        name,
+        email,
+        biro: biro as BiroBidang,
+        jabatan: jabatan as Jabatan,
+        ...(password ? { password } : {}),
+      });
       toast({ title: "Profil diperbarui" });
       setSaving(false);
     }, 400);
@@ -62,7 +79,7 @@ export default function ProfilePage() {
           </div>
           <div>
             <Label>Biro/Bidang</Label>
-            <Select value={biro} onValueChange={(v) => setBiro(v)}>
+            <Select value={biro} onValueChange={(v) => setBiro(v as BiroBidang)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Pilih biro" />
               </SelectTrigger>
@@ -77,7 +94,7 @@ export default function ProfilePage() {
           </div>
           <div>
             <Label>Jabatan</Label>
-            <Select value={jabatan} onValueChange={(v) => setJabatan(v)}>
+            <Select value={jabatan} onValueChange={(v) => setJabatan(v as Jabatan)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Pilih jabatan" />
               </SelectTrigger>

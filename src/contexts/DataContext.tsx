@@ -50,6 +50,8 @@ interface DataContextType {
 
   adminProfiles: AdminProfile[];
   updateAvailability: (adminUserId: string, status: AvailabilityStatus) => void;
+  addAdminProfile: (profile: AdminProfile) => void;
+  removeAdminProfile: (userId: string) => void;
 
   appointments: Appointment[];
   addAppointment: (userId: string, targetAdminId: string) => Appointment;
