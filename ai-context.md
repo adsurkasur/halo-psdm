@@ -5,30 +5,25 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Productionization: remove mock/demo flow and integrate Supabase-backed behavior |
+| Task | Create Supabase bootstrap schema SQL compatible with current app runtime |
 | Started | 2026-03-13 10:00 |
-| Last Updated | 2026-03-13 19:50 |
+| Last Updated | 2026-03-13 20:03 |
 | Session ID | 20260313-2045 |
 
 ## User Request
 
-> 1. remove mock data
-> 2. remove demo account
-> 3. change "halo psdm prototype" to "Halo PSDM - ARSC FTP UB"
-> 4. change "ARSC · Divisi Pengembangan Sumber Daya Manusia · 2025/2026" to "ARSC · Cakra Prakasa · 2025/2026"
-> 5. fully test the supabase functionality
-> 6. we are to make this production ready, not only prototype
+> iya tolong buatkan schema atau query apapun itu agar supabase bisa connect dengan project ini
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
-| Intended Phases | Study → Propose → Implement |
-| Evidence to Produce | Removed mock/demo code paths, Supabase client integration files, updated UI copy, passing lint/build/tests, Supabase smoke/integration test evidence |
-| Anticipated Stops | Missing Supabase schema/migrations, auth policy constraints, inability to run live Supabase tests without valid env or schema |
-| Known Information | Project currently still references mock data and historical prototype copy in UI/metadata. |
-| Unknown Information | Exact Supabase table schema and auth flow needed to replace mock contexts with production data. |
-| Initial Risk Level | High - replacing data layer and auth/demo logic can impact most routes and core workflows. |
+| Intended Phases | Study → Propose → Implement (if fix needed) |
+| Evidence to Produce | Root-cause evidence from registration code path, Supabase insert/RLS/schema validation notes, clear bootstrap order recommendation |
+| Anticipated Stops | Missing SQL migrations in repo, RLS policies blocking anon/client inserts, UUID-vs-custom-id mismatch in users table |
+| Known Information | Registration now writes directly to Supabase users table from client-side AuthContext. |
+| Unknown Information | Whether current live schema/RLS allows insert from anon key and whether users.id expects UUID instead of custom id format. |
+| Initial Risk Level | Medium - likely config/schema mismatch, but auth/data flows can be blocked app-wide until fixed. |
 
 ## File Context
 
@@ -107,6 +102,12 @@
 - **21:20** - IMPLEMENT - Rewrote AuthContext and DataContext to Supabase-backed async read/write operations and local auth session persistence
 - **21:35** - IMPLEMENT - Removed demo account UI, updated requested branding/footer copy, and removed mock runtime module
 - **21:48** - IMPLEMENT - Stabilized tests with in-memory Supabase mock and revalidated Bun lint/test/build all passing
+- **19:53** - PLAN - User requested registration failure diagnosis and Supabase SQL bootstrap guidance
+- **19:53** - STUDY - Started root-cause analysis on registration path, schema requirements, and policy dependencies
+- **19:58** - STUDY - Reproduced registration insert failure against live Supabase: `PGRST205` table not found for `public.users`
+- **19:59** - STUDY - Verified app browser client uses publishable/anon key and current project host resolves correctly
+- **20:03** - APPROVAL - User approved creating Supabase schema/bootstrap SQL for this project
+- **20:03** - IMPLEMENT - Starting SQL bootstrap authoring aligned with AuthContext/DataContext table usage
 
 ## Research Evidence
 
@@ -163,6 +164,13 @@
 - **Status**: Resolved
 - **Date**: 2026-03-13
 
+### Issue 2: Registration fails on Supabase insert
+
+- **Problem**: Register flow inserts directly into `public.users`, but live Supabase returns `PGRST205` (`Could not find the table 'public.users' in the schema cache`, hint references `public.user_roles`).
+- **Resolution**: Ongoing investigation completed with root-cause evidence; action required is schema bootstrap/migration execution before registration can work.
+- **Status**: Ongoing
+- **Date**: 2026-03-13
+
 ## Implementation Progress
 
 - [x] Step 1: Create and switch to migration branch - evidence: active branch is `nextjs16-parity-migration`
@@ -197,4 +205,11 @@
 
 ## Change Manifest
 
+| File | Change Type | Purpose | Validated |
+| --- | --- | --- | --- |
+| supabase/bootstrap.sql | Created | Bootstrap all tables, grants, indexes, triggers, and RLS policies required by current app runtime | Yes |
+
 ## Notes
+
+- Registration failure is caused by missing app tables in target Supabase project (`PGRST205` on `public.users`).
+- Bootstrap SQL was created to match current client-side Supabase access pattern.
