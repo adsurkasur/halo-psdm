@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Persist theme state in user preference (profile + DB + UI sync) |
+| Task | Update promote-user SQL and add more explanatory usage guidance |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 13:02 |
+| Last Updated | 2026-03-14 13:18 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -37,8 +37,10 @@
 > 2. terapkan mekanisme forgot password
 > 3. dalam data laporan, pengirim masih muncul sebagai "-". sepertinya ini remnant dari fitur anonim sebelumnya. tolong cantumkan identitas pengirim dalam laporan, gunakan nama, biro/bidang, jabatan, email, nomor telepon
 > 4. pastikan role PH juga memiliki hak HR, yaitu bisa dicantumkan atau mencantumkan diri ke janji temu
-
+>
 > pastikan theme state tersimpan juga di "user's preference"
+>
+> perbarui sql promote user ini dan tambahkan panduan yang lebih explanatory
 
 ## Execution Plan
 
@@ -132,6 +134,7 @@
 - **12:30** - IMPLEMENT - Started critical fixes for phone format, forgot password, theme sync, sender identity, and PH appointment parity
 - **13:00** - STUDY - Audited current theme handling and confirmed no DB-backed preference persistence
 - **13:02** - IMPLEMENT - Started adding theme_preference persistence and UI sync wiring
+- **13:18** - IMPLEMENT - Started revision of promote-user SQL script with clearer guide and safer role handling
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references
