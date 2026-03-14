@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useData } from "@/contexts/DataContext";
@@ -14,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { isValidPhone62, normalizePhoneTo62 } from "@/lib/phone";
+import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
 
 export default function AdminManagement() {
   const { adminProfiles, addAdminProfile, removeAdminProfile } = useData();
@@ -214,22 +214,18 @@ export default function AdminManagement() {
                 })
                 .map((profile) => {
                 const adminUser = allUsers.find((u) => u.id === profile.user_id);
-                const initials = profile.display_name
-                  .split(" ")
-                  .map((w) => w[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase();
 
                 return (
                   <TableRow key={profile.user_id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatarWithPreview
+                          name={profile.display_name}
+                          avatarUrl={adminUser?.avatar_url ?? profile.avatar_url}
+                          sizeClassName="h-9 w-9"
+                          fallbackClassName="bg-primary text-primary-foreground text-xs font-semibold"
+                          modalTitle="Foto Profil HR/PH"
+                        />
                         <div>
                           <p className="text-sm font-medium">
                             {profile.display_name}

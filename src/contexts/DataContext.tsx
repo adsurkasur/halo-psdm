@@ -87,6 +87,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const inFlightRequestsRef = useRef<Map<string, Promise<unknown>>>(new Map());
   const pendingRealtimeTablesRef = useRef<Set<string>>(new Set());
   const reloadDebounceTimerRef = useRef<number | null>(null);
+  const backgroundRefreshInFlightRef = useRef(false);
   const isBusy = pendingOps > 0;
 
   const mapAdminProfiles = useCallback((rows: unknown[]) => {
@@ -386,7 +387,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setDataLoadIssues(issues);
   }, [user]);
 
-  const refreshByTables = useCallback(async (tables: Set<string>) => {
+  const refreshByTables = useCallback(async (tables: Set<string>, options?: { trackBusy?: boolean }) => {
     if (!user) {
       clearAllData();
       return;
@@ -417,9 +418,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
           reloadNotifications,
         ];
 
-    await withBusy(async () => {
-      await runReloadsAndCollectIssues(chosenReloaders);
-    });
+    const trackBusy = options?.trackBusy ?? true;
+    if (trackBusy) {
+      await withBusy(async () => {
+        await runReloadsAndCollectIssues(chosenReloaders);
+      });
+      return;
+    }
+
+    await runReloadsAndCollectIssues(chosenReloaders);
   }, [
     clearAllData,
     reloadAdminProfiles,
@@ -431,6 +438,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     user,
     withBusy,
   ]);
+
+  const refreshByTablesBackground = useCallback(async (tables: Set<string>) => {
+    if (backgroundRefreshInFlightRef.current) {
+      return;
+    }
+
+    backgroundRefreshInFlightRef.current = true;
+    try {
+      await refreshByTables(tables, { trackBusy: false });
+    } finally {
+      backgroundRefreshInFlightRef.current = false;
+    }
+  }, [refreshByTables]);
 
   const loadAllData = useCallback(async () => {
     if (!user) {
@@ -483,7 +503,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       reloadDebounceTimerRef.current = window.setTimeout(() => {
         const tablesToRefresh = new Set(pendingRealtimeTables);
         pendingRealtimeTables.clear();
-        void refreshByTables(tablesToRefresh);
+        void refreshByTablesBackground(tablesToRefresh);
       }, 350);
     };
 
@@ -506,7 +526,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       );
     }
 
-    void channel.subscribe();
+    void channel.subscribe((status) => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        void refreshByTablesBackground(new Set(["chat_sessions", "chat_messages", "reports", "report_status_history"]));
+      }
+    });
 
     return () => {
       if (reloadDebounceTimerRef.current) {
@@ -516,7 +540,42 @@ export function DataProvider({ children }: { children: ReactNode }) {
       pendingRealtimeTables.clear();
       void supabase.removeChannel(channel);
     };
-  }, [refreshByTables, user]);
+  }, [refreshByTablesBackground, user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const shouldSyncNow = () => document.visibilityState === "visible";
+
+    const chatInterval = window.setInterval(() => {
+      if (!shouldSyncNow()) return;
+
+      const path = window.location.pathname;
+      if (path.includes("/chat")) {
+        void refreshByTablesBackground(new Set(["chat_sessions", "chat_messages"]));
+      }
+    }, 2500);
+
+    const reportInterval = window.setInterval(() => {
+      if (!shouldSyncNow()) return;
+
+      const path = window.location.pathname;
+      if (path.includes("/laporan") || path.includes("/admin")) {
+        void refreshByTablesBackground(new Set(["reports", "report_status_history", "appointments", "admin_profiles"]));
+      }
+    }, 6000);
+
+    const notificationInterval = window.setInterval(() => {
+      if (!shouldSyncNow()) return;
+      void refreshByTablesBackground(new Set(["notifications"]));
+    }, 9000);
+
+    return () => {
+      window.clearInterval(chatInterval);
+      window.clearInterval(reportInterval);
+      window.clearInterval(notificationInterval);
+    };
+  }, [refreshByTablesBackground, user]);
 
   const addNotification = useCallback(
     async (data: { user_id: string; type: NotificationType; title: string; message: string; link?: string }) => {

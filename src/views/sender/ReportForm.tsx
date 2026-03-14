@@ -36,6 +36,7 @@ export default function ReportForm({
   const [urgency, setUrgency] = useState<Urgency>("RENDAH");
   const [chronology, setChronology] = useState(initialChronology);
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentCompressionInfo, setAttachmentCompressionInfo] = useState<{ original: number; compressed: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   if (!user) return null;
@@ -68,6 +69,10 @@ export default function ReportForm({
         try {
           const optimized = await compressImageForUpload(uploadAttachment, "attachment");
           uploadAttachment = optimized.file;
+          setAttachmentCompressionInfo({
+            original: optimized.originalSize,
+            compressed: optimized.compressedSize,
+          });
 
           if (optimized.compressed) {
             toast({
@@ -76,11 +81,14 @@ export default function ReportForm({
             });
           }
         } catch {
+          setAttachmentCompressionInfo(null);
           toast({
             title: "Kompresi gambar dilewati",
             description: "File asli tetap digunakan untuk menjaga proses upload tetap berjalan.",
           });
         }
+      } else {
+        setAttachmentCompressionInfo(null);
       }
 
       if (uploadAttachment && uploadAttachment.size > MAX_ATTACHMENT_SIZE) {
@@ -255,11 +263,15 @@ export default function ReportForm({
               <Input
                 type="file"
                 className="mt-1"
-                onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
+                onChange={(e) => {
+                  const picked = e.target.files?.[0] ?? null;
+                  setAttachment(picked);
+                  setAttachmentCompressionInfo(null);
+                }}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.mp4,.webm,.mov"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Format: PDF, DOCX, XLSX, PNG, JPG, WEBP. Maksimal 10MB.
+                Format: PDF, DOCX, XLSX, PNG, JPG, WEBP, MP4, WEBM, MOV. Maksimal 10MB.
               </p>
 
               {attachment && (
@@ -269,12 +281,20 @@ export default function ReportForm({
                     <span className="truncate">{attachment.name}</span>
                     <span className="text-xs text-muted-foreground shrink-0">({formatBytes(attachment.size)})</span>
                   </div>
+                  {attachmentCompressionInfo && (
+                    <span className="text-[11px] text-muted-foreground shrink-0">
+                      Rasio kompresi: {Math.max(0, Math.round((1 - attachmentCompressionInfo.compressed / attachmentCompressionInfo.original) * 100))}%
+                    </span>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => setAttachment(null)}
+                    onClick={() => {
+                      setAttachment(null);
+                      setAttachmentCompressionInfo(null);
+                    }}
                   >
                     <X className="h-4 w-4" />
                   </Button>

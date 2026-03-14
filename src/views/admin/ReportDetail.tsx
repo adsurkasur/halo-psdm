@@ -10,7 +10,8 @@ import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { getTransformedPublicImageUrl, isImageResource } from "@/lib/supabase-storage";
+import { getTransformedPublicImageUrl, isImageResource, isVideoResource } from "@/lib/supabase-storage";
+import { MediaViewerDialog } from "@/components/shared/MediaViewerDialog";
 import { BIRO_LABELS, JABATAN_LABELS, CATEGORY_LABELS, STATUS_LABELS, URGENCY_LABELS, type ReportStatus, type Urgency } from "@/data/domain";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
 
@@ -67,6 +68,7 @@ export default function ReportDetail() {
     (cs) => cs.report_id === report.id && cs.status === "OPEN"
   );
   const isImageAttachment = isImageResource(report.attachment_mime, report.attachment_name, report.attachment_url);
+  const isVideoAttachment = isVideoResource(report.attachment_mime, report.attachment_name, report.attachment_url);
 
   const formatAttachmentSize = (size?: number | null) => {
     if (!size) return "Ukuran tidak diketahui";
@@ -190,18 +192,47 @@ export default function ReportDetail() {
                   </Button>
                 </div>
                 {isImageAttachment && (
-                  <div className="mt-2 rounded-md border bg-card p-2">
-                    <img
-                      src={getTransformedPublicImageUrl(report.attachment_url, {
-                        width: 1360,
-                        quality: 80,
-                        resize: "contain",
-                      })}
-                      alt={report.attachment_name ?? "Lampiran gambar"}
-                      className="w-full max-h-[360px] rounded object-contain"
-                      loading="lazy"
-                    />
-                  </div>
+                  <MediaViewerDialog
+                    mediaUrl={report.attachment_url}
+                    mediaName={report.attachment_name}
+                    mediaMime={report.attachment_mime}
+                    title="Pratinjau Lampiran Laporan"
+                    triggerClassName="mt-2"
+                  >
+                    <div className="rounded-md border bg-card p-2">
+                      <img
+                        src={getTransformedPublicImageUrl(report.attachment_url, {
+                          width: 1360,
+                          quality: 80,
+                          resize: "contain",
+                        })}
+                        alt={report.attachment_name ?? "Lampiran gambar"}
+                        className="w-full max-h-[360px] rounded object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                  </MediaViewerDialog>
+                )}
+
+                {!isImageAttachment && isVideoAttachment && report.attachment_url && (
+                  <MediaViewerDialog
+                    mediaUrl={report.attachment_url}
+                    mediaName={report.attachment_name}
+                    mediaMime={report.attachment_mime}
+                    title="Pratinjau Lampiran Video"
+                    triggerClassName="mt-2"
+                  >
+                    <div className="rounded-md border bg-card p-2">
+                      <video
+                        src={report.attachment_url}
+                        controls
+                        preload="metadata"
+                        className="w-full max-h-[360px] rounded bg-black"
+                      >
+                        Browser Anda tidak mendukung pemutar video.
+                      </video>
+                    </div>
+                  </MediaViewerDialog>
                 )}
               </div>
             )}

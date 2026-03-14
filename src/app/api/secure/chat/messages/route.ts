@@ -53,14 +53,16 @@ export async function POST(request: Request) {
 
   const targetUserId = isSender ? session.assigned_admin_id : session.user_id;
   if (targetUserId) {
-    const preview = message.type === "TEXT" ? body.content.slice(0, 60) : `📎 ${body.mediaName ?? "Media"}`;
+    const contentPreview = body.content?.trim() ? body.content.trim().slice(0, 40) : "";
+    const mediaPreview = message.type === "TEXT" ? "" : `📎 ${body.mediaName ?? "Media"}`;
+    const preview = [mediaPreview, contentPreview].filter((item) => item.length > 0).join(" • ");
     await supabaseServer.from("notifications").insert({
       id: `n_${crypto.randomUUID()}`,
       user_id: targetUserId,
       type: isSender ? "NEW_CHAT_MESSAGE" : "NEW_CHAT_REPLY",
       payload: {
         title: isSender ? "Pesan Baru" : "Balasan Chat",
-        message: `${auth.context.appUser.name}: ${preview}${message.type === "TEXT" && body.content.length > 60 ? "..." : ""}`,
+        message: `${auth.context.appUser.name}: ${preview || "Pesan baru"}${message.type === "TEXT" && body.content.length > 60 ? "..." : ""}`,
         link: isSender ? "/admin/chat" : `/chat/${body.sessionId}`,
       },
       is_read: false,

@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Implement client-side image compression before upload and transformed image delivery for Supabase public media |
+| Task | Completed critical live sync and media UX overhaul (realtime fallback, media+text chat bubble, media modal viewer, HR/PH avatar preview coverage, and compression ratio visibility) |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 22:11 |
+| Last Updated | 2026-03-14 22:16 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -69,6 +69,15 @@
 > frontendku pakai vercel, backendku supabase hanya untuk database dan auth. pilihkan opsi terbaik yang kompatibel untuk kompresi
 
 > iya tolong buatkan sistem itu
+
+> 1. data masih belum sinkron secara live, masih perlu refresh untuk sinkron, INI FATAL KARENA PROYEK INI UNTUK LIVE CHAT DAN REPORT
+> 2. dalam chat, masih belum bisa menerima foto atau video. bisa upload foto (video belum coba), tapi yang buka hanya bisa si pengirim, si penerima hanya menampilkan nama tanpa ada pesannya
+> 3. ketika klik foto di chat atau laporan, daripada membuka tab baru untuk membuka raw file, buat modal aja yang menunjukkan foto atau video tersebut dengan opsi untuk open in new tab dan download
+> 4. izinkan menambahkan chat dengan media, misal daripada kirim foto saja, pengirim bisa attach foto terus bisa ngetik untuk mencantumkan pesan sekaligus dengan fotonya dalam satu chat bubble
+> 5. profile picture harus terimplementasi secara menyeluruh, misal ada akun yang tercantum di Kelola HR dan PH, dan akun itu sudah punya profile picture, maka tampilkan profile picturenya. berlaku juga untuk di chat, detail laporan, dan sebagainya (setelah cek, di chat dan laporan sudah tampil, tapi di list HR/PH belum tampil profile picturenya)
+> 6. ketika profile picture itu diklik, maka akan muncul modal yang menampilkan profile picturenya dengan lebih jelas (tampilan lebih besar) (lagi, setelah dicek, ini sudah ada, tinggal yang di list HR/PH)
+> 7. optimasi secara brutal proyek ini
+> 8. tampilkan rasio kompresi juga setelah kompresi
 
 ## Execution Plan
 
@@ -192,6 +201,15 @@
 - **22:05** - IMPLEMENT - Added Supabase transformed image URL helper and applied to avatar/chat/report image rendering
 - **22:08** - IMPLEMENT - Revalidated with `bun run lint` and `bun run build` (passed)
 - **22:11** - IMPLEMENT - Test suite passed with `bun run test` (10/10)
+- **22:19** - PLAN - User requested critical live sync, chat media reliability, media modal viewer, media+text, avatar coverage in HR/PH list, and aggressive optimization
+- **22:19** - STUDY - Started end-to-end audit of realtime subscriptions, chat message/media rendering, and admin management avatar list coverage
+- **22:00** - IMPLEMENT - Added media viewer dialog and media helpers (image/video detect + unified chat message preview fallback)
+- **22:03** - IMPLEMENT - Upgraded sender and admin chat flows to support media plus caption in one bubble and full media rendering for receiver side
+- **22:06** - IMPLEMENT - Added route-aware background sync polling fallback and realtime channel failure recovery in DataContext
+- **22:08** - IMPLEMENT - Completed HR/PH management avatar preview coverage and clickable profile-picture modal behavior
+- **22:10** - IMPLEMENT - Added persistent compression ratio display in upload previews (report attachment + chat media)
+- **22:12** - IMPLEMENT - Added Supabase SQL helper `supabase/enable-realtime-live.sql` to ensure live tables are published to `supabase_realtime`
+- **22:14** - IMPLEMENT - Validation passed with `bun run lint`, `bun run build`, and `bun run test` (10/10)
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references

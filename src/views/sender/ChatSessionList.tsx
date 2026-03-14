@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { AVAILABILITY_LABELS } from "@/data/domain";
 import { useToast } from "@/hooks/use-toast";
+import { getChatMessagePreview } from "@/lib/supabase-storage";
 
 export default function ChatSessionList() {
   const navigate = useNavigate();
@@ -121,7 +122,7 @@ export default function ChatSessionList() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {lastMsg ? lastMsg.content : "Belum ada pesan"}
+                      {lastMsg ? getChatMessagePreview(lastMsg) : "Belum ada pesan"}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       {adminProfile && session.status === "OPEN" && (

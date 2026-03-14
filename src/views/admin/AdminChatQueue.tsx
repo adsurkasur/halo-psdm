@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Lock, UserPlus } from "lucide-react";
+import { Send, Lock, UserPlus, Image as ImageIcon, Paperclip, X } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { AVAILABILITY_LABELS, type AvailabilityStatus } from "@/data/domain";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
+import { supabase } from "@/lib/supabase/client";
+import { compressImageForUpload, isCompressibleImage } from "@/lib/upload-compression";
+import { getChatMessagePreview, getTransformedPublicImageUrl, isVideoResource } from "@/lib/supabase-storage";
+import { MediaViewerDialog } from "@/components/shared/MediaViewerDialog";
+
+const MAX_MEDIA_SIZE = 10 * 1024 * 1024;
 
 export default function AdminChatQueue() {
   const { toast } = useToast();
@@ -28,7 +34,11 @@ export default function AdminChatQueue() {
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const [mediaPreview, setMediaPreview] = useState<{ url: string; name: string; type: "IMAGE" | "FILE"; file: File } | null>(null);
+  const [mediaCompressionInfo, setMediaCompressionInfo] = useState<{ original: number; compressed: number } | null>(null);
+  const [sendingMedia, setSendingMedia] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const myProfile = adminProfiles.find((p) => p.user_id === user.id);
   const adminStatus = myProfile?.availability_status ?? "ONLINE";
@@ -78,9 +88,123 @@ export default function AdminChatQueue() {
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || !selectedSession) return;
+    if (!selectedSession) return;
+
+    if (mediaPreview) {
+      try {
+        setSendingMedia(true);
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) {
+          throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
+        }
+
+        const formData = new FormData();
+        formData.append("sessionId", selectedSession.id);
+        formData.append("media", mediaPreview.file);
+
+        const response = await fetch("/api/secure/chat/media", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: formData,
+        });
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          media_url?: string;
+          media_name?: string;
+        };
+
+        if (!response.ok || !payload.media_url) {
+          throw new Error(payload.error ?? "Gagal upload media chat.");
+        }
+
+        const caption = input.trim();
+        await addChatMessage(
+          selectedSession.id,
+          user.id,
+          caption,
+          mediaPreview.type,
+          payload.media_url,
+          payload.media_name ?? mediaPreview.name
+        );
+
+        URL.revokeObjectURL(mediaPreview.url);
+        setMediaPreview(null);
+        setMediaCompressionInfo(null);
+        setInput("");
+      } catch (error) {
+        toast({
+          title: error instanceof Error ? error.message : "Gagal mengirim media.",
+          variant: "destructive",
+        });
+      } finally {
+        setSendingMedia(false);
+      }
+      return;
+    }
+
+    if (!input.trim()) return;
     await addChatMessage(selectedSession.id, user.id, input.trim());
     setInput("");
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    let file = selectedFile;
+    if (isCompressibleImage(file)) {
+      try {
+        const optimized = await compressImageForUpload(file, "chat");
+        file = optimized.file;
+        setMediaCompressionInfo({
+          original: optimized.originalSize,
+          compressed: optimized.compressedSize,
+        });
+
+        if (optimized.compressed) {
+          toast({
+            title: "Media gambar dioptimalkan",
+            description: `${formatBytes(optimized.originalSize)} -> ${formatBytes(optimized.compressedSize)}`,
+          });
+        }
+      } catch {
+        setMediaCompressionInfo(null);
+        toast({
+          title: "Kompresi media dilewati",
+          description: "File asli tetap digunakan agar pengiriman tetap berjalan.",
+        });
+      }
+    } else {
+      setMediaCompressionInfo(null);
+    }
+
+    if (file.size > MAX_MEDIA_SIZE) {
+      toast({ title: "Ukuran file maksimal 10MB.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+
+    const isImage = file.type.startsWith("image/");
+    const url = URL.createObjectURL(file);
+    setMediaPreview({
+      url,
+      name: file.name,
+      type: isImage ? "IMAGE" : "FILE",
+      file,
+    });
+
+    e.target.value = "";
   };
 
   if (!user) return null;
@@ -163,7 +287,7 @@ export default function AdminChatQueue() {
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground truncate">
-                          {lastMsg?.content ?? "Belum ada pesan"}
+                          {lastMsg ? getChatMessagePreview(lastMsg) : "Belum ada pesan"}
                         </p>
                         {isUnassigned && (
                           <Badge variant="secondary" className="text-[9px] mt-1">Belum diassign</Badge>
@@ -249,7 +373,61 @@ export default function AdminChatQueue() {
                           {!isMine && (
                             <p className="text-[10px] font-medium opacity-70 mb-0.5">{msgSender?.name}</p>
                           )}
-                          <p className="text-sm">{msg.content}</p>
+                          {msg.type === "IMAGE" && msg.media_url && (
+                            <div className="mb-2">
+                              <MediaViewerDialog
+                                mediaUrl={msg.media_url}
+                                mediaName={msg.media_name}
+                                mediaMime="image/*"
+                                title="Pratinjau Gambar Chat"
+                              >
+                                <img
+                                  src={getTransformedPublicImageUrl(msg.media_url, {
+                                    width: 1080,
+                                    quality: 76,
+                                    resize: "contain",
+                                  })}
+                                  alt={msg.media_name ?? "Image"}
+                                  className="rounded-lg max-w-full max-h-60 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                />
+                              </MediaViewerDialog>
+                            </div>
+                          )}
+
+                          {msg.type === "FILE" && msg.media_url && (
+                            <div className="mb-2">
+                              {isVideoResource(undefined, msg.media_name, msg.media_url) ? (
+                                <MediaViewerDialog
+                                  mediaUrl={msg.media_url}
+                                  mediaName={msg.media_name}
+                                  mediaMime="video/*"
+                                  title="Pratinjau Video Chat"
+                                >
+                                  <video
+                                    src={msg.media_url}
+                                    controls
+                                    preload="metadata"
+                                    className="rounded-lg max-w-full max-h-60 bg-black"
+                                  >
+                                    Browser Anda tidak mendukung pemutar video.
+                                  </video>
+                                </MediaViewerDialog>
+                              ) : (
+                                <MediaViewerDialog
+                                  mediaUrl={msg.media_url}
+                                  mediaName={msg.media_name}
+                                  title="Pratinjau Lampiran Chat"
+                                >
+                                  <div className={`flex items-center gap-2 p-2 rounded-lg ${isMine ? "bg-white/10" : "bg-background"}`}>
+                                    <Paperclip className="h-4 w-4 shrink-0" />
+                                    <span className="text-xs truncate">{msg.media_name ?? getChatMessagePreview(msg)}</span>
+                                  </div>
+                                </MediaViewerDialog>
+                              )}
+                            </div>
+                          )}
+
+                          {msg.content && <p className="text-sm">{msg.content}</p>}
                           <div className={`flex items-center gap-1 mt-1 ${isMine ? "justify-end" : "justify-start"}`}>
                             <span className="text-[10px] opacity-70">
                               {new Date(msg.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
@@ -276,7 +454,57 @@ export default function AdminChatQueue() {
                     Sesi ini ditangani oleh admin lain.
                   </p>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="space-y-2">
+                    {mediaPreview && (
+                      <div className="flex items-center gap-2 p-2 bg-muted rounded-lg animate-scale-in">
+                        {mediaPreview.type === "IMAGE" ? (
+                          <img src={mediaPreview.url} alt={mediaPreview.name} className="h-12 w-12 rounded object-cover" />
+                        ) : (
+                          <div className="h-12 w-12 rounded bg-background flex items-center justify-center">
+                            <Paperclip className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{mediaPreview.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{mediaPreview.type === "IMAGE" ? "Gambar" : "File"}</p>
+                          {mediaCompressionInfo && (
+                            <p className="text-[10px] text-muted-foreground">
+                              Rasio kompresi: {Math.max(0, Math.round((1 - mediaCompressionInfo.compressed / mediaCompressionInfo.original) * 100))}%
+                              ({formatBytes(mediaCompressionInfo.original)} {"->"} {formatBytes(mediaCompressionInfo.compressed)})
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0"
+                          onClick={() => {
+                            URL.revokeObjectURL(mediaPreview.url);
+                            setMediaPreview(null);
+                            setMediaCompressionInfo(null);
+                          }}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
+                        className="hidden"
+                        onChange={handleFileSelect}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 transition-transform duration-200 hover:scale-110"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <ImageIcon className="h-4 w-4" />
+                      </Button>
                     <Input
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
@@ -284,9 +512,10 @@ export default function AdminChatQueue() {
                       placeholder="Ketik balasan..."
                       className="flex-1"
                     />
-                    <Button size="icon" onClick={sendMessage} disabled={!input.trim()}>
+                    <Button size="icon" onClick={sendMessage} disabled={sendingMedia || (!input.trim() && !mediaPreview)}>
                       <Send className="h-4 w-4" />
                     </Button>
+                  </div>
                   </div>
                 )}
               </CardContent>

@@ -12,7 +12,8 @@ import { useData } from "@/contexts/DataContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
 import { compressImageForUpload, isCompressibleImage } from "@/lib/upload-compression";
-import { getTransformedPublicImageUrl } from "@/lib/supabase-storage";
+import { getChatMessagePreview, getTransformedPublicImageUrl, isVideoResource } from "@/lib/supabase-storage";
+import { MediaViewerDialog } from "@/components/shared/MediaViewerDialog";
 import { AVAILABILITY_LABELS, type ChatMessageType } from "@/data/domain";
 
 const MAX_MEDIA_SIZE = 10 * 1024 * 1024;
@@ -26,6 +27,7 @@ export default function ChatRoom() {
 
   const [input, setInput] = useState("");
   const [mediaPreview, setMediaPreview] = useState<{ url: string; name: string; type: ChatMessageType; file: File } | null>(null);
+  const [mediaCompressionInfo, setMediaCompressionInfo] = useState<{ original: number; compressed: number } | null>(null);
   const [sendingMedia, setSendingMedia] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,10 +105,12 @@ export default function ChatRoom() {
           throw new Error(payload.error ?? "Gagal upload media chat.");
         }
 
+        const caption = input.trim();
+
         await addChatMessage(
           session.id,
           user.id,
-          "",
+          caption,
           mediaPreview.type,
           payload.media_url,
           payload.media_name ?? mediaPreview.name
@@ -114,6 +118,8 @@ export default function ChatRoom() {
 
         URL.revokeObjectURL(mediaPreview.url);
         setMediaPreview(null);
+        setMediaCompressionInfo(null);
+        setInput("");
       } catch (error) {
         toast({
           title: error instanceof Error ? error.message : "Gagal mengirim media.",
@@ -145,6 +151,10 @@ export default function ChatRoom() {
       try {
         const optimized = await compressImageForUpload(file, "chat");
         file = optimized.file;
+        setMediaCompressionInfo({
+          original: optimized.originalSize,
+          compressed: optimized.compressedSize,
+        });
 
         if (optimized.compressed) {
           toast({
@@ -153,11 +163,14 @@ export default function ChatRoom() {
           });
         }
       } catch {
+        setMediaCompressionInfo(null);
         toast({
           title: "Kompresi media dilewati",
           description: "File asli tetap digunakan agar pengiriman tetap berjalan.",
         });
       }
+    } else {
+      setMediaCompressionInfo(null);
     }
 
     if (file.size > MAX_MEDIA_SIZE) {
@@ -243,22 +256,54 @@ export default function ChatRoom() {
                     {/* Media content */}
                     {msg.type === "IMAGE" && msg.media_url && (
                       <div className="mb-2">
-                        <img
-                          src={getTransformedPublicImageUrl(msg.media_url, {
-                            width: 1080,
-                            quality: 76,
-                            resize: "contain",
-                          })}
-                          alt={msg.media_name ?? "Image"}
-                          className="rounded-lg max-w-full max-h-60 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => window.open(msg.media_url, "_blank")}
-                        />
+                        <MediaViewerDialog
+                          mediaUrl={msg.media_url}
+                          mediaName={msg.media_name}
+                          mediaMime="image/*"
+                          title="Pratinjau Gambar Chat"
+                        >
+                          <img
+                            src={getTransformedPublicImageUrl(msg.media_url, {
+                              width: 1080,
+                              quality: 76,
+                              resize: "contain",
+                            })}
+                            alt={msg.media_name ?? "Image"}
+                            className="rounded-lg max-w-full max-h-60 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                          />
+                        </MediaViewerDialog>
                       </div>
                     )}
-                    {msg.type === "FILE" && msg.media_name && (
-                      <div className={`mb-2 flex items-center gap-2 p-2 rounded-lg ${isMine ? "bg-white/10" : "bg-background"}`}>
-                        <Paperclip className="h-4 w-4 shrink-0" />
-                        <span className="text-xs truncate">{msg.media_name}</span>
+                    {msg.type === "FILE" && msg.media_url && (
+                      <div className="mb-2">
+                        {isVideoResource(undefined, msg.media_name, msg.media_url) ? (
+                          <MediaViewerDialog
+                            mediaUrl={msg.media_url}
+                            mediaName={msg.media_name}
+                            mediaMime="video/*"
+                            title="Pratinjau Video Chat"
+                          >
+                            <video
+                              src={msg.media_url}
+                              className="rounded-lg max-w-full max-h-60 bg-black"
+                              controls
+                              preload="metadata"
+                            >
+                              Browser Anda tidak mendukung pemutar video.
+                            </video>
+                          </MediaViewerDialog>
+                        ) : (
+                          <MediaViewerDialog
+                            mediaUrl={msg.media_url}
+                            mediaName={msg.media_name}
+                            title="Pratinjau Lampiran Chat"
+                          >
+                            <div className={`flex items-center gap-2 p-2 rounded-lg ${isMine ? "bg-white/10" : "bg-background"}`}>
+                              <Paperclip className="h-4 w-4 shrink-0" />
+                              <span className="text-xs truncate">{msg.media_name ?? getChatMessagePreview(msg)}</span>
+                            </div>
+                          </MediaViewerDialog>
+                        )}
                       </div>
                     )}
                     {/* Text content */}
@@ -300,6 +345,12 @@ export default function ChatRoom() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{mediaPreview.name}</p>
                   <p className="text-[10px] text-muted-foreground">{mediaPreview.type === "IMAGE" ? "Gambar" : "File"}</p>
+                  {mediaCompressionInfo && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Rasio kompresi: {Math.max(0, Math.round((1 - mediaCompressionInfo.compressed / mediaCompressionInfo.original) * 100))}%
+                      ({formatBytes(mediaCompressionInfo.original)} {"->"} {formatBytes(mediaCompressionInfo.compressed)})
+                    </p>
+                  )}
                 </div>
                 <Button
                   variant="ghost"
@@ -308,6 +359,7 @@ export default function ChatRoom() {
                   onClick={() => {
                     URL.revokeObjectURL(mediaPreview.url);
                     setMediaPreview(null);
+                    setMediaCompressionInfo(null);
                   }}
                 >
                   <X className="h-3.5 w-3.5" />
@@ -318,7 +370,7 @@ export default function ChatRoom() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
                 className="hidden"
                 onChange={handleFileSelect}
               />
