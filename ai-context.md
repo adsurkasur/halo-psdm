@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Fixing persistent UI issues: Offline combobox truncation, full-width member picker row, and profile photo input layout |
+| Task | Fixing Vercel deployment to use Bun (not npm) while keeping latest `@vercel/speed-insights` |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 21:54 |
+| Last Updated | 2026-03-14 22:02 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -365,6 +365,10 @@
 - **21:52** - IMPLEMENT - Reworked `Kelola HR/PH` add-row layout so member search input stretches full width while preserving role select and action button spacing
 - **21:53** - IMPLEMENT - Replaced profile photo upload input with compact `Choose file + selected filename + Perbarui Foto Profil` layout
 - **21:54** - VALIDATE - Revalidated with `bun run lint` and `bun run test` (10/10 passed)
+- **21:58** - STUDY - Diagnosed Vercel deploy failure root cause: `npm install` chosen due presence of `package-lock.json`, triggering peer-resolution conflict with optional cross-framework peers in latest speed-insights
+- **22:00** - IMPLEMENT - Added `packageManager: bun@1.3.10` and `vercel.json` (`bun install --frozen-lockfile`, `bun run build`) to force Bun pipeline on Vercel
+- **22:01** - IMPLEMENT - Removed `package-lock.json` to prevent npm auto-detection fallback
+- **22:02** - VALIDATE - Verified `bun install --frozen-lockfile` and `bun run build` both succeed
 
 ## Current Issues and Resolutions
 
