@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Updating package metadata (project name and version) in package.json |
+| Task | Fixing broken image previews globally and enforcing true download behavior for attachments |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 22:06 |
+| Last Updated | 2026-03-14 22:18 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -370,6 +370,12 @@
 - **22:01** - IMPLEMENT - Removed `package-lock.json` to prevent npm auto-detection fallback
 - **22:02** - VALIDATE - Verified `bun install --frozen-lockfile` and `bun run build` both succeed
 - **22:06** - IMPLEMENT - Updated package name to `halo-psdm` and bumped version to `1.0.0`
+- **22:14** - STUDY - Traced avatar flow and identified likely render fallback failure when transformed storage URL is unavailable
+- **22:15** - IMPLEMENT - Updated shared avatar component to fallback from transformed URL to raw `avatar_url` before showing initials
+- **22:16** - VALIDATE - Revalidated with `bun run lint` and `bun run test` (10/10 passed)
+- **22:17** - IMPLEMENT - Disabled Supabase image transform by default (raw public URL fallback) to resolve widespread broken-image rendering
+- **22:17** - IMPLEMENT - Added `downloadFileFromUrl` helper and switched media/report attachment actions to true download (blob + `download` trigger)
+- **22:18** - VALIDATE - Revalidated with `bun run lint` and `bun run test` (10/10 passed)
 
 ## Current Issues and Resolutions
 

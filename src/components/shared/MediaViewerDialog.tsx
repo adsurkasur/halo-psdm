@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Download, ExternalLink, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +10,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { getTransformedPublicImageUrl, isImageResource, isVideoResource } from "@/lib/supabase-storage";
+import { downloadFileFromUrl, getTransformedPublicImageUrl, isImageResource, isVideoResource } from "@/lib/supabase-storage";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 type MediaViewerDialogProps = {
@@ -29,10 +31,21 @@ export function MediaViewerDialog({
   title,
   children,
 }: MediaViewerDialogProps) {
+  const { toast } = useToast();
+  const [downloading, setDownloading] = useState(false);
   const resolvedTitle = title ?? mediaName ?? "Pratinjau Media";
   const fileName = mediaName ?? "media";
   const isImage = isImageResource(mediaMime, mediaName, mediaUrl);
   const isVideo = isVideoResource(mediaMime, mediaName, mediaUrl);
+  const imageSrc = useMemo(
+    () =>
+      getTransformedPublicImageUrl(mediaUrl, {
+        width: 1600,
+        quality: 84,
+        resize: "contain",
+      }),
+    [mediaUrl],
+  );
 
   return (
     <Dialog>
@@ -50,13 +63,14 @@ export function MediaViewerDialog({
         <div className="rounded-lg border bg-muted/30 p-2">
           {isImage ? (
             <img
-              src={getTransformedPublicImageUrl(mediaUrl, {
-                width: 1600,
-                quality: 84,
-                resize: "contain",
-              })}
+              src={imageSrc}
               alt={fileName}
               className="w-full max-h-[70vh] rounded object-contain"
+              onError={(e) => {
+                if (e.currentTarget.src !== mediaUrl) {
+                  e.currentTarget.src = mediaUrl;
+                }
+              }}
             />
           ) : isVideo ? (
             <video
@@ -84,11 +98,26 @@ export function MediaViewerDialog({
               Open in New Tab
             </a>
           </Button>
-          <Button asChild size="sm" className="gap-2">
-            <a href={mediaUrl} download={fileName}>
-              <Download className="h-4 w-4" />
-              Download
-            </a>
+          <Button
+            size="sm"
+            className="gap-2"
+            disabled={downloading}
+            onClick={async () => {
+              try {
+                setDownloading(true);
+                await downloadFileFromUrl(mediaUrl, fileName);
+              } catch (error) {
+                toast({
+                  title: error instanceof Error ? error.message : "Gagal mengunduh file.",
+                  variant: "destructive",
+                });
+              } finally {
+                setDownloading(false);
+              }
+            }}
+          >
+            <Download className="h-4 w-4" />
+            {downloading ? "Mengunduh..." : "Download"}
           </Button>
         </DialogFooter>
       </DialogContent>

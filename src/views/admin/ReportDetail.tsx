@@ -10,7 +10,7 @@ import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { getTransformedPublicImageUrl, isImageResource, isVideoResource } from "@/lib/supabase-storage";
+import { downloadFileFromUrl, getTransformedPublicImageUrl, isImageResource, isVideoResource } from "@/lib/supabase-storage";
 import { MediaViewerDialog } from "@/components/shared/MediaViewerDialog";
 import { BIRO_LABELS, JABATAN_LABELS, CATEGORY_LABELS, STATUS_LABELS, URGENCY_LABELS, type ReportStatus, type Urgency } from "@/data/domain";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
@@ -198,10 +198,25 @@ export default function ReportDetail() {
                       </div>
                     </MediaViewerDialog>
                   ) : (
-                    <Button asChild variant="outline" size="sm" className="gap-2 shrink-0">
-                      <a href={report.attachment_url} target="_blank" rel="noreferrer">
-                        <Download className="h-4 w-4" /> Buka
-                      </a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 shrink-0"
+                      onClick={async () => {
+                        try {
+                          await downloadFileFromUrl(
+                            report.attachment_url!,
+                            report.attachment_name ?? "lampiran",
+                          );
+                        } catch (error) {
+                          toast({
+                            title: error instanceof Error ? error.message : "Gagal mengunduh lampiran.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <Download className="h-4 w-4" /> Download
                     </Button>
                   )}
                 </div>
@@ -223,6 +238,11 @@ export default function ReportDetail() {
                         alt={report.attachment_name ?? "Lampiran gambar"}
                         className="w-full max-h-[360px] rounded object-contain"
                         loading="lazy"
+                        onError={(e) => {
+                          if (e.currentTarget.src !== report.attachment_url) {
+                            e.currentTarget.src = report.attachment_url!;
+                          }
+                        }}
                       />
                     </div>
                   </MediaViewerDialog>

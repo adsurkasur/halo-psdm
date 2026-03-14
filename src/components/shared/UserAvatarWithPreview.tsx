@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getTransformedPublicImageUrl } from "@/lib/supabase-storage";
 import {
@@ -28,6 +28,38 @@ export function UserAvatarWithPreview({
   disablePreview = false,
 }: UserAvatarWithPreviewProps) {
   const [open, setOpen] = useState(false);
+  const [avatarSrc, setAvatarSrc] = useState<string>("");
+  const [previewSrc, setPreviewSrc] = useState<string>("");
+
+  const transformedAvatarSrc = useMemo(
+    () =>
+      avatarUrl
+        ? getTransformedPublicImageUrl(avatarUrl, {
+            width: 160,
+            height: 160,
+            quality: 74,
+            resize: "cover",
+          })
+        : "",
+    [avatarUrl],
+  );
+
+  const transformedPreviewSrc = useMemo(
+    () =>
+      avatarUrl
+        ? getTransformedPublicImageUrl(avatarUrl, {
+            width: 1440,
+            quality: 84,
+            resize: "contain",
+          })
+        : "",
+    [avatarUrl],
+  );
+
+  useEffect(() => {
+    setAvatarSrc(transformedAvatarSrc || avatarUrl || "");
+    setPreviewSrc(transformedPreviewSrc || avatarUrl || "");
+  }, [avatarUrl, transformedAvatarSrc, transformedPreviewSrc]);
 
   const initials = name
     .split(" ")
@@ -38,15 +70,18 @@ export function UserAvatarWithPreview({
 
   const avatar = (
     <Avatar className={sizeClassName}>
-      {avatarUrl ? (
+      {avatarSrc ? (
         <AvatarImage
-          src={getTransformedPublicImageUrl(avatarUrl, {
-            width: 160,
-            height: 160,
-            quality: 74,
-            resize: "cover",
-          })}
+          src={avatarSrc}
           alt={name}
+          onError={() => {
+            if (!avatarUrl) return;
+            if (avatarSrc !== avatarUrl) {
+              setAvatarSrc(avatarUrl);
+              return;
+            }
+            setAvatarSrc("");
+          }}
         />
       ) : null}
       <AvatarFallback className={fallbackClassName}>{initials}</AvatarFallback>
@@ -69,13 +104,17 @@ export function UserAvatarWithPreview({
         </DialogHeader>
         <div className="rounded-lg overflow-hidden border bg-muted/30">
           <img
-            src={getTransformedPublicImageUrl(avatarUrl, {
-              width: 1440,
-              quality: 84,
-              resize: "contain",
-            })}
+            src={previewSrc || avatarUrl}
             alt={name}
             className="w-full h-auto max-h-[70vh] object-contain"
+            onError={() => {
+              if (!avatarUrl) return;
+              if (previewSrc !== avatarUrl) {
+                setPreviewSrc(avatarUrl);
+                return;
+              }
+              setPreviewSrc("");
+            }}
           />
         </div>
       </DialogContent>

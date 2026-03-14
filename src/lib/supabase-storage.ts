@@ -9,6 +9,7 @@ type ImageTransformOptions = {
 
 const IMAGE_MIME_PREFIX = "image/";
 const VIDEO_MIME_PREFIX = "video/";
+const ENABLE_IMAGE_TRANSFORM = process.env.NEXT_PUBLIC_ENABLE_IMAGE_TRANSFORM === "true";
 
 export function isImageResource(
   mimeType?: string | null,
@@ -98,6 +99,11 @@ export function getTransformedPublicImageUrl(
 ): string {
   if (!publicUrl) return "";
 
+  // Some Supabase projects disable image transformation endpoint; fallback to raw URL by default.
+  if (!ENABLE_IMAGE_TRANSFORM) {
+    return publicUrl;
+  }
+
   const target = extractBucketAndPath(publicUrl);
   if (!target) return publicUrl;
 
@@ -111,4 +117,21 @@ export function getTransformedPublicImageUrl(
   });
 
   return data.publicUrl || publicUrl;
+}
+
+export async function downloadFileFromUrl(url: string, fileName = "download"): Promise<void> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Gagal mengunduh file.");
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
