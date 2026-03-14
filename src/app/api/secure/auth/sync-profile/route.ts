@@ -14,6 +14,19 @@ function pickJabatan(input: unknown): Jabatan {
   return VALID_JABATAN.includes(input as Jabatan) ? (input as Jabatan) : "ANGGOTA_MUDA";
 }
 
+type SyncStage =
+  | "auth"
+  | "select-existing"
+  | "update-existing"
+  | "insert-new"
+  | "resolve-legacy"
+  | "readback";
+
+function errorResponse(status: number, code: string, stage: SyncStage, message: string, context?: Record<string, unknown>) {
+  console.error("[SYNC_PROFILE_ERROR]", { code, stage, message, ...context });
+  return NextResponse.json({ error: message, diagnosticCode: code, stage }, { status });
+}
+
 export async function POST(request: Request) {
   const auth = await requireAuthUser(request);
   if ("error" in auth) return auth.error;
@@ -33,8 +46,13 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (existingError) {
-    return NextResponse.json({ error: existingError.message }, { status: 400 });
+    return errorResponse(400, "SYNC_SELECT_EXISTING_FAILED", "select-existing", existingError.message, {
+      authUserId: authUser.id,
+      authEmail: authUser.email,
+    });
   }
+
+  let syncPath: "existing" | "insert-new" | "legacy-relink" = "existing";
 
   if (existing) {
     const { error: updateError } = await supabaseServer
@@ -44,17 +62,21 @@ export async function POST(request: Request) {
         email: authUser.email ?? existing.email,
         biro: VALID_BIRO.includes(metadata.biro as BiroBidang) ? metadata.biro : existing.biro,
         jabatan: VALID_JABATAN.includes(metadata.jabatan as Jabatan) ? metadata.jabatan : existing.jabatan,
-          avatar_url:
-            typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
-              ? metadata.avatar_url
-              : existing.avatar_url,
+        avatar_url:
+          typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
+            ? metadata.avatar_url
+            : existing.avatar_url,
       })
       .eq("id", authUser.id);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
+      return errorResponse(400, "SYNC_UPDATE_EXISTING_FAILED", "update-existing", updateError.message, {
+        authUserId: authUser.id,
+        authEmail: authUser.email,
+      });
     }
   } else {
+    syncPath = "insert-new";
     const profilePayload = {
       id: authUser.id,
       name: metadataName ?? fallbackName,
@@ -81,8 +103,19 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (legacyReadError || !legacyByEmail) {
-        return NextResponse.json({ error: insertError.message }, { status: 400 });
+        return errorResponse(
+          400,
+          "SYNC_INSERT_NEW_FAILED",
+          "insert-new",
+          insertError.message,
+          {
+            authUserId: authUser.id,
+            authEmail: authUser.email,
+          }
+        );
       }
+
+      syncPath = "legacy-relink";
 
       const { error: legacyUpdateError } = await supabaseServer
         .from("users")
@@ -98,12 +131,16 @@ export async function POST(request: Request) {
         .eq("id", legacyByEmail.id);
 
       if (legacyUpdateError) {
-        return NextResponse.json(
+        return errorResponse(
+          409,
+          "SYNC_LEGACY_RELINK_FAILED",
+          "resolve-legacy",
+          "Konflik data profil lama terdeteksi. Hubungi admin untuk menjalankan sinkronisasi manual akun/profil.",
           {
-            error:
-              "Konflik data profil lama terdeteksi. Hubungi admin untuk menjalankan sinkronisasi manual akun/profil.",
-          },
-          { status: 409 }
+            authUserId: authUser.id,
+            authEmail: authUser.email,
+            legacyUserId: legacyByEmail.id,
+          }
         );
       }
     }
@@ -116,8 +153,18 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (profileError || !profile) {
-    return NextResponse.json({ error: profileError?.message ?? "Profil pengguna tidak ditemukan." }, { status: 404 });
+    return errorResponse(
+      404,
+      "SYNC_READBACK_PROFILE_NOT_FOUND",
+      "readback",
+      profileError?.message ?? "Profil pengguna tidak ditemukan.",
+      {
+        authUserId: authUser.id,
+        authEmail: authUser.email,
+        syncPath,
+      }
+    );
   }
 
-  return NextResponse.json({ profile });
+  return NextResponse.json({ profile, diagnosticCode: "SYNC_OK", stage: "readback", syncPath });
 }

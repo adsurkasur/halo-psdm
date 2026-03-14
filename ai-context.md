@@ -5,27 +5,25 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Add profile picture feature with upload, view modal, and visibility in admin report context |
+| Task | Add diagnostic logging and tighten sync logic flow to eliminate logical gaps in account-profile bootstrap |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 11:12 |
+| Last Updated | 2026-03-14 11:48 |
 | Session ID | 20260314-1001 |
 
 ## User Request
 
-> sembari aku testing dulu, tambahkan fitur profile picture.
->
-> nanti profile picture ini juga bisa dilihat, jadi ketika diklik profile picturenya akan muncul popup/modal untuk view profile picturenya. intentnya adalah untuk admin mengenali anggota yang sedang lapor atau curhat
+> tambahkan log diagnostik itu, dan pastikan kalau flow datanya logis. kurasa ini bukan error teknis, tapi cacat logika
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
 | Intended Phases | Study → Implement |
-| Evidence to Produce | Schema/type/context/UI changes for profile picture upload + modal view + report detail visibility, with lint/test/build output |
-| Anticipated Stops | Missing storage bucket/policies, absent user avatar column, image upload constraints in current profile flow |
-| Known Information | Current app shows avatar initials and lacks user profile picture upload/view for sender recognition context. |
-| Unknown Information | Exact profile page/header/report components needing updates and existing modal/avatar UI patterns. |
-| Initial Risk Level | Medium - touches auth/profile data model and shared UI surfaces. |
+| Evidence to Produce | Structured diagnostic codes emitted from sync route + client consumption, and flow updates that remove timing/race ambiguity |
+| Anticipated Stops | Production environment variables or DB conflicts may still surface but should now be diagnosable |
+| Known Information | User suspects logic flaw; current flow still has opaque failures from profile bootstrap path |
+| Unknown Information | Exact failure stage in runtime environment without detailed diagnostics |
+| Initial Risk Level | High - affects login reliability and onboarding path |
 
 ## File Context
 
@@ -172,6 +170,31 @@
 - **11:06** - IMPLEMENT - Added avatar schema/type wiring and reusable avatar-preview component
 - **11:09** - IMPLEMENT - Integrated profile picture upload on profile page and avatar rendering in header/admin report/chat views
 - **11:12** - IMPLEMENT - Revalidated `npm run lint`, `npm run test`, and `npm run build` (all passed)
+- **11:22** - PLAN - User requested deep study and fix proposal for recurring login/profile availability error
+- **11:22** - STUDY - Starting end-to-end trace of login + profile sync + DB policy path and failure points
+- **11:26** - STUDY - Found SQL script corruption in `auth-hardening.sql` profile picture policy line, likely breaking migration apply
+- **11:27** - STUDY - Found login flow can report sync success before confirming profile read availability under client context
+- **11:28** - APPROVAL - User approved proposal with: "proceed best practice"
+- **11:29** - IMPLEMENT - Fixed corrupted SQL policy statement in auth hardening script
+- **11:30** - IMPLEMENT - Refactored AuthContext login bootstrap to rely on server-confirmed profile payload from sync flow
+- **11:31** - IMPLEMENT - Revalidated `npm run lint`, `npm run test`, and `npm run build` (all passed)
+- **11:36** - IMPLEMENT - Hardened bootstrap/onAuthStateChange to always run profile sync flow (not direct profile read)
+- **11:37** - IMPLEMENT - Replaced brittle profile-missing login branch with deterministic fallback read + clearer recovery message
+- **11:38** - IMPLEMENT - Revalidated `npm run lint`, `npm run test`, and `npm run build` (all passed)
+- **11:45** - PLAN - User requested diagnostic logging and logical-flow hardening for profile sync path
+- **11:45** - IMPLEMENT - Starting structured diagnostics in sync route and client-side flow instrumentation
+- **11:46** - IMPLEMENT - Added structured diagnostic code/stage responses and server log events in sync profile API route
+- **11:47** - IMPLEMENT - Added client-side diagnostic propagation, token-readiness retry, and local fallback warning logs
+- **11:48** - IMPLEMENT - Revalidated `npm run lint`, `npm run test`, and `npm run build` (all passed)
+
+## Issues and Resolutions
+
+### Issue 3: Login fails with "Profil pengguna belum tersedia di sistem."
+
+- **Problem**: User still hits profile-not-found error during login even after sync retries.
+- **Resolution**: Study completed; implementation pending user approval.
+- **Status**: Ongoing
+- **Date**: 2026-03-14
 - **11:05** - PLAN - User requested profile picture feature with modal viewer and admin-facing visibility for report context
 - **11:05** - STUDY - Starting profile/avatar data-path and UI touchpoint analysis
 
@@ -316,6 +339,11 @@
 | src/views/admin/AdminChatQueue.tsx | Modified | Display sender profile pictures in queue and session header with modal preview | Yes |
 | supabase/bootstrap.sql | Modified | Add `avatar_url` column to users table bootstrap schema | Yes |
 | supabase/auth-hardening.sql | Modified | Add `avatar_url` migration and `profile-pictures` bucket policies | Yes |
+| src/contexts/AuthContext.tsx | Modified | Eliminate brittle post-sync profile read by using server sync response profile as login source of truth | Yes |
+| supabase/auth-hardening.sql | Modified | Correct malformed `profile_pictures_insert_own` policy SQL statement | Yes |
+| src/contexts/AuthContext.tsx | Modified | Ensure session bootstrap/auth-state changes self-heal via sync pipeline before setting user state | Yes |
+| src/app/api/secure/auth/sync-profile/route.ts | Modified | Add diagnosticCode/stage response contract and structured server logs per failure stage | Yes |
+| src/contexts/AuthContext.tsx | Modified | Add diagnostic-aware client sync flow, token readiness retry, and explicit fallback logging | Yes |
 
 ## Notes
 

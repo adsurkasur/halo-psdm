@@ -54,7 +54,7 @@ interface AuthContextType {
   logout: () => void;
   allUsers: User[];
   refreshUsers: () => Promise<void>;
-  syncProfileNow: () => Promise<{ success: boolean; error?: string }>;
+  syncProfileNow: () => Promise<{ success: boolean; error?: string; profile?: User }>;
   updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url">>) => Promise<{ success: boolean; error?: string }>;
   changeUserRole: (userId: string, newRole: UserRole) => Promise<{ success: boolean; error?: string }>;
 }
@@ -74,6 +74,28 @@ function normalizeJabatan(input: unknown): Jabatan {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+type SyncProfileResult = {
+  success: boolean;
+  error?: string;
+  profile?: UsersRow;
+  diagnosticCode?: string;
+  stage?: string;
+};
+
+type SyncProfileResponsePayload = {
+  error?: string;
+  profile?: UsersRow;
+  diagnosticCode?: string;
+  stage?: string;
+};
+
+function appendDiagnostic(error: string, code?: string, stage?: string) {
+  if (!code && !stage) return error;
+  if (code && stage) return `${error} [${code} @ ${stage}]`;
+  if (code) return `${error} [${code}]`;
+  return `${error} [${stage}]`;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -185,12 +207,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsers((data ?? []).map((row) => mapRowToUser(row as UsersRow)));
   }, []);
 
-  const syncProfileThroughServer = useCallback(async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
+  const syncProfileThroughServer = useCallback(async (): Promise<SyncProfileResult> => {
+    let accessToken: string | undefined;
+
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      accessToken = sessionData.session?.access_token;
+      if (accessToken) break;
+      if (attempt < 3) await sleep(250);
+    }
 
     if (!accessToken) {
-      return { success: false, error: "Sesi login tidak ditemukan. Silakan login kembali." };
+      return {
+        success: false,
+        error: appendDiagnostic("Sesi login belum siap. Silakan login ulang.", "CLIENT_NO_ACCESS_TOKEN", "auth"),
+        diagnosticCode: "CLIENT_NO_ACCESS_TOKEN",
+        stage: "auth",
+      };
     }
 
     try {
@@ -201,23 +234,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       });
 
+      const payload = (await response.json().catch(() => null)) as SyncProfileResponsePayload | null;
+
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        const errorMessage = appendDiagnostic(
+          payload?.error ??
+            "Sinkronisasi profil via server gagal. Coba lagi sebentar, atau hubungi admin untuk sinkronisasi manual.",
+          payload?.diagnosticCode,
+          payload?.stage
+        );
+
+        console.warn("[SYNC_PROFILE_CLIENT_WARN]", {
+          diagnosticCode: payload?.diagnosticCode,
+          stage: payload?.stage,
+          status: response.status,
+          error: payload?.error,
+        });
+
         return {
           success: false,
-          error:
-            payload?.error ??
-            "Sinkronisasi profil via server gagal. Coba lagi sebentar, atau hubungi admin untuk sinkronisasi manual.",
+          error: errorMessage,
+          diagnosticCode: payload?.diagnosticCode,
+          stage: payload?.stage,
         };
       }
 
-      return { success: true };
+      if (!payload?.profile) {
+        return {
+          success: false,
+          error: appendDiagnostic(
+            "Sinkronisasi profil berhasil dipanggil, tetapi data profil belum tersedia.",
+            "CLIENT_PROFILE_PAYLOAD_MISSING",
+            payload?.stage
+          ),
+          diagnosticCode: "CLIENT_PROFILE_PAYLOAD_MISSING",
+          stage: payload?.stage,
+        };
+      }
+
+      return {
+        success: true,
+        profile: payload.profile,
+        diagnosticCode: payload?.diagnosticCode,
+        stage: payload?.stage,
+      };
     } catch {
-      return { success: false, error: "Sinkronisasi profil via server sedang tidak tersedia." };
+      return {
+        success: false,
+        error: appendDiagnostic("Sinkronisasi profil via server sedang tidak tersedia.", "CLIENT_FETCH_FAILED", "network"),
+        diagnosticCode: "CLIENT_FETCH_FAILED",
+        stage: "network",
+      };
     }
   }, []);
 
-  const syncProfileNow = useCallback(async () => {
+  const syncProfileNow = useCallback(async (): Promise<SyncProfileResult> => {
     const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
 
     if (authUserError || !authUserData.user) {
@@ -226,17 +297,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       const serverSync = await syncProfileThroughServer();
-      if (serverSync.success) {
-        await loadAppUserById(authUserData.user.id);
+      if (serverSync.success && serverSync.profile) {
+        if (!serverSync.profile.is_active) {
+          return { success: false, error: "Akun tidak aktif. Hubungi admin untuk aktivasi akun." };
+        }
+
+        setUser(mapRowToUser(serverSync.profile));
         await refreshUsers();
-        return { success: true };
+        return { success: true, profile: serverSync.profile };
       }
 
       const ensured = await ensureAppProfileForAuthUser(authUserData.user);
       if (ensured.success) {
-        await loadAppUserById(authUserData.user.id);
-        await refreshUsers();
-        return { success: true };
+        const { data, error } = await supabase
+          .from("users")
+          .select("id, name, biro, jabatan, role, email, avatar_url, password_hash, is_active, created_at")
+          .eq("id", authUserData.user.id)
+          .maybeSingle();
+
+        if (!error && data) {
+          const profile = data as UsersRow;
+          if (!profile.is_active) {
+            return { success: false, error: "Akun tidak aktif. Hubungi admin untuk aktivasi akun." };
+          }
+
+          setUser(mapRowToUser(profile));
+          await refreshUsers();
+          return { success: true, profile };
+        }
+      }
+
+      if (!ensured.success) {
+        console.warn("[SYNC_PROFILE_LOCAL_FALLBACK_WARN]", {
+          diagnosticCode: "CLIENT_LOCAL_ENSURE_FAILED",
+          stage: "local-ensure",
+          error: ensured.error,
+        });
       }
 
       if (attempt < 2) {
@@ -246,10 +342,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return {
       success: false,
-      error:
+      error: appendDiagnostic(
         "Profil belum bisa disinkronkan saat ini. Coba lagi beberapa saat, atau hubungi admin jika masalah berlanjut.",
+        "CLIENT_SYNC_ALL_PATHS_FAILED",
+        "final"
+      ),
+      diagnosticCode: "CLIENT_SYNC_ALL_PATHS_FAILED",
+      stage: "final",
     };
-  }, [ensureAppProfileForAuthUser, loadAppUserById, refreshUsers, syncProfileThroughServer]);
+  }, [ensureAppProfileForAuthUser, refreshUsers, syncProfileThroughServer]);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -258,7 +359,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const sessionUserId = data.session?.user?.id;
       if (sessionUserId) {
-        await loadAppUserById(sessionUserId);
+        const synced = await syncProfileNow();
+        if (!synced.success) {
+          setUser(null);
+        }
       }
 
       setIsLoading(false);
@@ -275,14 +379,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      void loadAppUserById(sessionUserId);
+      void syncProfileNow();
       void refreshUsers();
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [refreshUsers, loadAppUserById]);
+  }, [refreshUsers, syncProfileNow]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -303,18 +407,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      const { data, error } = await supabase
-        .from("users")
-        .select("id, name, biro, jabatan, role, email, avatar_url, password_hash, is_active, created_at")
-        .eq("id", authData.user.id)
-        .maybeSingle();
+      if (!synced.profile) {
+        const { data: fallbackProfile } = await supabase
+          .from("users")
+          .select("id, name, biro, jabatan, role, email, avatar_url, password_hash, is_active, created_at")
+          .eq("id", authData.user.id)
+          .maybeSingle();
 
-      if (error || !data) {
-        return { success: false, error: "Profil pengguna belum tersedia di sistem." };
+        if (!fallbackProfile) {
+          return {
+            success: false,
+            error:
+              "Profil akun belum siap sepenuhnya. Coba login ulang 10-20 detik lagi atau klik Sinkronkan Profil Sekarang.",
+          };
+        }
+
+        synced.profile = fallbackProfile as UsersRow;
       }
 
-      const found = mapRowToUser(data as UsersRow);
-      if (!found.is_active) {
+      const found = mapRowToUser(synced.profile);
+      if (!synced.profile.is_active) {
         await supabase.auth.signOut();
         return { success: false, error: "Email atau password salah." };
       }
