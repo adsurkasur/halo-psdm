@@ -5,30 +5,25 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Add credential reset SQL and refactor cross-user operations to secure server routes |
-| Started | 2026-03-13 10:00 |
-| Last Updated | 2026-03-14 09:52 |
-| Session ID | 20260313-2045 |
+| Task | Add report attachment feature end-to-end (form upload, secure API, schema, detail display) |
+| Started | 2026-03-14 10:01 |
+| Last Updated | 2026-03-14 10:04 |
+| Session ID | 20260314-1001 |
 
 ## User Request
 
-> 1. buatkan sql query untuk clear credentials dulu, karena aku udah buat akun yang masih belum pakai auth
-> 2. lanjutkan ke tahap berikutnya: refactor operasi lintas-user ke server route supaya model security-nya benar-benar production-ready end-to-end
-> 3. jelaskan kepadaku apa yang kamu lakukan, buat laporan yang explanatory
->
-> pertanyaan:
-> 1. supabase yang aku pakai ini digunakan untuk beberapa project, apakah set up auth ini aman? jadi kaya satu akun bisa untuk beberapa project yang memakai supabase ini
+> tambahkan fitur memberikan attachment untuk laporan
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
-| Intended Phases | Study → Propose → Implement (if fix needed) |
-| Evidence to Produce | Root-cause evidence from registration code path, Supabase insert/RLS/schema validation notes, clear bootstrap order recommendation |
-| Anticipated Stops | Missing SQL migrations in repo, RLS policies blocking anon/client inserts, UUID-vs-custom-id mismatch in users table |
-| Known Information | Registration now writes directly to Supabase users table from client-side AuthContext. |
-| Unknown Information | Whether current live schema/RLS allows insert from anon key and whether users.id expects UUID instead of custom id format. |
-| Initial Risk Level | Medium - likely config/schema mismatch, but auth/data flows can be blocked app-wide until fixed. |
+| Intended Phases | Study → Propose → Implement |
+| Evidence to Produce | Type/API/schema diffs for attachment metadata, UI upload flow implementation, lint/test/build validation |
+| Anticipated Stops | Missing report attachment columns in existing DB, missing Storage bucket/policies, upload size/type constraints |
+| Known Information | Secure report create route and DataContext already carry attachment metadata fields. |
+| Unknown Information | Whether runtime DB has attachment columns and storage bucket policy already applied. |
+| Initial Risk Level | Medium - end-to-end feature spans client upload, API persistence, DB schema, and storage security policies. |
 
 ## File Context
 
@@ -56,6 +51,11 @@
 | src/contexts/DataContext.tsx | read/edited | Added admin profile add/remove helpers |
 | src/pages/admin/AdminManagement.tsx | edited | Added role column, jabatan labels, add/remove and search UI |
 | src/pages/admin/AdminManagement.tsx | edited | Added role column, jabatan labels, add/remove admin UI and logic |
+| src/views/sender/ReportForm.tsx | edited | Added optional file attachment upload to Supabase Storage and metadata send on submit |
+| src/views/sender/SenderReportDetail.tsx | edited | Added attachment section and open/download action for sender |
+| src/views/admin/ReportDetail.tsx | edited | Added attachment section and open/download action for admin |
+| supabase/bootstrap.sql | edited | Added attachment metadata columns to reports table bootstrap schema |
+| supabase/auth-hardening.sql | edited | Added attachment column migration and storage bucket/policy setup |
 
 ## Workflow History
 
@@ -121,6 +121,12 @@
 - **09:49** - IMPLEMENT - Refactored DataContext cross-user operations to call secure API routes with bearer token
 - **09:51** - IMPLEMENT - Added scoped legacy credential cleanup SQL and updated test mocks for secure API + auth token
 - **09:52** - IMPLEMENT - Revalidated lint, tests, and production build successfully
+- **10:01** - APPROVAL - User requested report attachment feature
+- **10:01** - IMPLEMENT - Started attachment feature integration across schema, secure API, and report UI
+- **10:02** - IMPLEMENT - Added report form attachment upload to Supabase Storage and metadata flow
+- **10:03** - IMPLEMENT - Added sender/admin report detail attachment rendering and open action
+- **10:03** - IMPLEMENT - Extended SQL scripts for attachment columns and storage bucket/policies
+- **10:04** - IMPLEMENT - Revalidated quality gates with `npm run lint`, `npm run test`, and `npm run build` (all passed)
 
 ## Research Evidence
 
@@ -234,6 +240,12 @@
 | src/app/api/secure/chat/messages/route.ts | Created | Server-side chat message create with receiver notification | Yes |
 | src/app/api/secure/appointments/route.ts | Created | Server-side appointment create and target admin notification | Yes |
 | src/contexts/DataContext.tsx | Modified | Route cross-user actions through secure server APIs | Yes |
+| src/data/domain.ts | Modified | Add optional report attachment metadata fields in domain type | Yes |
+| src/views/sender/ReportForm.tsx | Modified | Add optional attachment file picker/upload and include metadata on report creation | Yes |
+| src/views/sender/SenderReportDetail.tsx | Modified | Show sender-facing attachment block with open/download action | Yes |
+| src/views/admin/ReportDetail.tsx | Modified | Show admin-facing attachment block with open/download action | Yes |
+| supabase/bootstrap.sql | Modified | Ensure bootstrap schema includes attachment columns on reports | Yes |
+| supabase/auth-hardening.sql | Modified | Add safe column migration and storage bucket/policies for attachments | Yes |
 
 ## Notes
 

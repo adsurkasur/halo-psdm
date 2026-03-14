@@ -87,6 +87,73 @@ execute function public.handle_auth_user_email_update();
 -- Keep legacy column for compatibility but no longer required for auth.
 alter table public.users alter column password_hash drop not null;
 
+-- Report attachment metadata columns.
+alter table public.reports add column if not exists attachment_url text;
+alter table public.reports add column if not exists attachment_name text;
+alter table public.reports add column if not exists attachment_path text;
+alter table public.reports add column if not exists attachment_mime text;
+alter table public.reports add column if not exists attachment_size bigint;
+
+-- Storage bucket for report attachments.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'report-attachments',
+  'report-attachments',
+  true,
+  10485760,
+  array['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/png', 'image/jpeg', 'image/webp']
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists report_attachments_select_auth on storage.objects;
+create policy report_attachments_select_auth on storage.objects
+for select
+to authenticated
+using (bucket_id = 'report-attachments');
+
+drop policy if exists report_attachments_insert_own on storage.objects;
+create policy report_attachments_insert_own on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'report-attachments'
+  and split_part(name, '/', 1) = auth.uid()::text
+);
+
+drop policy if exists report_attachments_update_owner_or_admin on storage.objects;
+create policy report_attachments_update_owner_or_admin on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'report-attachments'
+  and (
+    split_part(name, '/', 1) = auth.uid()::text
+    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  )
+)
+with check (
+  bucket_id = 'report-attachments'
+  and (
+    split_part(name, '/', 1) = auth.uid()::text
+    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  )
+);
+
+drop policy if exists report_attachments_delete_owner_or_admin on storage.objects;
+create policy report_attachments_delete_owner_or_admin on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'report-attachments'
+  and (
+    split_part(name, '/', 1) = auth.uid()::text
+    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  )
+);
+
 -- Revoke permissive grants/policies from bootstrap.
 revoke select, insert, update, delete on all tables in schema public from anon, authenticated;
 

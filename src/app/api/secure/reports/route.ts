@@ -11,6 +11,11 @@ export async function POST(request: Request) {
     category: string;
     urgency: string;
     kronologi: string;
+    attachment_url?: string | null;
+    attachment_name?: string | null;
+    attachment_path?: string | null;
+    attachment_mime?: string | null;
+    attachment_size?: number | null;
   };
 
   const now = new Date().toISOString();
@@ -23,6 +28,11 @@ export async function POST(request: Request) {
     category: body.category,
     urgency: body.urgency,
     kronologi: body.kronologi,
+    attachment_url: body.attachment_url ?? null,
+    attachment_name: body.attachment_name ?? null,
+    attachment_path: body.attachment_path ?? null,
+    attachment_mime: body.attachment_mime ?? null,
+    attachment_size: body.attachment_size ?? null,
     status: "RECEIVED",
     admin_notes: "",
     created_at: now,

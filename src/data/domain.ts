@@ -63,6 +63,11 @@ export interface Report {
   category: ReportCategory;
   urgency: Urgency;
   kronologi: string;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_path?: string | null;
+  attachment_mime?: string | null;
+  attachment_size?: number | null;
   status: ReportStatus;
   admin_notes: string;
   created_at: string;

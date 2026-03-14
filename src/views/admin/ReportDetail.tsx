@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle } from "lucide-react";
+import { ArrowLeft, Download, MessageCircle, Paperclip } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,6 +64,13 @@ export default function ReportDetail() {
   const linkedChat = chatSessions.find(
     (cs) => cs.report_id === report.id && cs.status === "OPEN"
   );
+
+  const formatAttachmentSize = (size?: number | null) => {
+    if (!size) return "Ukuran tidak diketahui";
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   const handleUpdateStatus = async () => {
     if (!newStatus || newStatus === report.status) return;
@@ -140,6 +147,28 @@ export default function ReportDetail() {
               <p className="text-muted-foreground text-xs mb-1">Kronologi</p>
               <p className="text-sm bg-muted p-3 rounded-lg">{report.kronologi}</p>
             </div>
+
+            {report.attachment_url && (
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Lampiran</p>
+                <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Paperclip className="h-4 w-4 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{report.attachment_name ?? "Lampiran"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {report.attachment_mime ?? "Tipe tidak diketahui"} · {formatAttachmentSize(report.attachment_size)}
+                      </p>
+                    </div>
+                  </div>
+                  <Button asChild variant="outline" size="sm" className="gap-2 shrink-0">
+                    <a href={report.attachment_url} target="_blank" rel="noreferrer">
+                      <Download className="h-4 w-4" /> Buka
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Timeline */}
             <div>

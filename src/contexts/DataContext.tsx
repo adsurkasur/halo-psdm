@@ -26,6 +26,11 @@ interface DataContextType {
     category: ReportCategory;
     urgency: Urgency;
     kronologi: string;
+    attachment_url?: string | null;
+    attachment_name?: string | null;
+    attachment_path?: string | null;
+    attachment_mime?: string | null;
+    attachment_size?: number | null;
   }) => Promise<Report>;
   updateReportStatus: (reportId: string, newStatus: ReportStatus, adminId: string, note?: string) => Promise<void>;
   updateReportUrgency: (reportId: string, newUrgency: Urgency, adminId: string) => Promise<void>;
@@ -256,13 +261,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   const addReport = useCallback(
-    async (data: { user_id: string; category: ReportCategory; urgency: Urgency; kronologi: string }) => {
+    async (data: {
+      user_id: string;
+      category: ReportCategory;
+      urgency: Urgency;
+      kronologi: string;
+      attachment_url?: string | null;
+      attachment_name?: string | null;
+      attachment_path?: string | null;
+      attachment_mime?: string | null;
+      attachment_size?: number | null;
+    }) => {
       const response = await callSecureApi<{ report: Report; historyEntry: ReportStatusHistory }>("/api/secure/reports", {
         method: "POST",
         body: JSON.stringify({
           category: data.category,
           urgency: data.urgency,
           kronologi: data.kronologi,
+          attachment_url: data.attachment_url,
+          attachment_name: data.attachment_name,
+          attachment_path: data.attachment_path,
+          attachment_mime: data.attachment_mime,
+          attachment_size: data.attachment_size,
         }),
       });
 
