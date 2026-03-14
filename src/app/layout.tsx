@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "../index.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://halo-psdm.vercel.app";
@@ -48,7 +49,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Add PH last-sync indicator and optimize realtime/data refresh pipeline for higher efficiency |
+| Task | Install and integrate @vercel/speed-insights into Next.js app |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 21:22 |
+| Last Updated | 2026-03-14 21:39 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -59,6 +59,8 @@
 >
 > 1. tambahkan indikator kecil last sync di ph
 > 2. optimasi lagi hingga sangat efisien
+
+> tolong pasangkan @vercel/speed-insights di sini
 
 ## Execution Plan
 
@@ -163,6 +165,12 @@
 - **21:18** - IMPLEMENT - Finalized targeted realtime refresh batching by changed table and added `lastSyncedAt` state exposure from DataContext
 - **21:20** - IMPLEMENT - Added compact PH dashboard sync indicator (`Sedang sinkron...` / `Sinkron terakhir ...`)
 - **21:22** - IMPLEMENT - Revalidated with Bun (`bun run test`, `bun run build`) and both passed
+- **21:31** - PLAN - User requested installation of Vercel Speed Insights package and app integration
+- **21:31** - STUDY - Started analysis for Next.js integration point and dependency update
+- **21:34** - APPROVAL - User approved with: "proceed"
+- **21:35** - IMPLEMENT - Started package installation and root layout integration for Speed Insights
+- **21:37** - IMPLEMENT - Installed `@vercel/speed-insights@2.0.0` via Bun and mounted `<SpeedInsights />` in root layout
+- **21:39** - IMPLEMENT - Validation passed with `bun run lint` and `bun run build`
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references
