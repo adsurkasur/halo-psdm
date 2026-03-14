@@ -349,20 +349,33 @@ export default function ProfilePage() {
               />
               <div className="space-y-2 w-full">
                 <Input
+                  id="profile-avatar-input"
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={(e) => void handleAvatarFileSelect(e.target.files?.[0] ?? null)}
+                  className="sr-only"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full sm:w-auto gap-2"
-                  onClick={handleUploadAvatar}
-                  disabled={uploadingAvatar}
-                >
-                  {uploadingAvatar ? <Upload className="h-4 w-4 animate-pulse" /> : <Camera className="h-4 w-4" />}
-                  {uploadingAvatar ? "Mengunggah..." : "Perbarui Foto Profil"}
-                </Button>
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+                  <Label
+                    htmlFor="profile-avatar-input"
+                    className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    Choose file
+                  </Label>
+                  <p className="flex-1 truncate rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
+                    {avatarFile?.name ?? "Belum ada file dipilih"}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-auto gap-2 whitespace-nowrap"
+                    onClick={handleUploadAvatar}
+                    disabled={uploadingAvatar}
+                  >
+                    {uploadingAvatar ? <Upload className="h-4 w-4 animate-pulse" /> : <Camera className="h-4 w-4" />}
+                    {uploadingAvatar ? "Mengunggah..." : "Perbarui Foto Profil"}
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground">Format PNG/JPG/WEBP, maksimal 5MB. Crop dan resize otomatis ke ukuran avatar.</p>
               </div>
             </div>

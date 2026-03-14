@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Relaxing phone validation from Indonesia-only (62) to international country-code format support (e.g. +1, +44, +62) |
+| Task | Fixing persistent UI issues: Offline combobox truncation, full-width member picker row, and profile photo input layout |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 15:42 |
+| Last Updated | 2026-03-14 21:54 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -359,6 +359,12 @@
 - **11:58** - VALIDATE - `bun run lint` passed
 - **11:58** - VALIDATE - `bun run test` passed (10/10)
 - **11:59** - VALIDATE - `bun run build` passed
+- **20:58** - STUDY - Investigated Supabase `stack depth limit exceeded` and identified recursive RLS dependency via `current_app_role()` on `public.users`
+- **21:03** - IMPLEMENT - Patched `current_app_role()` to `SECURITY DEFINER` with safe `search_path` and added standalone hotfix script `supabase/fix-rls-stack-depth.sql`
+- **21:51** - IMPLEMENT - Increased admin status combobox width and removed emoji labels to prevent `Offline` truncation in selected value
+- **21:52** - IMPLEMENT - Reworked `Kelola HR/PH` add-row layout so member search input stretches full width while preserving role select and action button spacing
+- **21:53** - IMPLEMENT - Replaced profile photo upload input with compact `Choose file + selected filename + Perbarui Foto Profil` layout
+- **21:54** - VALIDATE - Revalidated with `bun run lint` and `bun run test` (10/10 passed)
 
 ## Current Issues and Resolutions
 

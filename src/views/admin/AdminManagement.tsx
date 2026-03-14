@@ -106,9 +106,9 @@ export default function AdminManagement() {
       {/* add admin form (single searchable bar) */}
       <Card>
         <CardContent className="pt-4 space-y-4">
-          <div className="relative w-full max-w-md">
-            <div className="flex items-center gap-2">
-            <div className="relative flex-1">
+          <div className="w-full">
+            <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
+            <div className="relative min-w-0 flex-1">
               <Input
                 placeholder="Cari atau pilih anggota..."
                 value={addSearch}
@@ -150,7 +150,7 @@ export default function AdminManagement() {
               )}
             </div>
             <Select value={newElevatedRole} onValueChange={(v) => setNewElevatedRole(v as "HR" | "PH") }>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-full lg:w-[160px] shrink-0">
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent>
@@ -159,6 +159,7 @@ export default function AdminManagement() {
               </SelectContent>
             </Select>
             <Button
+              className="w-full lg:w-auto shrink-0 whitespace-nowrap"
               disabled={!newAdminId}
               onClick={async () => {
                 const user = allUsers.find((u) => u.id === newAdminId);
@@ -173,7 +174,7 @@ export default function AdminManagement() {
               Angkat Jadi {newElevatedRole}
             </Button>
           </div>
-        </div>  
+        </div>
         </CardContent>
       </Card>
 

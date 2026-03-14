@@ -234,13 +234,13 @@ export default function AdminChatQueue() {
                 value={adminStatus}
                 onValueChange={(v) => void updateAvailability(user.id, v as AvailabilityStatus)}
               >
-                <SelectTrigger className="w-[176px] min-w-[176px] h-7 text-xs [&>span]:line-clamp-none [&>span]:whitespace-nowrap">
+                <SelectTrigger className="w-[196px] min-w-[196px] h-7 text-xs [&>span]:line-clamp-none [&>span]:whitespace-nowrap">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ONLINE">🟢 Online</SelectItem>
-                  <SelectItem value="AWAY">🟡 Sibuk</SelectItem>
-                  <SelectItem value="OFFLINE">⚫ Offline</SelectItem>
+                  <SelectItem value="ONLINE">Online</SelectItem>
+                  <SelectItem value="AWAY">Sibuk</SelectItem>
+                  <SelectItem value="OFFLINE">Offline</SelectItem>
                 </SelectContent>
               </Select>
             </div>
