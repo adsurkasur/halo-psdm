@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Fixing Vercel deployment to use Bun (not npm) while keeping latest `@vercel/speed-insights` |
+| Task | Updating package metadata (project name and version) in package.json |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 22:02 |
+| Last Updated | 2026-03-14 22:06 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -369,6 +369,7 @@
 - **22:00** - IMPLEMENT - Added `packageManager: bun@1.3.10` and `vercel.json` (`bun install --frozen-lockfile`, `bun run build`) to force Bun pipeline on Vercel
 - **22:01** - IMPLEMENT - Removed `package-lock.json` to prevent npm auto-detection fallback
 - **22:02** - VALIDATE - Verified `bun install --frozen-lockfile` and `bun run build` both succeed
+- **22:06** - IMPLEMENT - Updated package name to `halo-psdm` and bumped version to `1.0.0`
 
 ## Current Issues and Resolutions
 
