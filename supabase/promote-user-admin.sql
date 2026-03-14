@@ -44,45 +44,47 @@ updated_user as (
   from target_user tu
   where u.id = tu.id
   returning u.id, u.name, u.jabatan, u.phone_number, u.role
+),
+upsert_profile as (
+  insert into public.admin_profiles (
+    user_id,
+    id,
+    display_name,
+    jabatan_display,
+    availability_status,
+    wa_number,
+    avatar_url,
+    updated_at
+  )
+  select
+    uu.id,
+    uu.id,
+    uu.name,
+    case uu.jabatan
+      when 'PENGURUS_HARIAN' then 'Pengurus Harian'
+      when 'STAF_AHLI' then 'Staf Ahli'
+      when 'STAF' then 'Staf'
+      when 'ANGGOTA_MUDA' then 'Anggota Muda'
+      else uu.jabatan
+    end,
+    coalesce(ap.availability_status, 'OFFLINE'),
+    coalesce(nullif(uu.phone_number, ''), ''),
+    coalesce(ap.avatar_url, ''),
+    now()
+  from updated_user uu
+  left join public.admin_profiles ap
+    on ap.user_id = uu.id
+  where uu.role in ('HR', 'PH')
+  on conflict (user_id) do update
+  set
+    id = excluded.id,
+    display_name = excluded.display_name,
+    jabatan_display = excluded.jabatan_display,
+    wa_number = excluded.wa_number,
+    avatar_url = excluded.avatar_url,
+    updated_at = now()
+  returning user_id
 )
-insert into public.admin_profiles (
-  user_id,
-  id,
-  display_name,
-  jabatan_display,
-  availability_status,
-  wa_number,
-  avatar_url,
-  updated_at
-)
-select
-  uu.id,
-  uu.id,
-  uu.name,
-  case uu.jabatan
-    when 'PENGURUS_HARIAN' then 'Pengurus Harian'
-    when 'STAF_AHLI' then 'Staf Ahli'
-    when 'STAF' then 'Staf'
-    when 'ANGGOTA_MUDA' then 'Anggota Muda'
-    else uu.jabatan
-  end,
-  coalesce(ap.availability_status, 'OFFLINE'),
-  coalesce(nullif(uu.phone_number, ''), ''),
-  coalesce(ap.avatar_url, ''),
-  now()
-from updated_user uu
-left join public.admin_profiles ap
-  on ap.user_id = uu.id
-where uu.role in ('HR', 'PH')
-on conflict (user_id) do update
-set
-  id = excluded.id,
-  display_name = excluded.display_name,
-  jabatan_display = excluded.jabatan_display,
-  wa_number = excluded.wa_number,
-  avatar_url = excluded.avatar_url,
-  updated_at = now();
-
 delete from public.admin_profiles ap
 using updated_user uu
 where ap.user_id = uu.id
