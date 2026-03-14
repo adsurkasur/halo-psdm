@@ -54,6 +54,19 @@ export default function ChatRoom() {
   }, [user, sessionId, messages.length, markMessagesRead]);
 
   useEffect(() => {
+    if (!user || !sessionId || isClosed) return;
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void markMessagesRead(sessionId, user.id);
+    }, 1500);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isClosed, markMessagesRead, sessionId, user]);
+
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }

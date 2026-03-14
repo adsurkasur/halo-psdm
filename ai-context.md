@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Completed critical live sync and media UX overhaul (realtime fallback, media+text chat bubble, media modal viewer, HR/PH avatar preview coverage, and compression ratio visibility) |
+| Task | Completed fallback cadence tuning, bidirectional read receipts, and wider availability combobox for Offline label readability |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 22:16 |
+| Last Updated | 2026-03-14 22:39 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -78,6 +78,10 @@
 > 6. ketika profile picture itu diklik, maka akan muncul modal yang menampilkan profile picturenya dengan lebih jelas (tampilan lebih besar) (lagi, setelah dicek, ini sudah ada, tinggal yang di list HR/PH)
 > 7. optimasi secara brutal proyek ini
 > 8. tampilkan rasio kompresi juga setelah kompresi
+
+> 1. lanjut tuning interval fallback supaya lebih agresif untuk chat tapi lebih hemat untuk halaman non-chat
+> 2. buat read receipt dua arah (saat ini hanya berlaku untuk sender, PH juga harus ada read receipt nya)
+> 3. buat elemen ini lebih lebar dikit karena "Offline" nya jadi "..."
 
 ## Execution Plan
 
@@ -210,6 +214,12 @@
 - **22:10** - IMPLEMENT - Added persistent compression ratio display in upload previews (report attachment + chat media)
 - **22:12** - IMPLEMENT - Added Supabase SQL helper `supabase/enable-realtime-live.sql` to ensure live tables are published to `supabase_realtime`
 - **22:14** - IMPLEMENT - Validation passed with `bun run lint`, `bun run build`, and `bun run test` (10/10)
+- **22:24** - APPROVAL - User requested immediate follow-up tuning for fallback interval strategy, bidirectional read receipts, and combobox width fix
+- **22:24** - IMPLEMENT - Started targeted patch for DataContext fallback cadence and chat read-receipt reliability
+- **22:34** - IMPLEMENT - Tuned fallback intervals to 1.2s on chat routes, 10s on report/admin non-chat routes, and 20s notifications on other pages
+- **22:36** - IMPLEMENT - Added periodic visible-session mark-as-read loops for sender and PH chat screens to strengthen bidirectional read receipts
+- **22:36** - IMPLEMENT - Widened admin availability combobox trigger to `w-[148px]` to prevent `Offline` truncation
+- **22:39** - IMPLEMENT - Validation passed with `bun run lint`, `bun run build`, and `bun run test` (10/10)
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references

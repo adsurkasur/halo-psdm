@@ -546,29 +546,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     const shouldSyncNow = () => document.visibilityState === "visible";
+    const isChatRoute = (path: string) => path.includes("/chat") || path.includes("/admin/chat");
+    const isReportRoute = (path: string) => path.includes("/laporan") || path.includes("/admin");
 
     const chatInterval = window.setInterval(() => {
       if (!shouldSyncNow()) return;
 
       const path = window.location.pathname;
-      if (path.includes("/chat")) {
-        void refreshByTablesBackground(new Set(["chat_sessions", "chat_messages"]));
+      if (isChatRoute(path)) {
+        void refreshByTablesBackground(new Set(["chat_sessions", "chat_messages", "notifications"]));
       }
-    }, 2500);
+    }, 1200);
 
     const reportInterval = window.setInterval(() => {
       if (!shouldSyncNow()) return;
 
       const path = window.location.pathname;
-      if (path.includes("/laporan") || path.includes("/admin")) {
-        void refreshByTablesBackground(new Set(["reports", "report_status_history", "appointments", "admin_profiles"]));
+      if (!isChatRoute(path) && isReportRoute(path)) {
+        void refreshByTablesBackground(new Set(["reports", "report_status_history", "appointments", "admin_profiles", "notifications"]));
       }
-    }, 6000);
+    }, 10000);
 
     const notificationInterval = window.setInterval(() => {
       if (!shouldSyncNow()) return;
-      void refreshByTablesBackground(new Set(["notifications"]));
-    }, 9000);
+
+      const path = window.location.pathname;
+      if (!isChatRoute(path) && !isReportRoute(path)) {
+        void refreshByTablesBackground(new Set(["notifications"]));
+      }
+    }, 20000);
 
     return () => {
       window.clearInterval(chatInterval);

@@ -68,6 +68,19 @@ export default function AdminChatQueue() {
     }
   }, [selectedSession, sessionMessages.length, user, markMessagesRead]);
 
+  useEffect(() => {
+    if (!selectedSession || !user) return;
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void markMessagesRead(selectedSession.id, user.id);
+    }, 1500);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [markMessagesRead, selectedSession, user]);
+
   // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
@@ -221,7 +234,7 @@ export default function AdminChatQueue() {
                 value={adminStatus}
                 onValueChange={(v) => void updateAvailability(user.id, v as AvailabilityStatus)}
               >
-                <SelectTrigger className="w-[132px] min-w-[132px] h-7 text-xs">
+                <SelectTrigger className="w-[148px] min-w-[148px] h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
