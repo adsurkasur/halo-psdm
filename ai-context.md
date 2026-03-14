@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Install and integrate @vercel/speed-insights into Next.js app |
+| Task | Implement client-side image compression before upload and transformed image delivery for Supabase public media |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 21:39 |
+| Last Updated | 2026-03-14 22:11 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -61,6 +61,14 @@
 > 2. optimasi lagi hingga sangat efisien
 
 > tolong pasangkan @vercel/speed-insights di sini
+
+> sekarang ke visual, tolong pastikan seluruh transition diaplikasikan secara merata. unify seluruh animation system, duration, type, dan lainnya.
+>
+> kemudian buat elemen ini jadi lebih lebar karena di tulisan "Offline" dia jadi "..."
+
+> frontendku pakai vercel, backendku supabase hanya untuk database dan auth. pilihkan opsi terbaik yang kompatibel untuk kompresi
+
+> iya tolong buatkan sistem itu
 
 ## Execution Plan
 
@@ -171,6 +179,19 @@
 - **21:35** - IMPLEMENT - Started package installation and root layout integration for Speed Insights
 - **21:37** - IMPLEMENT - Installed `@vercel/speed-insights@2.0.0` via Bun and mounted `<SpeedInsights />` in root layout
 - **21:39** - IMPLEMENT - Validation passed with `bun run lint` and `bun run build`
+- **21:45** - PLAN - User requested global animation/transition unification and wider admin status combobox trigger
+- **21:47** - APPROVAL - User approved with: "approve"
+- **21:49** - IMPLEMENT - Started global motion tokenization, transition normalization, and admin chat queue width fix
+- **21:52** - IMPLEMENT - Completed global motion token setup and transition normalization in `src/index.css`
+- **21:52** - IMPLEMENT - Widened admin availability select trigger to avoid truncating "Offline"
+- **21:53** - IMPLEMENT - Validation passed with `bun run lint` and `bun run build`
+- **21:56** - PLAN - User requested best compression approach for Vercel frontend + Supabase DB/Auth architecture
+- **21:59** - APPROVAL - User approved implementation with: "iya tolong buatkan sistem itu"
+- **22:01** - IMPLEMENT - Installed `browser-image-compression` and added reusable client compression helper
+- **22:03** - IMPLEMENT - Integrated upload compression into report attachment and chat media flows with safe fallback
+- **22:05** - IMPLEMENT - Added Supabase transformed image URL helper and applied to avatar/chat/report image rendering
+- **22:08** - IMPLEMENT - Revalidated with `bun run lint` and `bun run build` (passed)
+- **22:11** - IMPLEMENT - Test suite passed with `bun run test` (10/10)
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references

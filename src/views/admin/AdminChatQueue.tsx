@@ -97,7 +97,7 @@ export default function AdminChatQueue() {
                 value={adminStatus}
                 onValueChange={(v) => void updateAvailability(user.id, v as AvailabilityStatus)}
               >
-                <SelectTrigger className="w-[100px] h-7 text-xs">
+                <SelectTrigger className="w-[132px] min-w-[132px] h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

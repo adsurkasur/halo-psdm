@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getTransformedPublicImageUrl } from "@/lib/supabase-storage";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +38,17 @@ export function UserAvatarWithPreview({
 
   const avatar = (
     <Avatar className={sizeClassName}>
-      {avatarUrl ? <AvatarImage src={avatarUrl} alt={name} /> : null}
+      {avatarUrl ? (
+        <AvatarImage
+          src={getTransformedPublicImageUrl(avatarUrl, {
+            width: 160,
+            height: 160,
+            quality: 74,
+            resize: "cover",
+          })}
+          alt={name}
+        />
+      ) : null}
       <AvatarFallback className={fallbackClassName}>{initials}</AvatarFallback>
     </Avatar>
   );
@@ -57,7 +68,15 @@ export function UserAvatarWithPreview({
           <DialogDescription>{name}</DialogDescription>
         </DialogHeader>
         <div className="rounded-lg overflow-hidden border bg-muted/30">
-          <img src={avatarUrl} alt={name} className="w-full h-auto max-h-[70vh] object-contain" />
+          <img
+            src={getTransformedPublicImageUrl(avatarUrl, {
+              width: 1440,
+              quality: 84,
+              resize: "contain",
+            })}
+            alt={name}
+            className="w-full h-auto max-h-[70vh] object-contain"
+          />
         </div>
       </DialogContent>
     </Dialog>

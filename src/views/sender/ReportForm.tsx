@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { supabase } from "@/lib/supabase/client";
+import { compressImageForUpload, isCompressibleImage } from "@/lib/upload-compression";
 import { CATEGORY_LABELS, BIRO_LABELS, JABATAN_LABELS, type ReportCategory, type Urgency } from "@/data/domain";
 
 const categories = Object.entries(CATEGORY_LABELS) as [ReportCategory, string][];
@@ -59,17 +60,37 @@ export default function ReportForm({
       return;
     }
 
-    if (attachment && attachment.size > MAX_ATTACHMENT_SIZE) {
-      toast({
-        title: "Peringatan",
-        description: "Ukuran attachment maksimal 10MB.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setSubmitting(true);
+
+      let uploadAttachment = attachment;
+      if (uploadAttachment && isCompressibleImage(uploadAttachment)) {
+        try {
+          const optimized = await compressImageForUpload(uploadAttachment, "attachment");
+          uploadAttachment = optimized.file;
+
+          if (optimized.compressed) {
+            toast({
+              title: "Lampiran gambar dioptimalkan",
+              description: `${formatBytes(optimized.originalSize)} -> ${formatBytes(optimized.compressedSize)}`,
+            });
+          }
+        } catch {
+          toast({
+            title: "Kompresi gambar dilewati",
+            description: "File asli tetap digunakan untuk menjaga proses upload tetap berjalan.",
+          });
+        }
+      }
+
+      if (uploadAttachment && uploadAttachment.size > MAX_ATTACHMENT_SIZE) {
+        toast({
+          title: "Peringatan",
+          description: "Ukuran attachment maksimal 10MB.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       let attachmentPayload:
         | {
@@ -81,7 +102,7 @@ export default function ReportForm({
           }
         | undefined;
 
-      if (attachment) {
+      if (uploadAttachment) {
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData.session?.access_token;
         if (!accessToken) {
@@ -89,7 +110,7 @@ export default function ReportForm({
         }
 
         const formData = new FormData();
-        formData.append("attachment", attachment);
+        formData.append("attachment", uploadAttachment);
 
         const response = await fetch("/api/secure/reports/attachments", {
           method: "POST",
@@ -114,10 +135,10 @@ export default function ReportForm({
 
         attachmentPayload = {
           attachment_url: payload.attachment_url,
-          attachment_name: payload.attachment_name ?? attachment.name,
+          attachment_name: payload.attachment_name ?? uploadAttachment.name,
           attachment_path: payload.attachment_path,
-          attachment_mime: payload.attachment_mime ?? attachment.type ?? "application/octet-stream",
-          attachment_size: payload.attachment_size ?? attachment.size,
+          attachment_mime: payload.attachment_mime ?? uploadAttachment.type ?? "application/octet-stream",
+          attachment_size: payload.attachment_size ?? uploadAttachment.size,
         };
       }
 

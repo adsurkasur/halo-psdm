@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
+import { getTransformedPublicImageUrl, isImageResource } from "@/lib/supabase-storage";
 import { CATEGORY_LABELS, STATUS_LABELS, BIRO_LABELS } from "@/data/domain";
 
 export default function SenderReportDetail() {
@@ -34,6 +35,7 @@ export default function SenderReportDetail() {
   const linkedChat = chatSessions.find(
     (cs) => cs.report_id === report.id && cs.status === "OPEN"
   );
+  const isImageAttachment = isImageResource(report.attachment_mime, report.attachment_name, report.attachment_url);
 
   const senderUser = allUsers.find((u) => u.id === report.user_id);
   const formatAttachmentSize = (size?: number | null) => {
@@ -102,6 +104,20 @@ export default function SenderReportDetail() {
                   </a>
                 </Button>
               </div>
+              {isImageAttachment && (
+                <div className="mt-2 rounded-md border bg-card p-2">
+                  <img
+                    src={getTransformedPublicImageUrl(report.attachment_url, {
+                      width: 1360,
+                      quality: 80,
+                      resize: "contain",
+                    })}
+                    alt={report.attachment_name ?? "Lampiran gambar"}
+                    className="w-full max-h-[360px] rounded object-contain"
+                    loading="lazy"
+                  />
+                </div>
+              )}
             </div>
           )}
 

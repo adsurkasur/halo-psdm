@@ -36,6 +36,13 @@
 
     --radius: 0.75rem;
 
+    /* Motion tokens */
+    --motion-duration-fast: 180ms;
+    --motion-duration-base: 240ms;
+    --motion-duration-slow: 320ms;
+    --motion-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
+
     /* Custom tokens */
     --urgency-high: 0 72% 51%;
     --urgency-medium: 45 100% 50%;
@@ -108,6 +115,35 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "cv11", "ss01";
   }
+
+  :where(
+    .transition,
+    .transition-all,
+    .transition-colors,
+    .transition-opacity,
+    .transition-shadow,
+    .transition-transform
+  ) {
+    transition-duration: var(--motion-duration-base) !important;
+    transition-timing-function: var(--motion-ease-standard) !important;
+  }
+
+  :where(
+    .duration-75,
+    .duration-100,
+    .duration-150,
+    .duration-200,
+    .duration-300,
+    .duration-500,
+    .duration-700,
+    .duration-1000
+  ) {
+    transition-duration: var(--motion-duration-base) !important;
+  }
+
+  :where(.ease-linear, .ease-in, .ease-out, .ease-in-out) {
+    transition-timing-function: var(--motion-ease-standard) !important;
+  }
 }
 
 @layer utilities {
@@ -125,7 +161,7 @@
 
 /* Fade-in base */
 .animate-fade-in {
-  animation: fadeIn 0.4s ease-out both;
+  animation: fadeIn var(--motion-duration-base) var(--motion-ease-standard) both;
 }
 
 @keyframes fadeIn {
@@ -141,7 +177,7 @@
 
 /* Slide-up for cards and content blocks */
 .animate-slide-up {
-  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slideUp var(--motion-duration-slow) var(--motion-ease-standard) both;
 }
 
 @keyframes slideUp {
@@ -157,7 +193,7 @@
 
 /* Scale-in for cards/modals */
 .animate-scale-in {
-  animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: scaleIn var(--motion-duration-base) var(--motion-ease-standard) both;
 }
 
 @keyframes scaleIn {
@@ -173,7 +209,7 @@
 
 /* Stagger helper — use with nth-child */
 .stagger-children > * {
-  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slideUp var(--motion-duration-slow) var(--motion-ease-standard) both;
 }
 .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
 .stagger-children > *:nth-child(2) { animation-delay: 60ms; }
@@ -186,7 +222,7 @@
 
 /* Pulse glow for status indicators */
 .animate-pulse-glow {
-  animation: pulseGlow 2s ease-in-out infinite;
+  animation: pulseGlow 2s var(--motion-ease-standard) infinite;
 }
 
 @keyframes pulseGlow {
@@ -196,10 +232,10 @@
 
 /* Chat bubble entrance */
 .animate-chat-in-left {
-  animation: chatInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: chatInLeft var(--motion-duration-base) var(--motion-ease-standard) both;
 }
 .animate-chat-in-right {
-  animation: chatInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: chatInRight var(--motion-duration-base) var(--motion-ease-standard) both;
 }
 
 @keyframes chatInLeft {
@@ -226,7 +262,7 @@
 
 /* Shake for errors */
 .animate-shake {
-  animation: shake 0.5s ease-in-out;
+  animation: shake var(--motion-duration-slow) var(--motion-ease-standard);
 }
 
 @keyframes shake {
@@ -237,7 +273,7 @@
 
 /* Smooth hover lift for cards */
 .hover-lift {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
 }
 .hover-lift:hover {
   transform: translateY(-2px);
@@ -246,7 +282,7 @@
 
 /* Badge bounce */
 .animate-badge-pop {
-  animation: badgePop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: badgePop var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 @keyframes badgePop {
@@ -269,7 +305,7 @@
 
 /* Page transition */
 .page-enter {
-  animation: pageEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: pageEnter var(--motion-duration-base) var(--motion-ease-standard) both;
 }
 
 @keyframes pageEnter {
@@ -285,10 +321,21 @@
 
 /* Float animation for decorative elements */
 .animate-float {
-  animation: float 3s ease-in-out infinite;
+  animation: float 3s var(--motion-ease-emphasis) infinite;
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }

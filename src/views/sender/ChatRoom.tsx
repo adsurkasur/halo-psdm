@@ -11,7 +11,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
+import { compressImageForUpload, isCompressibleImage } from "@/lib/upload-compression";
+import { getTransformedPublicImageUrl } from "@/lib/supabase-storage";
 import { AVAILABILITY_LABELS, type ChatMessageType } from "@/data/domain";
+
+const MAX_MEDIA_SIZE = 10 * 1024 * 1024;
 
 export default function ChatRoom() {
   const { sessionId } = useParams();
@@ -126,9 +130,44 @@ export default function ChatRoom() {
     setInput("");
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    let file = selectedFile;
+    if (isCompressibleImage(file)) {
+      try {
+        const optimized = await compressImageForUpload(file, "chat");
+        file = optimized.file;
+
+        if (optimized.compressed) {
+          toast({
+            title: "Media gambar dioptimalkan",
+            description: `${formatBytes(optimized.originalSize)} -> ${formatBytes(optimized.compressedSize)}`,
+          });
+        }
+      } catch {
+        toast({
+          title: "Kompresi media dilewati",
+          description: "File asli tetap digunakan agar pengiriman tetap berjalan.",
+        });
+      }
+    }
+
+    if (file.size > MAX_MEDIA_SIZE) {
+      toast({
+        title: "Ukuran file maksimal 10MB.",
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
 
     const isImage = file.type.startsWith("image/");
     const url = URL.createObjectURL(file);
@@ -205,7 +244,11 @@ export default function ChatRoom() {
                     {msg.type === "IMAGE" && msg.media_url && (
                       <div className="mb-2">
                         <img
-                          src={msg.media_url}
+                          src={getTransformedPublicImageUrl(msg.media_url, {
+                            width: 1080,
+                            quality: 76,
+                            resize: "contain",
+                          })}
                           alt={msg.media_name ?? "Image"}
                           className="rounded-lg max-w-full max-h-60 object-cover cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => window.open(msg.media_url, "_blank")}
