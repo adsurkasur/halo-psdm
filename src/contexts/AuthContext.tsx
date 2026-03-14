@@ -5,8 +5,11 @@ import {
   type UserRole,
   type BiroBidang,
   type Jabatan,
+  type ThemePreference,
+  JABATAN_LABELS,
 } from "@/data/domain";
 import { supabase } from "@/lib/supabase/client";
+import { isValidPhone62, normalizePhoneTo62 } from "@/lib/phone";
 
 type UsersRow = {
   id: string;
@@ -17,6 +20,7 @@ type UsersRow = {
   email: string;
   phone_number?: string | null;
   avatar_url?: string | null;
+  theme_preference?: ThemePreference | null;
   password_hash?: string | null;
   is_active: boolean;
   created_at: string;
@@ -32,6 +36,7 @@ function mapRowToUser(row: UsersRow): User {
     email: row.email,
     phone_number: row.phone_number,
     avatar_url: row.avatar_url,
+    theme_preference: row.theme_preference,
     password: row.password_hash ?? undefined,
     is_active: row.is_active,
     created_at: row.created_at,
@@ -43,8 +48,8 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isSender: boolean;
-  isAdmin: boolean;
-  isSuperAdmin: boolean;
+  isHr: boolean;
+  isPh: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: {
     name: string;
@@ -58,7 +63,7 @@ interface AuthContextType {
   allUsers: User[];
   refreshUsers: () => Promise<void>;
   syncProfileNow: () => Promise<{ success: boolean; error?: string; profile?: User }>;
-  updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "phone_number">>) => Promise<{ success: boolean; error?: string; message?: string }>;
+  updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "phone_number" | "theme_preference">>) => Promise<{ success: boolean; error?: string; message?: string }>;
   changeUserRole: (userId: string, newRole: UserRole) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -124,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: existingProfile, error: existingProfileError } = await supabase
       .from("users")
-      .select("id, name, email, biro, jabatan, phone_number, avatar_url")
+      .select("id, name, email, biro, jabatan, phone_number, avatar_url, theme_preference")
       .eq("id", authUser.id)
       .maybeSingle();
 
@@ -138,9 +143,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: authUser.email ?? (existingProfile as UsersRow).email,
         biro: metadataBiro ?? (existingProfile as UsersRow).biro,
         jabatan: metadataJabatan ?? (existingProfile as UsersRow).jabatan,
+        theme_preference:
+          metadata.theme_preference === "dark" || metadata.theme_preference === "light"
+            ? metadata.theme_preference
+            : (existingProfile as UsersRow).theme_preference ?? "light",
         phone_number:
           typeof metadata.phone_number === "string"
-            ? metadata.phone_number
+            ? normalizePhoneTo62(metadata.phone_number)
             : (existingProfile as UsersRow).phone_number ?? null,
       };
 
@@ -159,10 +168,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: authUser.id,
       name: metadataName ?? defaultName,
       email: authUser.email ?? "",
-      phone_number: typeof metadata.phone_number === "string" ? metadata.phone_number : null,
+      phone_number: typeof metadata.phone_number === "string" ? normalizePhoneTo62(metadata.phone_number) : null,
       biro: metadataBiro ?? "INFOKOM",
       jabatan: metadataJabatan ?? "ANGGOTA_MUDA",
       role: "SENDER",
+      theme_preference: metadata.theme_preference === "dark" ? "dark" : "light",
       is_active: true,
       created_at: createdAt,
     });
@@ -178,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const readProfile = async () =>
       supabase
       .from("users")
-      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, password_hash, is_active, created_at")
+      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, password_hash, is_active, created_at")
       .eq("id", userId)
       .maybeSingle();
 
@@ -205,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUsers = useCallback(async () => {
     const { data, error } = await supabase
       .from("users")
-      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, password_hash, is_active, created_at")
+      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, password_hash, is_active, created_at")
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -319,7 +329,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (ensured.success) {
         const { data, error } = await supabase
           .from("users")
-          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, password_hash, is_active, created_at")
+          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, password_hash, is_active, created_at")
           .eq("id", authUserData.user.id)
           .maybeSingle();
 
@@ -418,7 +428,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!synced.profile) {
         const { data: fallbackProfile } = await supabase
           .from("users")
-          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, password_hash, is_active, created_at")
+          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, password_hash, is_active, created_at")
           .eq("id", authData.user.id)
           .maybeSingle();
 
@@ -457,6 +467,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Password minimal 6 karakter." };
       }
 
+      const normalizedPhone = normalizePhoneTo62(data.phone_number);
+      if (!isValidPhone62(normalizedPhone)) {
+        return { success: false, error: "Nomor HP wajib berformat 62xxxxxxxxxx." };
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -465,7 +480,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: data.name,
             biro: data.biro,
             jabatan: data.jabatan,
-            phone_number: data.phone_number,
+            phone_number: normalizedPhone,
           },
         },
       });
@@ -523,15 +538,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile = useCallback(
-    async (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "phone_number">>) => {
+    async (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "phone_number" | "theme_preference">>) => {
       if (!user) return { success: false, error: "User tidak ditemukan." };
+
+      const normalizedPhone =
+        typeof updates.phone_number !== "undefined"
+          ? normalizePhoneTo62(updates.phone_number ?? "")
+          : undefined;
+
+      if (typeof normalizedPhone !== "undefined" && !isValidPhone62(normalizedPhone)) {
+        return { success: false, error: "Nomor HP wajib berformat 62xxxxxxxxxx." };
+      }
 
       const updatePayload: Record<string, unknown> = {};
       if (typeof updates.name !== "undefined") updatePayload.name = updates.name;
       if (typeof updates.biro !== "undefined") updatePayload.biro = updates.biro;
       if (typeof updates.jabatan !== "undefined") updatePayload.jabatan = updates.jabatan;
       if (typeof updates.avatar_url !== "undefined") updatePayload.avatar_url = updates.avatar_url;
-      if (typeof updates.phone_number !== "undefined") updatePayload.phone_number = updates.phone_number;
+      if (typeof normalizedPhone !== "undefined") updatePayload.phone_number = normalizedPhone;
+      if (typeof updates.theme_preference !== "undefined") updatePayload.theme_preference = updates.theme_preference;
 
       let emailChangeMessage: string | undefined;
 
@@ -559,14 +584,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Gagal memperbarui profil." };
       }
 
-      if ((user.role === "ADMIN" || user.role === "SUPER_ADMIN") && typeof updates.phone_number !== "undefined") {
-        await supabase
+      if (user.role === "HR" || user.role === "PH") {
+        const { data: existingAdminProfile } = await supabase
           .from("admin_profiles")
-          .update({ wa_number: updates.phone_number ?? "" })
-          .or(`id.eq.${user.id},user_id.eq.${user.id}`);
+          .select("availability_status")
+          .or(`id.eq.${user.id},user_id.eq.${user.id}`)
+          .maybeSingle();
+
+        const mergedName =
+          typeof updates.name !== "undefined" ? updates.name : user.name;
+        const mergedJabatan =
+          typeof updates.jabatan !== "undefined" ? updates.jabatan : user.jabatan;
+        const mergedAvatar =
+          typeof updates.avatar_url !== "undefined"
+            ? updates.avatar_url ?? ""
+            : user.avatar_url ?? "";
+
+        await supabase.from("admin_profiles").upsert({
+          id: user.id,
+          user_id: user.id,
+          display_name: mergedName,
+          jabatan_display: JABATAN_LABELS[mergedJabatan],
+          availability_status: existingAdminProfile?.availability_status ?? "OFFLINE",
+          wa_number: normalizedPhone ?? normalizePhoneTo62(user.phone_number ?? ""),
+          avatar_url: mergedAvatar,
+        });
       }
 
-      const updated: User = { ...user, ...updates };
+      const updated: User = {
+        ...user,
+        ...updates,
+        ...(typeof normalizedPhone !== "undefined" ? { phone_number: normalizedPhone } : {}),
+      };
       setUser(updated);
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
 
@@ -583,9 +632,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
-        isSender: role === "SENDER",
-        isAdmin: role === "ADMIN" || role === "SUPER_ADMIN",
-        isSuperAdmin: role === "SUPER_ADMIN",
+        isSender: role === "SENDER" || role === "HR",
+        isHr: role === "HR",
+        isPh: role === "PH",
         login,
         register,
         logout,

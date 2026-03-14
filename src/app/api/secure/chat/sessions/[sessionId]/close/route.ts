@@ -9,7 +9,7 @@ export async function POST(
   const auth = await requireAuthContext(request);
   if ("error" in auth) return auth.error;
 
-  if (auth.context.appUser.role !== "ADMIN" && auth.context.appUser.role !== "SUPER_ADMIN") {
+  if (auth.context.appUser.role !== "PH") {
     return forbidden();
   }
 
@@ -36,7 +36,7 @@ export async function POST(
     type: "SESSION_CLOSED",
     payload: {
       title: "Sesi Chat Ditutup",
-      message: "Admin telah menutup sesi chat Anda",
+      message: "PH telah menutup sesi chat Anda",
       link: "/chat",
     },
     is_read: false,

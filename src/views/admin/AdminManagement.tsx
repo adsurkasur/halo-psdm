@@ -12,22 +12,95 @@ import {
   type UserRole,
 } from "@/data/domain";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { isValidPhone62, normalizePhoneTo62 } from "@/lib/phone";
 
 export default function AdminManagement() {
-  const { adminProfiles, updateAvailability, addAdminProfile, removeAdminProfile } = useData();
-  const { allUsers, changeUserRole } = useAuth();
+  const { adminProfiles, addAdminProfile, removeAdminProfile } = useData();
+  const { user, allUsers, changeUserRole } = useAuth();
+  const { toast } = useToast();
 
   const [newAdminId, setNewAdminId] = useState<string>("");
   const [search, setSearch] = useState("");
   const [addSearch, setAddSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
 
+  const ensureDirectoryProfile = async (target: {
+    id: string;
+    name: string;
+    jabatan: keyof typeof JABATAN_LABELS;
+    phone_number?: string | null;
+    avatar_url?: string | null;
+  }) => {
+    const normalizedPhone = normalizePhoneTo62(target.phone_number ?? "");
+    if (!isValidPhone62(normalizedPhone)) {
+      toast({
+        title: "Nomor HP belum valid",
+        description: "Isi nomor HP profil dengan format 62xxxxxxxxxx terlebih dahulu.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    await addAdminProfile({
+      user_id: target.id,
+      display_name: target.name,
+      jabatan_display: JABATAN_LABELS[target.jabatan],
+      availability_status: adminProfiles.find((p) => p.user_id === target.id)?.availability_status ?? "OFFLINE",
+      wa_number: normalizedPhone,
+      avatar_url: target.avatar_url ?? "",
+    });
+    return true;
+  };
+
   return (
     <div className="space-y-4 animate-fade-in">
-      <h1 className="text-xl font-bold">Kelola Admin</h1>
+      <h1 className="text-xl font-bold">Kelola HR</h1>
       <p className="text-sm text-muted-foreground">
-        Kelola profil dan ketersediaan admin PSDM. Hanya Super Admin yang dapat mengakses halaman ini.
+        Kelola profil dan ketersediaan penerima janji temu PSDM (HR/PH). Hanya PH yang dapat mengakses halaman ini.
       </p>
+
+      {user?.role === "PH" && (
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="font-medium">Status Saya di Daftar Janji Temu</p>
+                <p className="text-sm text-muted-foreground">
+                  PH memiliki hak HR untuk dicantumkan sebagai penerima janji temu.
+                </p>
+              </div>
+              <Button
+                variant={adminProfiles.some((p) => p.user_id === user.id) ? "outline" : "default"}
+                onClick={async () => {
+                  const exists = adminProfiles.some((p) => p.user_id === user.id);
+                  if (exists) {
+                    await removeAdminProfile(user.id);
+                    toast({ title: "Anda dikeluarkan dari daftar janji temu." });
+                    return;
+                  }
+
+                  const added = await ensureDirectoryProfile({
+                    id: user.id,
+                    name: user.name,
+                    jabatan: user.jabatan,
+                    phone_number: user.phone_number,
+                    avatar_url: user.avatar_url,
+                  });
+
+                  if (added) {
+                    toast({ title: "Anda berhasil dicantumkan ke daftar janji temu." });
+                  }
+                }}
+              >
+                {adminProfiles.some((p) => p.user_id === user.id)
+                  ? "Keluarkan Saya dari Daftar"
+                  : "Cantumkan Saya di Daftar"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* add admin form (single searchable bar) */}
       <Card>
@@ -36,7 +109,7 @@ export default function AdminManagement() {
             <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Input
-                placeholder="Cari atau pilih pengirim..."
+                placeholder="Cari atau pilih anggota..."
                 value={addSearch}
                 onChange={(e) => {
                   setAddSearch(e.target.value);
@@ -51,7 +124,7 @@ export default function AdminManagement() {
                   {allUsers
                     .filter(
                       (u) =>
-                        u.role === "SENDER" &&
+                        u.role !== "HR" &&
                         (u.name.toLowerCase().includes(addSearch.toLowerCase()) ||
                           u.email.toLowerCase().includes(addSearch.toLowerCase()))
                     )
@@ -67,9 +140,9 @@ export default function AdminManagement() {
                         {u.name} ({u.email})
                       </div>
                     ))}
-                  {allUsers.filter((u) => u.role === "SENDER").length === 0 && (
+                  {allUsers.filter((u) => u.role !== "HR").length === 0 && (
                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                      Tidak ada pengirim
+                      Tidak ada kandidat
                     </div>
                   )}
                 </div>
@@ -80,21 +153,14 @@ export default function AdminManagement() {
               onClick={async () => {
                 const user = allUsers.find((u) => u.id === newAdminId);
                 if (user) {
-                  await changeUserRole(user.id, "ADMIN");
-                  await addAdminProfile({
-                    user_id: user.id,
-                    display_name: user.name,
-                    jabatan_display: JABATAN_LABELS[user.jabatan],
-                    availability_status: "OFFLINE",
-                    wa_number: "",
-                    avatar_url: "",
-                  });
+                  await changeUserRole(user.id, "HR");
+                  await ensureDirectoryProfile(user);
                   setNewAdminId("");
                   setAddSearch("");
                 }
               }}
             >
-              Tambah Admin
+              Angkat Jadi HR
             </Button>
           </div>
         </div>  
@@ -118,7 +184,7 @@ export default function AdminManagement() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Admin</TableHead>
+                <TableHead>HR</TableHead>
                 <TableHead>Jabatan</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>No. WhatsApp</TableHead>
@@ -179,19 +245,7 @@ export default function AdminManagement() {
                             if (newRole === "SENDER") {
                               await removeAdminProfile(adminUser.id);
                             } else {
-                              // ensure profile exists
-                              if (
-                                !adminProfiles.find((p) => p.user_id === adminUser.id)
-                              ) {
-                                await addAdminProfile({
-                                  user_id: adminUser.id,
-                                  display_name: adminUser.name,
-                                  jabatan_display: JABATAN_LABELS[adminUser.jabatan],
-                                  availability_status: "OFFLINE",
-                                  wa_number: "",
-                                  avatar_url: "",
-                                });
-                              }
+                              await ensureDirectoryProfile(adminUser);
                             }
                           }}
                         >
@@ -200,16 +254,16 @@ export default function AdminManagement() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="SENDER">Sender</SelectItem>
-                            <SelectItem value="ADMIN">Admin</SelectItem>
-                            <SelectItem value="SUPER_ADMIN">
-                              Super Admin
+                            <SelectItem value="HR">HR</SelectItem>
+                            <SelectItem value="PH">
+                              PH
                             </SelectItem>
                           </SelectContent>
                         </Select>
                       )}
                     </TableCell>
                     <TableCell className="text-sm font-mono">
-                      +{profile.wa_number}
+                      +{normalizePhoneTo62(profile.wa_number)}
                     </TableCell>
                     <TableCell className="text-sm flex items-center gap-1">
                       {profile.availability_status === "ONLINE" ? "🟢" : profile.availability_status === "AWAY" ? "🟡" : "⚫"}

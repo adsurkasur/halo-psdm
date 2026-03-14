@@ -93,6 +93,14 @@ execute function public.handle_auth_user_email_update();
 alter table public.users alter column password_hash drop not null;
 alter table public.users add column if not exists avatar_url text;
 alter table public.users add column if not exists phone_number text;
+alter table public.users add column if not exists theme_preference text;
+update public.users
+set theme_preference = 'light'
+where theme_preference is null or theme_preference not in ('light', 'dark');
+alter table public.users alter column theme_preference set default 'light';
+alter table public.users alter column theme_preference set not null;
+alter table public.users drop constraint if exists users_theme_preference_check;
+alter table public.users add constraint users_theme_preference_check check (theme_preference in ('light', 'dark'));
 
 -- Report attachment metadata columns.
 alter table public.reports add column if not exists attachment_url text;
@@ -138,14 +146,14 @@ using (
   bucket_id = 'report-attachments'
   and (
     split_part(name, '/', 1) = auth.uid()::text
-    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+    or public.current_app_role() in ('PH')
   )
 )
 with check (
   bucket_id = 'report-attachments'
   and (
     split_part(name, '/', 1) = auth.uid()::text
-    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+    or public.current_app_role() in ('PH')
   )
 );
 
@@ -157,7 +165,7 @@ using (
   bucket_id = 'report-attachments'
   and (
     split_part(name, '/', 1) = auth.uid()::text
-    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+    or public.current_app_role() in ('PH')
   )
 );
 
@@ -211,7 +219,7 @@ using (
   bucket_id = 'profile-pictures'
   and (
     split_part(name, '/', 1) = auth.uid()::text
-    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+    or public.current_app_role() in ('PH')
   )
 );
 
@@ -252,14 +260,14 @@ using (
   bucket_id = 'chat-media'
   and (
     split_part(name, '/', 1) = auth.uid()::text
-    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+    or public.current_app_role() in ('PH')
   )
 )
 with check (
   bucket_id = 'chat-media'
   and (
     split_part(name, '/', 1) = auth.uid()::text
-    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+    or public.current_app_role() in ('PH')
   )
 );
 
@@ -271,7 +279,7 @@ using (
   bucket_id = 'chat-media'
   and (
     split_part(name, '/', 1) = auth.uid()::text
-    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+    or public.current_app_role() in ('PH')
   )
 );
 
@@ -302,7 +310,7 @@ for select
 to authenticated
 using (
   id = auth.uid()::text
-  or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  or public.current_app_role() in ('PH')
 );
 
 drop policy if exists users_insert_self_or_admin on public.users;
@@ -311,7 +319,7 @@ for insert
 to authenticated
 with check (
   id = auth.uid()::text
-  or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  or public.current_app_role() in ('PH')
 );
 
 drop policy if exists users_update_self_or_admin on public.users;
@@ -320,11 +328,11 @@ for update
 to authenticated
 using (
   id = auth.uid()::text
-  or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  or public.current_app_role() in ('PH')
 )
 with check (
   id = auth.uid()::text
-  or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  or public.current_app_role() in ('PH')
 );
 
 drop policy if exists reports_select_policy on public.reports;
@@ -333,7 +341,7 @@ for select
 to authenticated
 using (
   user_id = auth.uid()::text
-  or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  or public.current_app_role() in ('PH')
 );
 
 drop policy if exists reports_insert_sender_own on public.reports;
@@ -342,15 +350,15 @@ for insert
 to authenticated
 with check (
   user_id = auth.uid()::text
-  and public.current_app_role() = 'SENDER'
+  and public.current_app_role() in ('SENDER', 'HR')
 );
 
 drop policy if exists reports_update_admin on public.reports;
 create policy reports_update_admin on public.reports
 for update
 to authenticated
-using (public.current_app_role() in ('ADMIN', 'SUPER_ADMIN'))
-with check (public.current_app_role() in ('ADMIN', 'SUPER_ADMIN'));
+using (public.current_app_role() in ('PH'))
+with check (public.current_app_role() in ('PH'));
 
 drop policy if exists report_history_select_policy on public.report_status_history;
 create policy report_history_select_policy on public.report_status_history
@@ -363,7 +371,7 @@ using (
     where r.id = report_status_history.report_id
       and (
         r.user_id = auth.uid()::text
-        or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+        or public.current_app_role() in ('PH')
       )
   )
 );
@@ -373,7 +381,7 @@ create policy report_history_insert_policy on public.report_status_history
 for insert
 to authenticated
 with check (
-  public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  public.current_app_role() in ('PH')
   or (
     changed_by = 'system'
     and exists (
@@ -391,7 +399,7 @@ for select
 to authenticated
 using (
   user_id = auth.uid()::text
-  or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  or public.current_app_role() in ('PH')
 );
 
 drop policy if exists chat_sessions_insert_sender_own on public.chat_sessions;
@@ -406,8 +414,8 @@ drop policy if exists chat_sessions_update_admin on public.chat_sessions;
 create policy chat_sessions_update_admin on public.chat_sessions
 for update
 to authenticated
-using (public.current_app_role() in ('ADMIN', 'SUPER_ADMIN'))
-with check (public.current_app_role() in ('ADMIN', 'SUPER_ADMIN'));
+using (public.current_app_role() in ('PH'))
+with check (public.current_app_role() in ('PH'));
 
 drop policy if exists chat_messages_select_policy on public.chat_messages;
 create policy chat_messages_select_policy on public.chat_messages
@@ -421,7 +429,7 @@ using (
       and (
         s.user_id = auth.uid()::text
         or s.assigned_admin_id = auth.uid()::text
-        or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+        or public.current_app_role() in ('PH')
       )
   )
 );
@@ -439,7 +447,7 @@ with check (
       and (
         s.user_id = auth.uid()::text
         or s.assigned_admin_id = auth.uid()::text
-        or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+        or public.current_app_role() in ('PH')
       )
   )
 );
@@ -450,11 +458,11 @@ for update
 to authenticated
 using (
   sender_id = auth.uid()::text
-  or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  or public.current_app_role() in ('PH')
 )
 with check (
   sender_id = auth.uid()::text
-  or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  or public.current_app_role() in ('PH')
 );
 
 drop policy if exists admin_profiles_select_all_authenticated on public.admin_profiles;
@@ -467,7 +475,7 @@ drop policy if exists admin_profiles_insert_admin_only on public.admin_profiles;
 create policy admin_profiles_insert_admin_only on public.admin_profiles
 for insert
 to authenticated
-with check (public.current_app_role() in ('SUPER_ADMIN'));
+with check (public.current_app_role() in ('PH'));
 
 drop policy if exists admin_profiles_update_self_or_super on public.admin_profiles;
 create policy admin_profiles_update_self_or_super on public.admin_profiles
@@ -475,18 +483,18 @@ for update
 to authenticated
 using (
   user_id = auth.uid()::text
-  or public.current_app_role() = 'SUPER_ADMIN'
+  or public.current_app_role() = 'PH'
 )
 with check (
   user_id = auth.uid()::text
-  or public.current_app_role() = 'SUPER_ADMIN'
+  or public.current_app_role() = 'PH'
 );
 
 drop policy if exists admin_profiles_delete_super_only on public.admin_profiles;
 create policy admin_profiles_delete_super_only on public.admin_profiles
 for delete
 to authenticated
-using (public.current_app_role() = 'SUPER_ADMIN');
+using (public.current_app_role() = 'PH');
 
 drop policy if exists appointments_select_policy on public.appointments;
 create policy appointments_select_policy on public.appointments
@@ -494,7 +502,7 @@ for select
 to authenticated
 using (
   user_id = auth.uid()::text
-  or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  or public.current_app_role() in ('PH')
 );
 
 drop policy if exists appointments_insert_sender_own on public.appointments;
@@ -516,7 +524,7 @@ create policy notifications_insert_admin_or_system on public.notifications
 for insert
 to authenticated
 with check (
-  public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  public.current_app_role() in ('PH')
   or user_id = auth.uid()::text
 );
 
@@ -528,3 +536,5 @@ using (user_id = auth.uid()::text)
 with check (user_id = auth.uid()::text);
 
 commit;
+
+

@@ -126,21 +126,27 @@ export default function ReportDetail() {
               <div>
                 <p className="text-muted-foreground text-xs">Pengirim</p>
                 {sender ? (
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <UserAvatarWithPreview
-                      name={sender.name}
-                      avatarUrl={sender.avatar_url}
-                      sizeClassName="h-8 w-8"
-                      fallbackClassName="bg-primary text-primary-foreground text-[10px]"
-                      modalTitle="Foto Profil Pengirim"
-                    />
-                    <p className="font-medium">{sender.name}</p>
+                  <div className="mt-0.5 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <UserAvatarWithPreview
+                        name={sender.name}
+                        avatarUrl={sender.avatar_url}
+                        sizeClassName="h-8 w-8"
+                        fallbackClassName="bg-primary text-primary-foreground text-[10px]"
+                        modalTitle="Foto Profil Pengirim"
+                      />
+                      <p className="font-medium">{sender.name}</p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {BIRO_LABELS[sender.biro]} · {JABATAN_LABELS[sender.jabatan]}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">{sender.email}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {sender.phone_number?.trim() ? sender.phone_number : "Nomor HP belum diisi"}
+                    </p>
                   </div>
                 ) : (
-                  <p className="font-medium">-</p>
-                )}
-                {sender && (
-                  <p className="text-[10px] text-muted-foreground">{BIRO_LABELS[sender.biro]} · {JABATAN_LABELS[sender.jabatan]}</p>
+                  <p className="font-medium">Identitas pengirim tidak ditemukan.</p>
                 )}
               </div>
               <div>
@@ -191,7 +197,7 @@ export default function ReportDetail() {
                 {history.map((h, i) => {
                   const changer = h.changed_by === "system"
                     ? "Sistem"
-                    : allUsers.find((u) => u.id === h.changed_by)?.name ?? "Admin";
+                    : allUsers.find((u) => u.id === h.changed_by)?.name ?? "PH";
                   return (
                     <div key={h.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
@@ -304,7 +310,7 @@ export default function ReportDetail() {
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Catatan ini hanya bisa dilihat oleh sesama Admin."
+                placeholder="Catatan ini hanya bisa dilihat oleh sesama PH."
                 className="min-h-[100px]"
               />
               <Button variant="outline" onClick={handleSaveNotes} className="w-full">

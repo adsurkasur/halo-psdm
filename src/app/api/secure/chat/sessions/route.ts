@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const { data: admins } = await supabaseServer
     .from("users")
     .select("id")
-    .in("role", ["ADMIN", "SUPER_ADMIN"]);
+    .in("role", ["PH"]);
 
   if (admins && admins.length > 0) {
     const notifications = admins.map((admin) => ({

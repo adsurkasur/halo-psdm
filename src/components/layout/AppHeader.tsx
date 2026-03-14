@@ -14,12 +14,20 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { JABATAN_LABELS } from "@/data/domain";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
+import { useEffect } from "react";
 
 export function AppHeader() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
   const { notifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } = useData();
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    if (!user?.theme_preference) return;
+    if (theme !== user.theme_preference) {
+      setTheme(user.theme_preference);
+    }
+  }, [setTheme, theme, user?.theme_preference]);
 
   if (!user) return null;
 
@@ -35,11 +43,17 @@ export function AppHeader() {
 
   const roleBadge = user.role === "SENDER"
     ? { label: "Sender", cls: "bg-blue-100 text-blue-700" }
-    : user.role === "ADMIN"
-    ? { label: "Admin", cls: "bg-orange-100 text-orange-700" }
-    : { label: "Super Admin", cls: "bg-purple-100 text-purple-700" };
+    : user.role === "HR"
+    ? { label: "HR", cls: "bg-orange-100 text-orange-700" }
+    : { label: "PH", cls: "bg-purple-100 text-purple-700" };
 
-  const isDark = theme === "dark";
+  const isDark = resolvedTheme === "dark";
+
+  const handleToggleTheme = () => {
+    const nextTheme = isDark ? "light" : "dark";
+    setTheme(nextTheme);
+    void updateProfile({ theme_preference: nextTheme });
+  };
 
   return (
     <header className="h-14 border-b bg-card flex items-center justify-between px-4 sticky top-0 z-30">
@@ -149,7 +163,7 @@ export function AppHeader() {
                 variant="ghost"
                 size="sm"
                 className="justify-start"
-                onClick={() => setTheme(isDark ? "light" : "dark")}
+                onClick={handleToggleTheme}
               >
                 {isDark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
                 {isDark ? "Light Mode" : "Dark Mode"}

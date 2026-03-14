@@ -26,9 +26,9 @@ export async function POST(request: Request) {
 
   const isSender = auth.context.appUser.id === session.user_id;
   const isAssignedAdmin = session.assigned_admin_id === auth.context.appUser.id;
-  const isAdminRole = ["ADMIN", "SUPER_ADMIN"].includes(auth.context.appUser.role);
+  const isPhRole = auth.context.appUser.role === "PH";
 
-  if (!isSender && !isAssignedAdmin && !isAdminRole) {
+  if (!isSender && !isAssignedAdmin && !isPhRole) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -5,37 +5,51 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Analyze and propose end-to-end fixes for profile image, persistence, phone number, email change confirmation, admin role SQL, and account deletion flow |
+| Task | Persist theme state in user preference (profile + DB + UI sync) |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 11:38 |
+| Last Updated | 2026-03-14 13:02 |
 | Session ID | 20260314-1001 |
 
 ## User Request
 
-> alhamdulillah udah bisa.
+> aku dapat revisi besar oleh klien.
 >
-> sekarang lakukan ini:
+> role lama: SENDER, ADMIN, SUPER_ADMIN
 >
-> 1. jangan buat profile picture wajib
-> 2. fix upload profile picture selalu gagal "Gagal upload foto profil."
-> 3. tambahkan fitur untuk crop dan resize ketika memasang foto profil
-> 4. berikan sql untuk update permission akun tertentu agar jadi admin
-> 5. fitur laporan masih belum persistence, kayanya ketika buka lampiran laporannya auto hilang, atau malah memang belum persistence sama sekali
-> 6. fitur chat juga masih belum persistence, tiba-tiba hilang sendiri
-> 7. tambahkan nomor hp pada profil dan registrasi, karena bakal dipake di order janji temu khususnya untuk admin dan super admin
-> 8. tambahkan logika penggantian email yang mentrigger confirmation email lagi, gunakan bawaan supabase
-> 9. tambahkan opsi delete account untuk delete akun (auth) dan profil, dengan double check tentunya (misal "ketik 'delete account' dan masukkan email untuk delete, kaya github deletion confirmation lah)
+> role baru yang diminta:
+>
+> 1. SENDER (tetap)
+> 2. HR: hak tambahan agar bisa diangkat oleh super admin sebagai penerima janji temu, tampil nama dan nomor telepon di layar janji temu, tidak melihat dirinya sendiri saat membuka janji temu, dan tetap bisa berfungsi sebagai sender
+> 3. PH: setara super admin, punya kewenangan penuh termasuk mengangkat akun menjadi HR
+>
+> target akhir role: SENDER, HR, PH
+>
+> aku sudah eksekusi, tapi kamu tetap cek ya. setelah kamu cek, perhatikan ini
+>
+> revisi untuk penerapan nomor telepon, ini sangat fatal!
+>
+> - nomor hp bukan 08xxx tapi 62xxx, harus ada country codenya, ini penting untuk wa.me nanti
+> - nomor hp itu bukan untuk LOGIN, tapi "dikandung" dalam profil! sehingga muncul di bagian Daftar, bukan Masuk! ini FATAL karena kalau login harus pakai email + nomor hp, user akan merasa ribet!
+>
+> hal lain meliputi
+>
+> 1. light mode dark mode state tidak sinkron dengan ui, buatlah light mode sebagai default
+> 2. terapkan mekanisme forgot password
+> 3. dalam data laporan, pengirim masih muncul sebagai "-". sepertinya ini remnant dari fitur anonim sebelumnya. tolong cantumkan identitas pengirim dalam laporan, gunakan nama, biro/bidang, jabatan, email, nomor telepon
+> 4. pastikan role PH juga memiliki hak HR, yaitu bisa dicantumkan atau mencantumkan diri ke janji temu
+
+> pastikan theme state tersimpan juga di "user's preference"
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
 | Intended Phases | Study → Propose → Implement |
-| Evidence to Produce | Root-cause analysis for upload/persistence failures, full implementation proposal for 9 requested features, and validation plan |
-| Anticipated Stops | Missing DB schema fields and storage policies, need secure server endpoints for destructive auth actions |
-| Known Information | Login issue fixed; now multi-area feature and reliability work requested across auth/profile/report/chat modules |
-| Unknown Information | Exact cause of profile-picture upload failure and report/chat persistence loss in current runtime |
-| Initial Risk Level | High - broad cross-cutting changes including auth deletion and persistence-critical flows |
+| Evidence to Produce | Mapping semua penggunaan role lama di FE/BE/SQL, proposal migrasi role baru, dan hasil validasi lint/test/build setelah implementasi |
+| Anticipated Stops | Potensi mismatch enum/check constraint role di SQL dan policy yang masih referensi ADMIN/SUPER_ADMIN |
+| Known Information | Saat ini role aktif masih SENDER/ADMIN/SUPER_ADMIN dan ADMIN dipakai sebagai pihak yang bisa tampil di janji temu |
+| Unknown Information | Seluruh dependency lintas file yang hardcode nama role lama dan dampaknya ke RLS/policies |
+| Initial Risk Level | High - perubahan role memengaruhi auth, manajemen akses, appointment listing, dan SQL migration |
 
 ## File Context
 
@@ -110,6 +124,14 @@
 - **19:12** - IMPLEMENT - Bun lint executed; fixed lint blockers and .next ignore handling
 - **19:14** - IMPLEMENT - Bun test executed successfully (10/10)
 - **19:15** - IMPLEMENT - Bun build succeeded after removing final legacy `src/pages` route file
+
+### Session: 2026-03-14
+
+- **12:10** - STUDY - Audited post-execution concerns in auth, profile, report, appointment, theme, and SQL files
+- **12:20** - PLAN-REVISION - Expanded scope to include phone normalization utility and PH self-listing in appointment directory
+- **12:30** - IMPLEMENT - Started critical fixes for phone format, forgot password, theme sync, sender identity, and PH appointment parity
+- **13:00** - STUDY - Audited current theme handling and confirmed no DB-backed preference persistence
+- **13:02** - IMPLEMENT - Started adding theme_preference persistence and UI sync wiring
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references
@@ -215,6 +237,17 @@
 - **11:36** - VALIDATE - `bun run lint` passed
 - **11:37** - VALIDATE - `bun run test` passed (10/10)
 - **11:38** - VALIDATE - `bun run build` passed (Next.js production build)
+- **11:45** - PLAN-REVISION - Scope switched to role model migration requested by user: SENDER/HR/PH
+- **11:47** - STUDY - Mapped role checks across frontend guards, API routes, DataContext, and role-management screen
+- **11:49** - STUDY - Mapped SQL constraints and RLS/storage policies still hardcoded to ADMIN/SUPER_ADMIN
+- **11:50** - PROPOSE - Preparing migration proposal for role rename and permission remapping
+- **11:52** - APPROVAL - User approved with: "proceed dengan best practice"
+- **11:54** - IMPLEMENT - Migrated domain/auth/route guards to SENDER/HR/PH semantics
+- **11:56** - IMPLEMENT - Migrated secure APIs and appointment directory behavior (HR recipient list excludes self)
+- **11:57** - IMPLEMENT - Migrated SQL constraints/policies and added `role-migration-hr-ph.sql`
+- **11:58** - VALIDATE - `bun run lint` passed
+- **11:58** - VALIDATE - `bun run test` passed (10/10)
+- **11:59** - VALIDATE - `bun run build` passed
 
 ## Current Issues and Resolutions
 

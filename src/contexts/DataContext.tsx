@@ -116,17 +116,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
+    const isPh = user.role === "PH";
 
-    const reportsQuery = isAdmin
+    const reportsQuery = isPh
       ? supabase.from("reports").select("*").order("created_at", { ascending: false })
       : supabase.from("reports").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
 
-    const sessionsQuery = isAdmin
+    const sessionsQuery = isPh
       ? supabase.from("chat_sessions").select("*").order("created_at", { ascending: false })
       : supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
 
-    const appointmentsQuery = isAdmin
+    const appointmentsQuery = isPh
       ? supabase.from("appointments").select("*").order("created_at", { ascending: false })
       : supabase.from("appointments").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
 
@@ -482,7 +482,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       avatar_url: profile.avatar_url,
     });
 
-    setAdminProfiles((prev) => [...prev, profile]);
+    setAdminProfiles((prev) => {
+      const existingIndex = prev.findIndex((item) => item.user_id === profile.user_id);
+      if (existingIndex === -1) {
+        return [...prev, profile];
+      }
+
+      const next = [...prev];
+      next[existingIndex] = profile;
+      return next;
+    });
   }, []);
 
   const removeAdminProfile = useCallback(async (userId: string) => {

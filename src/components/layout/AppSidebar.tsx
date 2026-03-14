@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 
 export function AppSidebar() {
-  const { user, isSender, isAdmin, isSuperAdmin } = useAuth();
+  const { user, isSender, isPh } = useAuth();
   const { chatSessions, reports, getUnreadCount } = useData();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -27,7 +27,7 @@ export function AppSidebar() {
   const openChatsCount = chatSessions.filter(
     (s) => s.status === "OPEN" && (isSender ? s.user_id === user.id : true)
   ).length;
-  const pendingReportsCount = isAdmin
+  const pendingReportsCount = isPh
     ? reports.filter((r) => r.status === "RECEIVED").length
     : 0;
 
@@ -42,15 +42,15 @@ export function AppSidebar() {
     { title: "Dasbor Admin", url: "/admin/dasbor", icon: LayoutDashboard, badge: 0 },
     { title: "Kelola Laporan", url: "/admin/laporan", icon: ClipboardList, badge: pendingReportsCount },
     { title: "Antrean Chat", url: "/admin/chat", icon: MessagesSquare, badge: openChatsCount },
-    ...(isSuperAdmin
+    ...(isPh
       ? [
           { title: "Rekap & Analitik", url: "/admin/rekap", icon: BarChart3, badge: 0 },
-          { title: "Kelola Admin", url: "/admin/kelola-admin", icon: Users, badge: 0 },
+        { title: "Kelola HR", url: "/admin/kelola-admin", icon: Users, badge: 0 },
         ]
       : []),
   ];
 
-  const items = isSender ? [...senderNav] : [...adminNav];
+  const items = isSender ? [...senderNav] : isPh ? [...adminNav] : [...senderNav];
 
   // always offer profile/settings link at bottom
   items.push({ title: "Profil Saya", url: "/profile", icon: User, badge: 0 });
@@ -60,7 +60,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/60">
-            {!collapsed && (isSender ? "Menu Anggota" : "Menu Admin")}
+            {!collapsed && (isPh ? "Menu PH" : "Menu Anggota")}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,8 @@ import {
   type BiroBidang,
   type Jabatan,
 } from "@/data/domain";
+import { supabase } from "@/lib/supabase/client";
+import { isValidPhone62, normalizePhoneTo62 } from "@/lib/phone";
 
 type AuthMode = "login" | "register";
 
@@ -20,7 +22,7 @@ const jabatanEntries = Object.entries(JABATAN_LABELS) as [Jabatan, string][];
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, register, syncProfileNow, isSender, isAdmin, isSuperAdmin } = useAuth();
+  const { login, register, syncProfileNow, isSender, isPh } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -34,12 +36,25 @@ export default function LoginPage() {
   const [info, setInfo] = useState("");
   const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [newRecoveryPassword, setNewRecoveryPassword] = useState("");
+  const [confirmRecoveryPassword, setConfirmRecoveryPassword] = useState("");
   const [syncingProfile, setSyncingProfile] = useState(false);
   const [shaking, setShaking] = useState(false);
   const showProfileSyncHelp =
     error.toLowerCase().includes("profil belum siap") ||
     error.toLowerCase().includes("profil belum bisa disinkronkan") ||
     error.toLowerCase().includes("sinkronisasi profil");
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const recoveryFromQuery = searchParams.get("recovery") === "1";
+    const recoveryFromHash = hashParams.get("type") === "recovery";
+    setIsRecoveryMode(recoveryFromQuery || recoveryFromHash);
+  }, []);
 
   const handleSyncProfileNow = async () => {
     setSyncingProfile(true);
@@ -67,7 +82,7 @@ export default function LoginPage() {
   const redirectAfterAuth = () => {
     setTimeout(() => {
       if (isSender) navigate("/dashboard");
-      else if (isSuperAdmin || isAdmin) navigate("/admin/dasbor");
+      else if (isPh) navigate("/admin/dasbor");
       else navigate("/dashboard");
     }, 100);
   };
@@ -109,12 +124,20 @@ export default function LoginPage() {
       return;
     }
 
+    const normalizedPhone = normalizePhoneTo62(phoneNumber);
+    if (!isValidPhone62(normalizedPhone)) {
+      setError("Nomor HP wajib berformat 62xxxxxxxxxx.");
+      setShaking(true);
+      setTimeout(() => setShaking(false), 600);
+      return;
+    }
+
     setLoading(true);
     setTimeout(async () => {
       const result = await register({
         name: name.trim(),
         email: email.trim(),
-        phone_number: phoneNumber.trim(),
+        phone_number: normalizedPhone,
         password,
         biro,
         jabatan,
@@ -138,6 +161,64 @@ export default function LoginPage() {
 
       redirectAfterAuth();
     }, 600);
+  };
+
+  const handleForgotPassword = async () => {
+    setError("");
+    setInfo("");
+
+    if (!email.trim()) {
+      setError("Masukkan email terlebih dahulu untuk reset password.");
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    const redirectTo = `${window.location.origin}/login?recovery=1`;
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+    setForgotPasswordLoading(false);
+
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+
+    setInfo("Link reset password sudah dikirim ke email kamu.");
+  };
+
+  const handleRecoveryReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setInfo("");
+
+    if (!newRecoveryPassword.trim() || !confirmRecoveryPassword.trim()) {
+      setError("Password baru dan konfirmasi wajib diisi.");
+      return;
+    }
+
+    if (newRecoveryPassword.length < 6) {
+      setError("Password minimal 6 karakter.");
+      return;
+    }
+
+    if (newRecoveryPassword !== confirmRecoveryPassword) {
+      setError("Konfirmasi password tidak sama.");
+      return;
+    }
+
+    setResettingPassword(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password: newRecoveryPassword });
+    setResettingPassword(false);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    setInfo("Password berhasil diperbarui. Silakan login dengan password baru.");
+    setIsRecoveryMode(false);
+    setNewRecoveryPassword("");
+    setConfirmRecoveryPassword("");
+    navigate("/login", { replace: true });
   };
 
   const switchMode = (newMode: AuthMode) => {
@@ -238,7 +319,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {mode === "login" ? (
+            {mode === "login" && !isRecoveryMode ? (
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <Label>Email</Label>
@@ -247,16 +328,6 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="nama@arsc.org"
-                    className="mt-1 transition-all duration-200 focus:shadow-md"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>Nomor HP</Label>
-                  <Input
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="08xxxxxxxxxx"
                     className="mt-1 transition-all duration-200 focus:shadow-md"
                     required
                   />
@@ -282,6 +353,48 @@ export default function LoginPage() {
                     "Masuk"
                   )}
                 </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full"
+                  onClick={handleForgotPassword}
+                  disabled={forgotPasswordLoading || loading}
+                >
+                  {forgotPasswordLoading ? "Mengirim link reset..." : "Lupa password?"}
+                </Button>
+              </form>
+            ) : mode === "login" && isRecoveryMode ? (
+              <form onSubmit={handleRecoveryReset} className="space-y-4 animate-fade-in">
+                <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+                  Mode pemulihan password aktif. Masukkan password baru untuk akun kamu.
+                </div>
+                <div>
+                  <Label>Password Baru</Label>
+                  <Input
+                    type="password"
+                    value={newRecoveryPassword}
+                    onChange={(e) => setNewRecoveryPassword(e.target.value)}
+                    placeholder="Minimal 6 karakter"
+                    className="mt-1 transition-all duration-200 focus:shadow-md"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div>
+                  <Label>Konfirmasi Password Baru</Label>
+                  <Input
+                    type="password"
+                    value={confirmRecoveryPassword}
+                    onChange={(e) => setConfirmRecoveryPassword(e.target.value)}
+                    placeholder="Ulangi password baru"
+                    className="mt-1 transition-all duration-200 focus:shadow-md"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={resettingPassword}>
+                  {resettingPassword ? "Menyimpan password..." : "Simpan Password Baru"}
+                </Button>
               </form>
             ) : (
               <form onSubmit={handleRegister} className="space-y-4 animate-fade-in">
@@ -305,6 +418,17 @@ export default function LoginPage() {
                     className="mt-1 transition-all duration-200 focus:shadow-md"
                     required
                   />
+                </div>
+                <div>
+                  <Label>Nomor HP</Label>
+                  <Input
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="62xxxxxxxxxx"
+                    className="mt-1 transition-all duration-200 focus:shadow-md"
+                    required
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">Gunakan format 62 tanpa spasi. Contoh: 628123456789.</p>
                 </div>
                 <div>
                   <Label>Password</Label>

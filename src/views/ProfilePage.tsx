@@ -26,6 +26,7 @@ import {
   type BiroBidang,
   type Jabatan,
 } from "@/data/domain";
+import { isValidPhone62, normalizePhoneTo62 } from "@/lib/phone";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -295,13 +296,23 @@ export default function ProfilePage() {
       });
       return;
     }
+
+    const normalizedPhone = normalizePhoneTo62(phoneNumber);
+    if (!isValidPhone62(normalizedPhone)) {
+      toast({
+        title: "Nomor HP wajib berformat 62xxxxxxxxxx.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true);
     setTimeout(() => {
       void (async () => {
         const result = await updateProfile({
         name,
         email,
-        phone_number: phoneNumber,
+        phone_number: normalizedPhone,
         biro: biro as BiroBidang,
         jabatan: jabatan as Jabatan,
         ...(password ? { password } : {}),
@@ -368,7 +379,8 @@ export default function ProfilePage() {
           </div>
           <div>
             <Label>Nomor HP</Label>
-            <Input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Contoh: 081234567890" />
+            <Input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Contoh: 628123456789" />
+            <p className="text-xs text-muted-foreground mt-1">Format wajib 62xxxxxxxxxx agar bisa dipakai langsung ke WhatsApp.</p>
           </div>
           <div>
             <Label>Biro/Bidang</Label>

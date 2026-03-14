@@ -11,10 +11,11 @@ create table if not exists public.users (
   name text not null,
   biro text not null check (biro in ('KETUM', 'ADKEU', 'PSDM', 'PENKOM', 'RISTEK', 'INFOKOM')),
   jabatan text not null check (jabatan in ('PENGURUS_HARIAN', 'STAF_AHLI', 'STAF', 'ANGGOTA_MUDA')),
-  role text not null default 'SENDER' check (role in ('SENDER', 'ADMIN', 'SUPER_ADMIN')),
+  role text not null default 'SENDER' check (role in ('SENDER', 'HR', 'PH')),
   email text not null unique,
   phone_number text,
   avatar_url text,
+  theme_preference text not null default 'light' check (theme_preference in ('light', 'dark')),
   password_hash text,
   is_active boolean not null default true,
   created_at timestamptz not null default now()
@@ -210,3 +211,4 @@ using (true)
 with check (true);
 
 commit;
+

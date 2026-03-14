@@ -10,7 +10,7 @@ export async function PATCH(
   const auth = await requireAuthContext(request);
   if ("error" in auth) return auth.error;
 
-  if (auth.context.appUser.role !== "ADMIN" && auth.context.appUser.role !== "SUPER_ADMIN") {
+  if (auth.context.appUser.role !== "PH") {
     return forbidden();
   }
 

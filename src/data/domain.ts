@@ -1,4 +1,4 @@
-export type UserRole = "SENDER" | "ADMIN" | "SUPER_ADMIN";
+export type UserRole = "SENDER" | "HR" | "PH";
 
 export type ReportStatus = "RECEIVED" | "IN_PROGRESS" | "NEEDS_CLARIFICATION" | "DONE";
 export type ReportCategory = "KONFLIK" | "BEBAN_KERJA" | "KESEJAHTERAAN" | "AKADEMIK" | "LAINNYA";
@@ -18,6 +18,7 @@ export type NotificationType =
 
 export type BiroBidang = "KETUM" | "ADKEU" | "PSDM" | "PENKOM" | "RISTEK" | "INFOKOM";
 export type Jabatan = "PENGURUS_HARIAN" | "STAF_AHLI" | "STAF" | "ANGGOTA_MUDA";
+export type ThemePreference = "light" | "dark";
 
 export const BIRO_LABELS: Record<BiroBidang, string> = {
   KETUM: "Ketua Umum",
@@ -53,6 +54,7 @@ export interface User {
   email: string;
   phone_number?: string | null;
   avatar_url?: string | null;
+  theme_preference?: ThemePreference | null;
   password?: string;
   is_active: boolean;
   created_at: string;

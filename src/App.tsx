@@ -29,7 +29,7 @@ import NotFound from "./views/NotFound";
 const queryClient = new QueryClient();
 
 export function ProtectedRoutes() {
-  const { isAuthenticated, isSender, isAdmin, isSuperAdmin, isLoading } = useAuth();
+  const { isAuthenticated, isSender, isPh, isLoading } = useAuth();
 
   if (isLoading) {
     return <div className="min-h-[40vh]" />;
@@ -61,27 +61,27 @@ export function ProtectedRoutes() {
         {/* Admin routes */}
         <Route
           path="/admin/dasbor"
-          element={isAdmin ? <AdminDashboard /> : <Navigate to="/" replace />}
+          element={isPh ? <AdminDashboard /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/laporan"
-          element={isAdmin ? <ReportManagement /> : <Navigate to="/" replace />}
+          element={isPh ? <ReportManagement /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/laporan/:id"
-          element={isAdmin ? <ReportDetail /> : <Navigate to="/" replace />}
+          element={isPh ? <ReportDetail /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/chat"
-          element={isAdmin ? <AdminChatQueue /> : <Navigate to="/" replace />}
+          element={isPh ? <AdminChatQueue /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/rekap"
-          element={isSuperAdmin ? <AdminRekap /> : <Navigate to="/" replace />}
+          element={isPh ? <AdminRekap /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/kelola-admin"
-          element={isSuperAdmin ? <AdminManagement /> : <Navigate to="/" replace />}
+          element={isPh ? <AdminManagement /> : <Navigate to="/" replace />}
         />
 
         <Route path="*" element={<NotFound />} />
@@ -92,6 +92,9 @@ export function ProtectedRoutes() {
 
 export function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const isRecoveryRoute = searchParams.get("recovery") === "1" || hashParams.get("type") === "recovery";
 
   if (isLoading) {
     return <div className="min-h-[40vh]" />;
@@ -101,7 +104,7 @@ export function AppRoutes() {
     <Routes>
       <Route
         path="/login"
-        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+        element={isAuthenticated && !isRecoveryRoute ? <Navigate to="/" replace /> : <LoginPage />}
       />
       <Route path="/*" element={<ProtectedRoutes />} />
     </Routes>
@@ -110,7 +113,7 @@ export function AppRoutes() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="system">
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <TooltipProvider>
         <Toaster />
         <Sonner />

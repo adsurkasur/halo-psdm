@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { AVAILABILITY_LABELS } from "@/data/domain";
+import { isValidPhone62, normalizePhoneTo62 } from "@/lib/phone";
 
 export default function AppointmentDirectory() {
   const { toast } = useToast();
@@ -16,7 +17,7 @@ export default function AppointmentDirectory() {
 
   const handleContact = async (adminProfile: typeof adminProfiles[0]) => {
     const admin = allUsers.find((u) => u.id === adminProfile.user_id);
-    const adminName = adminProfile.display_name || admin?.name || "Admin";
+    const adminName = adminProfile.display_name || admin?.name || "HR";
 
     // Check 24h duplicate
     const recentApt = appointments.find(
@@ -38,11 +39,21 @@ export default function AppointmentDirectory() {
     // Log appointment
     await addAppointment(user.id, adminProfile.user_id);
 
+    const waNumber = normalizePhoneTo62(adminProfile.wa_number ?? "");
+    if (!isValidPhone62(waNumber)) {
+      toast({
+        title: "Nomor WhatsApp penerima belum valid",
+        description: "Penerima belum mengatur nomor format 62xxxxxxxxxx di profil.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Build WA link
     const message = encodeURIComponent(
       `Halo Kak ${adminName}, saya ${user.name} dari ${user.biro} ingin mengajukan janji temu melalui Halo PSDM ARSC.`
     );
-    const waUrl = `https://wa.me/${adminProfile.wa_number}?text=${message}`;
+    const waUrl = `https://wa.me/${waNumber}?text=${message}`;
 
     toast({
       title: "Mengalihkan ke WhatsApp",
@@ -57,11 +68,13 @@ export default function AppointmentDirectory() {
     <div className="animate-fade-in space-y-4">
       <h1 className="text-xl font-bold">Order Janji Temu</h1>
       <p className="text-sm text-muted-foreground">
-        Pilih admin PSDM yang ingin dihubungi. Anda akan diarahkan ke WhatsApp secara otomatis.
+        Pilih penerima janji temu (HR/PH) yang ingin dihubungi. Anda akan diarahkan ke WhatsApp secara otomatis.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-        {adminProfiles.map((profile) => {
+        {adminProfiles
+          .filter((profile) => profile.user_id !== user.id)
+          .map((profile) => {
           const initials = profile.display_name
             .split(" ")
             .map((w) => w[0])

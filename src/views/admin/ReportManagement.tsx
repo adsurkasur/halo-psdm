@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { CATEGORY_LABELS, type Urgency } from "@/data/domain";
+import { BIRO_LABELS, CATEGORY_LABELS, JABATAN_LABELS, type Urgency } from "@/data/domain";
 
 export default function ReportManagement() {
   const navigate = useNavigate();
@@ -84,7 +84,20 @@ export default function ReportManagement() {
                     <TableRow key={r.id} className="transition-colors duration-200">
                       <TableCell className="font-mono text-xs">{r.case_id}</TableCell>
                       <TableCell className="text-sm">
-                        {sender?.name ?? "-"}
+                        {sender ? (
+                          <div>
+                            <p className="font-medium">{sender.name}</p>
+                            <p className="text-xs text-muted-foreground">{sender.email}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {BIRO_LABELS[sender.biro]} · {JABATAN_LABELS[sender.jabatan]}
+                            </p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="font-medium">Identitas tidak ditemukan</p>
+                            <p className="text-xs text-muted-foreground">Data user pengirim tidak tersedia.</p>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm">{CATEGORY_LABELS[r.category]}</TableCell>
                       <TableCell><UrgencyBadge urgency={r.urgency} /></TableCell>

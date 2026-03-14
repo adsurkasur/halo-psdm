@@ -12,12 +12,12 @@ import AdminManagement from "@/views/admin/AdminManagement";
 import ReportDetail from "@/views/admin/ReportDetail";
 import { Toaster } from "@/components/ui/toaster";
 import type { Urgency } from "@/data/domain";
-import React, { useEffect, useLayoutEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useData } from "@/contexts/DataContext";
 
 const TEST_SENDER = { id: "u1", name: "Ade Surya Ananda", email: "ade@arsc.org", password: "ade123" };
-const TEST_ADMIN = { id: "u2", email: "sarah@arsc.org", password: "sarah123" };
-const TEST_SUPER_ADMIN = { id: "u3", email: "nadia@arsc.org", password: "nadia123" };
+const TEST_HR = { id: "u2", email: "sarah@arsc.org", password: "sarah123" };
+const TEST_PH = { id: "u3", email: "nadia@arsc.org", password: "nadia123" };
 const TEST_REPORT_ID = "r1";
 
 // helper used in tests to programmatically trigger urgency updates via context
@@ -48,18 +48,27 @@ interface AutoLoginProps {
 }
 function AutoLogin({ children, email, password }: AutoLoginProps) {
   const { login } = useAuth();
+  const [ready, setReady] = useState(false);
+
   useLayoutEffect(() => {
-    const cred = email ?? TEST_SENDER.email;
-    const pass = password ?? TEST_SENDER.password;
-    void login(cred, pass);
+    const run = async () => {
+      const cred = email ?? TEST_SENDER.email;
+      const pass = password ?? TEST_SENDER.password;
+      await login(cred, pass);
+      setReady(true);
+    };
+
+    void run();
   }, [login, email, password]);
+
+  if (!ready) return null;
   return <>{children}</>;
 }
 
 describe("app behavior", () => {
   it("redirects legacy /dashboard path to the sender dashboard", async () => {
     render(
-      <ThemeProvider attribute="class" defaultTheme="system">
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <AuthProvider>
           <DataProvider>
             <MemoryRouter initialEntries={["/dashboard"]}>
@@ -80,7 +89,7 @@ describe("app behavior", () => {
 
   it("profile card shows jabatan label and popover controls", async () => {
     render(
-      <ThemeProvider attribute="class" defaultTheme="system">
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <AuthProvider>
           <DataProvider>
             <MemoryRouter>
@@ -114,13 +123,13 @@ describe("app behavior", () => {
     await waitFor(() => expect(document.documentElement.classList.contains("dark")).toBe(false));
   });
 
-  it("admin login redirects to admin dashboard", async () => {
+  it("PH login redirects to admin dashboard", async () => {
     render(
-      <ThemeProvider attribute="class" defaultTheme="system">
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <AuthProvider>
           <DataProvider>
             <MemoryRouter initialEntries={["/login"]}>
-              <AutoLogin email={TEST_ADMIN.email} password={TEST_ADMIN.password}>
+              <AutoLogin email={TEST_PH.email} password={TEST_PH.password}>
                 <AppRoutes />
               </AutoLogin>
             </MemoryRouter>
@@ -138,7 +147,7 @@ describe("app behavior", () => {
 
   it("profile page allows editing and saves changes", async () => {
     render(
-      <ThemeProvider attribute="class" defaultTheme="system">
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <AuthProvider>
           <DataProvider>
             <MemoryRouter initialEntries={["/profile"]}>
@@ -155,10 +164,10 @@ describe("app behavior", () => {
     // ensure fields prefilled
     const nameInput = await screen.findByDisplayValue(new RegExp(TEST_SENDER.name, "i"));
     expect(nameInput).toBeInTheDocument();
-    const phoneInput = screen.getByPlaceholderText(/081234567890/i);
+    const phoneInput = screen.getByPlaceholderText(/628123456789/i);
     // change some values
     fireEvent.change(nameInput, { target: { value: "Test User" } });
-    fireEvent.change(phoneInput, { target: { value: "081234567890" } });
+    fireEvent.change(phoneInput, { target: { value: "628123456789" } });
     fireEvent.click(screen.getByText(/Simpan/i));
 
     // toast should appear
@@ -167,11 +176,11 @@ describe("app behavior", () => {
 
   it("renders admin management page and supports search", async () => {
     render(
-      <ThemeProvider attribute="class" defaultTheme="system">
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <AuthProvider>
           <DataProvider>
             <MemoryRouter initialEntries={["/admin/kelola-admin"]}>
-              <AutoLogin email={TEST_SUPER_ADMIN.email} password={TEST_SUPER_ADMIN.password}>
+              <AutoLogin email={TEST_PH.email} password={TEST_PH.password}>
                 <AdminManagement />
               </AutoLogin>
             </MemoryRouter>
@@ -180,25 +189,25 @@ describe("app behavior", () => {
       </ThemeProvider>
     );
 
-    expect(await screen.findByText(/Kelola Admin/i)).toBeInTheDocument();
-    const search = screen.getByPlaceholderText(/Cari admin/i);
+    expect(await screen.findByText(/Kelola HR/i)).toBeInTheDocument();
+    const search = screen.getByPlaceholderText(/Cari admin|Cari HR/i);
     expect(search).toBeInTheDocument();
     fireEvent.change(search, { target: { value: "Sarah" } });
     expect(await screen.findByText(/Sarah Amelia/i)).toBeInTheDocument();
     // verify add-user searchable input renders
-    const addSearch = screen.getByPlaceholderText(/Cari atau pilih pengirim/i);
+    const addSearch = screen.getByPlaceholderText(/Cari atau pilih anggota/i);
     expect(addSearch).toBeInTheDocument();
   });
 
-  it("admin can override report urgency via detail page", async () => {
+  it("PH can override report urgency via detail page", async () => {
     render(
-      <ThemeProvider attribute="class" defaultTheme="system">
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <AuthProvider>
           <DataProvider>
             <MemoryRouter initialEntries={[`/admin/laporan/${TEST_REPORT_ID}`]}>
-              <AutoLogin email={TEST_SUPER_ADMIN.email} password={TEST_SUPER_ADMIN.password}>
+              <AutoLogin email={TEST_PH.email} password={TEST_PH.password}>
                 <Toaster />
-                <UrgencySetter reportId={TEST_REPORT_ID} newUrgency="RENDAH" adminId={TEST_SUPER_ADMIN.id} />
+                <UrgencySetter reportId={TEST_REPORT_ID} newUrgency="RENDAH" adminId={TEST_PH.id} />
                 <ReportUrgencyProbe reportId={TEST_REPORT_ID} />
                 <Routes>
                   <Route path="/admin/laporan/:id" element={<ReportDetail />} />
