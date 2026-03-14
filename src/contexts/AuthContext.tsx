@@ -1,14 +1,11 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import {
-  generateId,
   type User,
   type UserRole,
   type BiroBidang,
   type Jabatan,
 } from "@/data/domain";
 import { supabase } from "@/lib/supabase/client";
-
-const AUTH_STORAGE_KEY = "halo_psdm_auth_user_id";
 
 type UsersRow = {
   id: string;
@@ -65,6 +62,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const loadAppUserById = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, name, biro, jabatan, role, email, password_hash, is_active, created_at")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error || !data || !data.is_active) {
+      setUser(null);
+      return;
+    }
+
+    setUser(mapRowToUser(data as UsersRow));
+  }, []);
+
   const refreshUsers = useCallback(async () => {
     const { data, error } = await supabase
       .from("users")
@@ -80,50 +92,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const bootstrap = async () => {
-      const storedUserId = typeof window !== "undefined" ? window.localStorage.getItem(AUTH_STORAGE_KEY) : null;
+      const { data } = await supabase.auth.getSession();
       await refreshUsers();
 
-      if (storedUserId) {
-        const { data, error } = await supabase
-          .from("users")
-          .select("id, name, biro, jabatan, role, email, password_hash, is_active, created_at")
-          .eq("id", storedUserId)
-          .maybeSingle();
-
-        if (!error && data && data.is_active) {
-          setUser(mapRowToUser(data as UsersRow));
-        } else if (typeof window !== "undefined") {
-          window.localStorage.removeItem(AUTH_STORAGE_KEY);
-        }
+      const sessionUserId = data.session?.user?.id;
+      if (sessionUserId) {
+        await loadAppUserById(sessionUserId);
       }
 
       setIsLoading(false);
     };
 
     void bootstrap();
-  }, [refreshUsers]);
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const sessionUserId = session?.user?.id;
+      if (!sessionUserId) {
+        setUser(null);
+        return;
+      }
+
+      void loadAppUserById(sessionUserId);
+      void refreshUsers();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [refreshUsers, loadAppUserById]);
 
   const login = useCallback(
     async (email: string, password: string) => {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError || !authData.user) {
+        return { success: false, error: "Email atau password salah." };
+      }
+
       const { data, error } = await supabase
         .from("users")
         .select("id, name, biro, jabatan, role, email, password_hash, is_active, created_at")
-        .eq("email", email)
+        .eq("id", authData.user.id)
         .maybeSingle();
 
       if (error || !data) {
-        return { success: false, error: "Email atau password salah." };
+        return { success: false, error: "Profil pengguna belum tersedia di sistem." };
       }
 
       const found = mapRowToUser(data as UsersRow);
-      const passwordFromDb = (data as UsersRow).password_hash ?? "";
-
-      if (!found.is_active || passwordFromDb !== password) {
+      if (!found.is_active) {
+        await supabase.auth.signOut();
         return { success: false, error: "Email atau password salah." };
-      }
-
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(AUTH_STORAGE_KEY, found.id);
       }
 
       setUser(found);
@@ -144,13 +168,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Password minimal 6 karakter." };
       }
 
-      const newUserId = generateId("u");
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            biro: data.biro,
+            jabatan: data.jabatan,
+          },
+        },
+      });
+
+      if (authError || !authData.user) {
+        return { success: false, error: authError?.message ?? "Registrasi gagal. Silakan coba lagi." };
+      }
+
       const now = new Date().toISOString();
       const insertPayload = {
-        id: newUserId,
+        id: authData.user.id,
         name: data.name,
         email: data.email,
-        password_hash: data.password,
         biro: data.biro,
         jabatan: data.jabatan,
         role: "SENDER",
@@ -158,26 +196,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         created_at: now,
       };
 
-      const { error } = await supabase.from("users").insert(insertPayload);
+      const { error } = await supabase.from("users").upsert(insertPayload);
       if (error) {
-        return { success: false, error: "Registrasi gagal. Silakan coba lagi." };
+        return { success: false, error: "Akun auth dibuat, tetapi profil pengguna gagal disimpan." };
       }
 
       const newUser: User = {
-        id: newUserId,
+        id: authData.user.id,
         name: data.name,
         email: data.email,
-        password: data.password,
         biro: data.biro,
         jabatan: data.jabatan,
         role: "SENDER",
         is_active: true,
         created_at: now,
       };
-
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(AUTH_STORAGE_KEY, newUser.id);
-      }
 
       await refreshUsers();
       setUser(newUser);
@@ -187,9 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    }
+    void supabase.auth.signOut();
     setUser(null);
   }, []);
 
@@ -222,10 +253,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const updatePayload: Record<string, unknown> = {};
       if (typeof updates.name !== "undefined") updatePayload.name = updates.name;
-      if (typeof updates.email !== "undefined") updatePayload.email = updates.email;
       if (typeof updates.biro !== "undefined") updatePayload.biro = updates.biro;
       if (typeof updates.jabatan !== "undefined") updatePayload.jabatan = updates.jabatan;
-      if (typeof updates.password !== "undefined") updatePayload.password_hash = updates.password;
+
+      if (typeof updates.email !== "undefined" || typeof updates.password !== "undefined") {
+        const { error: authUpdateError } = await supabase.auth.updateUser({
+          email: updates.email,
+          password: updates.password,
+        });
+
+        if (authUpdateError) {
+          return { success: false, error: authUpdateError.message };
+        }
+
+        if (typeof updates.email !== "undefined") {
+          updatePayload.email = updates.email;
+        }
+      }
 
       const { error } = await supabase
         .from("users")

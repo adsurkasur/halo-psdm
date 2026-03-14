@@ -1,9 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import {
   generateId,
-  generateCaseId,
-  STATUS_LABELS,
-  URGENCY_LABELS,
   type Report,
   type ReportStatus,
   type ReportStatusHistory,
@@ -66,7 +63,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { user, allUsers } = useAuth();
+  const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [statusHistory, setStatusHistory] = useState<ReportStatusHistory[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -74,6 +71,33 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [adminProfiles, setAdminProfiles] = useState<AdminProfile[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const callSecureApi = useCallback(
+    async <T,>(path: string, init: RequestInit): Promise<T> => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
+      }
+
+      const response = await fetch(path, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...(init.headers ?? {}),
+        },
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as { error?: string } & T;
+      if (!response.ok) {
+        throw new Error(payload.error ?? `API error (${response.status})`);
+      }
+
+      return payload;
+    },
+    []
+  );
 
   const loadAllData = useCallback(async () => {
     if (!user) {
@@ -233,85 +257,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addReport = useCallback(
     async (data: { user_id: string; category: ReportCategory; urgency: Urgency; kronologi: string }) => {
-      const now = new Date().toISOString();
-      const report: Report = {
-        id: generateId("r"),
-        case_id: generateCaseId(),
-        user_id: data.user_id,
-        category: data.category,
-        urgency: data.urgency,
-        kronologi: data.kronologi,
-        status: "RECEIVED",
-        admin_notes: "",
-        created_at: now,
-        updated_at: now,
-      };
-
-      const { error } = await supabase.from("reports").insert({
-        id: report.id,
-        case_id: report.case_id,
-        user_id: report.user_id,
-        category: report.category,
-        urgency: report.urgency,
-        kronologi: report.kronologi,
-        status: report.status,
-        admin_notes: report.admin_notes,
-        created_at: report.created_at,
-        updated_at: report.updated_at,
+      const response = await callSecureApi<{ report: Report; historyEntry: ReportStatusHistory }>("/api/secure/reports", {
+        method: "POST",
+        body: JSON.stringify({
+          category: data.category,
+          urgency: data.urgency,
+          kronologi: data.kronologi,
+        }),
       });
 
-      if (error) {
-        throw new Error("Gagal menyimpan laporan ke Supabase.");
-      }
+      setReports((prev) => [response.report, ...prev]);
+      setStatusHistory((prev) => [...prev, response.historyEntry]);
 
-      setReports((prev) => [report, ...prev]);
-
-      const historyEntry: ReportStatusHistory = {
-        id: generateId("sh"),
-        report_id: report.id,
-        old_status: null,
-        new_status: "RECEIVED",
-        changed_by: "system",
-        note: "Laporan diterima",
-        created_at: now,
-      };
-
-      await supabase.from("report_status_history").insert({
-        id: historyEntry.id,
-        report_id: historyEntry.report_id,
-        old_status: historyEntry.old_status,
-        new_status: historyEntry.new_status,
-        changed_by: historyEntry.changed_by,
-        note: historyEntry.note,
-        created_at: historyEntry.created_at,
-      });
-
-      setStatusHistory((prev) => [...prev, historyEntry]);
-
-      const senderUser = allUsers.find((u) => u.id === data.user_id);
-      const senderName = senderUser?.name ?? "Pengirim";
-      const admins = allUsers.filter((u) => u.role === "ADMIN" || u.role === "SUPER_ADMIN");
-      await Promise.all(admins.map((admin) =>
-        addNotification({
-          user_id: admin.id,
-          type: "NEW_REPORT",
-          title: "Laporan Baru",
-          message: `Laporan baru dari ${senderName} — Kategori: ${data.category} (${data.urgency})`,
-          link: `/admin/laporan/${report.id}`,
-        })
-      ));
-
-      return report;
+      return response.report;
     },
-    [addNotification, allUsers]
+    [callSecureApi]
   );
 
   const updateReportStatus = useCallback(
     async (reportId: string, newStatus: ReportStatus, adminId: string, note: string = "") => {
-      await supabase
-        .from("reports")
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq("id", reportId);
+      void adminId;
+
+      const response = await callSecureApi<{ historyEntry: ReportStatusHistory }>(`/api/secure/reports/${reportId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ newStatus, note }),
+      });
 
       setReports((prev) =>
         prev.map((r) =>
@@ -321,53 +291,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
         )
       );
 
-      const report = reports.find((r) => r.id === reportId);
-      const oldStatus = report?.status ?? null;
-      const now = new Date().toISOString();
-
-      const historyEntry: ReportStatusHistory = {
-        id: generateId("sh"),
-        report_id: reportId,
-        old_status: oldStatus,
-        new_status: newStatus,
-        changed_by: adminId,
-        note: note || `Status diubah ke ${STATUS_LABELS[newStatus]}`,
-        created_at: now,
-      };
-
-      await supabase.from("report_status_history").insert({
-        id: historyEntry.id,
-        report_id: historyEntry.report_id,
-        old_status: historyEntry.old_status,
-        new_status: historyEntry.new_status,
-        changed_by: historyEntry.changed_by,
-        note: historyEntry.note,
-        created_at: historyEntry.created_at,
-      });
-
-      setStatusHistory((prev) => [...prev, historyEntry]);
-
-      if (report) {
-        await addNotification({
-          user_id: report.user_id,
-          type: newStatus === "DONE" ? "REPORT_DONE" : "STATUS_UPDATED",
-          title: newStatus === "DONE" ? "Kasus Selesai" : "Status Diperbarui",
-          message: `Laporan ${report.case_id} telah diperbarui ke ${STATUS_LABELS[newStatus]}`,
-          link: "/laporan",
-        });
-      }
+      setStatusHistory((prev) => [...prev, response.historyEntry]);
     },
-    [reports, addNotification]
+    [callSecureApi]
   );
 
   const updateReportUrgency = useCallback(
     async (reportId: string, newUrgency: Urgency, adminId: string) => {
       void adminId;
 
-      await supabase
-        .from("reports")
-        .update({ urgency: newUrgency, updated_at: new Date().toISOString() })
-        .eq("id", reportId);
+      await callSecureApi(`/api/secure/reports/${reportId}/urgency`, {
+        method: "PATCH",
+        body: JSON.stringify({ newUrgency }),
+      });
 
       setReports((prev) =>
         prev.map((r) =>
@@ -376,18 +312,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             : r
         )
       );
-      const report = reports.find((r) => r.id === reportId);
-      if (report) {
-        await addNotification({
-          user_id: report.user_id,
-          type: "STATUS_UPDATED",
-          title: "Urgensi Diperbarui",
-          message: `Urgensi laporan ${report.case_id} diubah menjadi ${URGENCY_LABELS[newUrgency]}`,
-          link: "/laporan",
-        });
-      }
     },
-    [reports, addNotification]
+    [callSecureApi]
   );
 
   const updateReportNotes = useCallback(async (reportId: string, notes: string) => {
@@ -403,34 +329,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const createChatSession = useCallback(
     async (userId: string, reportId: string | null = null) => {
-      const session: ChatSession = {
-        id: generateId("cs"),
-        report_id: reportId,
-        user_id: userId,
-        assigned_admin_id: null,
-        status: "OPEN",
-        created_at: new Date().toISOString(),
-        closed_at: null,
-      };
+      void userId;
 
-      await supabase.from("chat_sessions").insert(session);
-      setChatSessions((prev) => [session, ...prev]);
+      const response = await callSecureApi<{ session: ChatSession }>("/api/secure/chat/sessions", {
+        method: "POST",
+        body: JSON.stringify({ reportId }),
+      });
 
-      const senderUser = allUsers.find((u) => u.id === userId);
-      const admins = allUsers.filter((u) => u.role === "ADMIN" || u.role === "SUPER_ADMIN");
-      await Promise.all(admins.map((admin) =>
-        addNotification({
-          user_id: admin.id,
-          type: "NEW_CHAT_SESSION",
-          title: "Sesi Chat Baru",
-          message: `Sesi chat baru dari ${senderUser?.name ?? "Pengirim"}`,
-          link: "/admin/chat",
-        })
-      ));
-
-      return session;
+      setChatSessions((prev) => [response.session, ...prev]);
+      return response.session;
     },
-    [addNotification, allUsers]
+    [callSecureApi]
   );
 
   const assignAdminToSession = useCallback(async (sessionId: string, adminId: string) => {
@@ -446,31 +355,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const closeChatSession = useCallback(
     async (sessionId: string) => {
-      const session = chatSessions.find((s) => s.id === sessionId);
-      await supabase
-        .from("chat_sessions")
-        .update({ status: "CLOSED", closed_at: new Date().toISOString() })
-        .eq("id", sessionId);
+      const response = await callSecureApi<{ closed_at: string }>(`/api/secure/chat/sessions/${sessionId}/close`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
 
       setChatSessions((prev) =>
         prev.map((s) =>
           s.id === sessionId
-            ? { ...s, status: "CLOSED" as const, closed_at: new Date().toISOString() }
+            ? { ...s, status: "CLOSED" as const, closed_at: response.closed_at }
             : s
         )
       );
-
-      if (session) {
-        await addNotification({
-          user_id: session.user_id,
-          type: "SESSION_CLOSED",
-          title: "Sesi Chat Ditutup",
-          message: "Admin telah menutup sesi chat Anda",
-          link: "/chat",
-        });
-      }
     },
-    [chatSessions, addNotification]
+    [callSecureApi]
   );
 
   const addChatMessage = useCallback(
@@ -482,67 +380,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       mediaUrl?: string,
       mediaName?: string
     ) => {
-      const msg: ChatMessage = {
-        id: generateId("cm"),
-        session_id: sessionId,
-        sender_id: senderId,
-        content,
-        type,
-        media_url: mediaUrl,
-        media_name: mediaName,
-        is_read: false,
-        read_at: null,
-        created_at: new Date().toISOString(),
-      };
+      void senderId;
 
-      const insertPayload = {
-        id: msg.id,
-        session_id: msg.session_id,
-        sender_id: msg.sender_id,
-        content: msg.content,
-        type: msg.type,
-        media_url: msg.media_url,
-        media_name: msg.media_name,
-        is_read: msg.is_read,
-        read_at: msg.read_at,
-        created_at: msg.created_at,
-      };
-      const insertResult = await supabase.from("chat_messages").insert(insertPayload);
-      if (insertResult.error) {
-        await supabase.from("chat_messages").insert({
-          id: msg.id,
-          session_id: msg.session_id,
-          sender_id: msg.sender_id,
-          content: msg.content,
-          is_read: msg.is_read,
-          read_at: msg.read_at,
-          created_at: msg.created_at,
-        });
-      }
+      const response = await callSecureApi<{ message: ChatMessage }>("/api/secure/chat/messages", {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId,
+          content,
+          type,
+          mediaUrl,
+          mediaName,
+        }),
+      });
 
-      setChatMessages((prev) => [...prev, msg]);
+      setChatMessages((prev) => [...prev, response.message]);
 
-      const session = chatSessions.find((s) => s.id === sessionId);
-      if (session) {
-        const senderUser = allUsers.find((u) => u.id === senderId);
-        const isSender = senderId === session.user_id;
-        const targetUserId = isSender ? session.assigned_admin_id : session.user_id;
-        const preview = type === "TEXT" ? content.slice(0, 60) : `📎 ${mediaName ?? "Media"}`;
-
-        if (targetUserId) {
-          await addNotification({
-            user_id: targetUserId,
-            type: isSender ? "NEW_CHAT_MESSAGE" : "NEW_CHAT_REPLY",
-            title: isSender ? "Pesan Baru" : "Balasan Chat",
-            message: `${senderUser?.name ?? "Pengguna"}: ${preview}${type === "TEXT" && content.length > 60 ? "..." : ""}`,
-            link: isSender ? "/admin/chat" : `/chat/${sessionId}`,
-          });
-        }
-      }
-
-      return msg;
+      return response.message;
     },
-    [chatSessions, addNotification, allUsers]
+    [callSecureApi]
   );
 
   const markMessagesRead = useCallback(async (sessionId: string, readerId: string) => {
@@ -600,27 +455,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addAppointment = useCallback(
     async (userId: string, targetAdminId: string) => {
-      const apt: Appointment = {
-        id: generateId("apt"),
-        user_id: userId,
-        target_admin_id: targetAdminId,
-        created_at: new Date().toISOString(),
-      };
+      void userId;
 
-      await supabase.from("appointments").insert(apt);
-      setAppointments((prev) => [...prev, apt]);
-
-      const senderUser = allUsers.find((u) => u.id === userId);
-      await addNotification({
-        user_id: targetAdminId,
-        type: "APPOINTMENT_REQUEST",
-        title: "Permintaan Janji Temu",
-        message: `Permintaan janji temu baru dari ${senderUser?.name ?? "Pengirim"}`,
+      const response = await callSecureApi<{ appointment: Appointment }>("/api/secure/appointments", {
+        method: "POST",
+        body: JSON.stringify({ targetAdminId }),
       });
 
-      return apt;
+      setAppointments((prev) => [...prev, response.appointment]);
+
+      return response.appointment;
     },
-    [addNotification, allUsers]
+    [callSecureApi]
   );
 
   const markNotificationRead = useCallback(async (notificationId: string) => {

@@ -93,10 +93,145 @@ const initialDb: Record<TableName, Row[]> = {
 };
 
 let db: Record<TableName, Row[]> = structuredClone(initialDb);
+let currentAuthUserId: string | null = null;
+const authListeners = new Set<(event: string, session: { user: { id: string; email?: string | null } } | null) => void>();
 
 beforeEach(() => {
   db = structuredClone(initialDb);
+  currentAuthUserId = null;
+  authListeners.clear();
   window.localStorage.clear();
+
+  global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const rawUrl = typeof input === "string" ? input : input.toString();
+    const url = new URL(rawUrl, "http://localhost");
+    const path = url.pathname;
+    const method = (init?.method ?? "GET").toUpperCase();
+    const body = init?.body ? JSON.parse(String(init.body)) : {};
+
+    if (!currentAuthUserId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    }
+
+    const currentUser = db.users.find((u) => String(u.id) === currentAuthUserId);
+    if (!currentUser) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+    }
+
+    if (path === "/api/secure/reports" && method === "POST") {
+      const nowIso = new Date().toISOString();
+      const report = {
+        id: `r_${Date.now().toString(36)}`,
+        case_id: `HP-${nowIso.slice(0, 10).replace(/-/g, "")}-0001`,
+        user_id: currentAuthUserId,
+        category: body.category,
+        urgency: body.urgency,
+        kronologi: body.kronologi,
+        status: "RECEIVED",
+        admin_notes: "",
+        created_at: nowIso,
+        updated_at: nowIso,
+      };
+      const historyEntry = {
+        id: `sh_${Date.now().toString(36)}`,
+        report_id: report.id,
+        old_status: null,
+        new_status: "RECEIVED",
+        changed_by: "system",
+        note: "Laporan diterima",
+        created_at: nowIso,
+      };
+      db.reports.push(report);
+      db.report_status_history.push(historyEntry);
+      return new Response(JSON.stringify({ report, historyEntry }), { status: 200 });
+    }
+
+    const statusMatch = path.match(/^\/api\/secure\/reports\/([^/]+)\/status$/);
+    if (statusMatch && method === "PATCH") {
+      const reportId = statusMatch[1];
+      const report = db.reports.find((r) => String(r.id) === reportId);
+      if (!report) return new Response(JSON.stringify({ error: "Not Found" }), { status: 404 });
+      const nowIso = new Date().toISOString();
+      const historyEntry = {
+        id: `sh_${Date.now().toString(36)}`,
+        report_id: reportId,
+        old_status: report.status,
+        new_status: body.newStatus,
+        changed_by: currentAuthUserId,
+        note: body.note ?? "",
+        created_at: nowIso,
+      };
+      report.status = body.newStatus;
+      report.updated_at = nowIso;
+      db.report_status_history.push(historyEntry);
+      return new Response(JSON.stringify({ ok: true, historyEntry }), { status: 200 });
+    }
+
+    const urgencyMatch = path.match(/^\/api\/secure\/reports\/([^/]+)\/urgency$/);
+    if (urgencyMatch && method === "PATCH") {
+      const reportId = urgencyMatch[1];
+      const report = db.reports.find((r) => String(r.id) === reportId);
+      if (!report) return new Response(JSON.stringify({ error: "Not Found" }), { status: 404 });
+      report.urgency = body.newUrgency;
+      report.updated_at = new Date().toISOString();
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
+    if (path === "/api/secure/chat/sessions" && method === "POST") {
+      const session = {
+        id: `cs_${Date.now().toString(36)}`,
+        report_id: body.reportId ?? null,
+        user_id: currentAuthUserId,
+        assigned_admin_id: null,
+        status: "OPEN",
+        created_at: new Date().toISOString(),
+        closed_at: null,
+      };
+      db.chat_sessions.push(session);
+      return new Response(JSON.stringify({ session }), { status: 200 });
+    }
+
+    const closeMatch = path.match(/^\/api\/secure\/chat\/sessions\/([^/]+)\/close$/);
+    if (closeMatch && method === "POST") {
+      const sessionId = closeMatch[1];
+      const session = db.chat_sessions.find((s) => String(s.id) === sessionId);
+      if (!session) return new Response(JSON.stringify({ error: "Not Found" }), { status: 404 });
+      const closedAt = new Date().toISOString();
+      session.status = "CLOSED";
+      session.closed_at = closedAt;
+      return new Response(JSON.stringify({ ok: true, closed_at: closedAt }), { status: 200 });
+    }
+
+    if (path === "/api/secure/chat/messages" && method === "POST") {
+      const message = {
+        id: `cm_${Date.now().toString(36)}`,
+        session_id: body.sessionId,
+        sender_id: currentAuthUserId,
+        content: body.content,
+        type: body.type ?? "TEXT",
+        media_url: body.mediaUrl,
+        media_name: body.mediaName,
+        is_read: false,
+        read_at: null,
+        created_at: new Date().toISOString(),
+      };
+      db.chat_messages.push(message);
+      return new Response(JSON.stringify({ message }), { status: 200 });
+    }
+
+    if (path === "/api/secure/appointments" && method === "POST") {
+      const appointment = {
+        id: `apt_${Date.now().toString(36)}`,
+        user_id: currentAuthUserId,
+        target_admin_id: body.targetAdminId,
+        created_at: new Date().toISOString(),
+      };
+      db.appointments.push(appointment);
+      return new Response(JSON.stringify({ appointment }), { status: 200 });
+    }
+
+    return new Response(JSON.stringify({ error: `Unhandled route: ${method} ${path}` }), { status: 404 });
+  }) as unknown as typeof fetch;
 });
 
 type Filter = (row: Row) => boolean;
@@ -198,6 +333,95 @@ class QueryBuilder {
 }
 
 const supabaseMock = {
+  auth: {
+    getSession: async () => ({
+      data: {
+        session: currentAuthUserId
+          ? {
+              user: {
+                id: currentAuthUserId,
+              },
+              access_token: "test-access-token",
+            }
+          : null,
+      },
+      error: null,
+    }),
+    onAuthStateChange: (callback: (event: string, session: { user: { id: string; email?: string | null } } | null) => void) => {
+      authListeners.add(callback);
+      return {
+        data: {
+          subscription: {
+            unsubscribe: () => {
+              authListeners.delete(callback);
+            },
+          },
+        },
+      };
+    },
+    signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
+      const user = db.users.find((u) => u.email === email && u.password_hash === password) as Row | undefined;
+      if (!user) {
+        return {
+          data: { user: null, session: null },
+          error: { message: "Invalid login credentials" },
+        };
+      }
+
+      currentAuthUserId = String(user.id);
+      const session = { user: { id: String(user.id), email: String(user.email) } };
+      authListeners.forEach((listener) => listener("SIGNED_IN", session));
+
+      return {
+        data: { user: session.user, session: { ...session, access_token: "test-access-token" } },
+        error: null,
+      };
+    },
+    signUp: async ({ email, password, options }: { email: string; password: string; options?: { data?: Record<string, unknown> } }) => {
+      const existing = db.users.find((u) => u.email === email);
+      if (existing) {
+        return {
+          data: { user: null, session: null },
+          error: { message: "User already registered" },
+        };
+      }
+
+      const userId = `auth-${Date.now().toString(36)}`;
+      const session = { user: { id: userId, email } };
+      currentAuthUserId = userId;
+      authListeners.forEach((listener) => listener("SIGNED_IN", session));
+
+      // mimic that app-side profile upsert still happens after auth signup
+      void password;
+      void options;
+
+      return {
+        data: { user: session.user, session: { ...session, access_token: "test-access-token" } },
+        error: null,
+      };
+    },
+    signOut: async () => {
+      currentAuthUserId = null;
+      authListeners.forEach((listener) => listener("SIGNED_OUT", null));
+      return { error: null };
+    },
+    updateUser: async ({ email, password }: { email?: string; password?: string }) => {
+      if (!currentAuthUserId) {
+        return { data: { user: null }, error: { message: "Not authenticated" } };
+      }
+
+      const idx = db.users.findIndex((u) => String(u.id) === currentAuthUserId);
+      if (idx >= 0) {
+        if (typeof email !== "undefined") db.users[idx].email = email;
+        if (typeof password !== "undefined") db.users[idx].password_hash = password;
+      }
+
+      return {
+        data: { user: { id: currentAuthUserId, email: email ?? null } },
+        error: null,
+      };
+    },
+  },
   from(table: TableName) {
     return {
       select: () => new QueryBuilder(table).select(),

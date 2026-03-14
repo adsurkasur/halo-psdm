@@ -5,14 +5,19 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Create Supabase bootstrap schema SQL compatible with current app runtime |
+| Task | Add credential reset SQL and refactor cross-user operations to secure server routes |
 | Started | 2026-03-13 10:00 |
-| Last Updated | 2026-03-13 20:03 |
+| Last Updated | 2026-03-14 09:52 |
 | Session ID | 20260313-2045 |
 
 ## User Request
 
-> iya tolong buatkan schema atau query apapun itu agar supabase bisa connect dengan project ini
+> 1. buatkan sql query untuk clear credentials dulu, karena aku udah buat akun yang masih belum pakai auth
+> 2. lanjutkan ke tahap berikutnya: refactor operasi lintas-user ke server route supaya model security-nya benar-benar production-ready end-to-end
+> 3. jelaskan kepadaku apa yang kamu lakukan, buat laporan yang explanatory
+>
+> pertanyaan:
+> 1. supabase yang aku pakai ini digunakan untuk beberapa project, apakah set up auth ini aman? jadi kaya satu akun bisa untuk beberapa project yang memakai supabase ini
 
 ## Execution Plan
 
@@ -108,6 +113,14 @@
 - **19:59** - STUDY - Verified app browser client uses publishable/anon key and current project host resolves correctly
 - **20:03** - APPROVAL - User approved creating Supabase schema/bootstrap SQL for this project
 - **20:03** - IMPLEMENT - Starting SQL bootstrap authoring aligned with AuthContext/DataContext table usage
+- **09:38** - PLAN - User requested migration to Supabase Auth for login/register instead of plain users table password checks
+- **09:39** - IMPLEMENT - Updated AuthContext to use `supabase.auth` session, sign-in, sign-up, sign-out, and updateUser APIs
+- **09:41** - IMPLEMENT - Added `supabase/auth-hardening.sql` for auth trigger provisioning and RLS policies based on `auth.uid()`
+- **09:45** - APPROVAL - User requested credential reset SQL and secure server-route refactor for cross-user operations
+- **09:46** - IMPLEMENT - Added secure API route auth helper and server routes for reports, chat, and appointments cross-user flows
+- **09:49** - IMPLEMENT - Refactored DataContext cross-user operations to call secure API routes with bearer token
+- **09:51** - IMPLEMENT - Added scoped legacy credential cleanup SQL and updated test mocks for secure API + auth token
+- **09:52** - IMPLEMENT - Revalidated lint, tests, and production build successfully
 
 ## Research Evidence
 
@@ -208,8 +221,23 @@
 | File | Change Type | Purpose | Validated |
 | --- | --- | --- | --- |
 | supabase/bootstrap.sql | Created | Bootstrap all tables, grants, indexes, triggers, and RLS policies required by current app runtime | Yes |
+| src/contexts/AuthContext.tsx | Modified | Replace plain-table auth with Supabase Auth APIs and session lifecycle handling | Partial |
+| src/test/setup.ts | Modified | Extend Supabase mock to include auth API methods used by AuthContext | Partial |
+| supabase/auth-hardening.sql | Created | Add auth.user trigger + secure RLS policies for authenticated access model | Yes |
+| supabase/clear-legacy-credentials.sql | Created | Scoped cleanup for legacy app users and matching auth rows before strict auth migration | Yes |
+| src/lib/supabase/secure-route.ts | Created | Shared bearer-token validation and app-user role resolution for secure API routes | Yes |
+| src/app/api/secure/reports/route.ts | Created | Server-side report creation and admin notification dispatch | Yes |
+| src/app/api/secure/reports/[reportId]/status/route.ts | Created | Server-side status update, history insert, and sender notification | Yes |
+| src/app/api/secure/reports/[reportId]/urgency/route.ts | Created | Server-side urgency update and sender notification | Yes |
+| src/app/api/secure/chat/sessions/route.ts | Created | Server-side chat session creation and admin notification | Yes |
+| src/app/api/secure/chat/sessions/[sessionId]/close/route.ts | Created | Server-side close session and sender notification | Yes |
+| src/app/api/secure/chat/messages/route.ts | Created | Server-side chat message create with receiver notification | Yes |
+| src/app/api/secure/appointments/route.ts | Created | Server-side appointment create and target admin notification | Yes |
+| src/contexts/DataContext.tsx | Modified | Route cross-user actions through secure server APIs | Yes |
 
 ## Notes
 
 - Registration failure is caused by missing app tables in target Supabase project (`PGRST205` on `public.users`).
 - Bootstrap SQL was created to match current client-side Supabase access pattern.
+- New migration target is Supabase Auth for credentials, while `public.users` remains app profile and role table.
+- Cross-user writes are now moved to server routes to avoid exposing service-role level effects to client-side code.
