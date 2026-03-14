@@ -1,20 +1,32 @@
-const PHONE_62_REGEX = /^62\d{8,13}$/;
+const PHONE_INTL_REGEX = /^[1-9]\d{7,14}$/;
 
 export function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
 }
 
-export function normalizePhoneTo62(value: string): string {
-  const digits = digitsOnly(value);
+export function normalizePhoneInternational(value: string): string {
+  const raw = value.trim();
+  if (!raw) return "";
+
+  let digits = digitsOnly(raw);
   if (!digits) return "";
 
-  if (digits.startsWith("62")) return digits;
-  if (digits.startsWith("0")) return `62${digits.slice(1)}`;
+  // International prefix commonly written as 00 (e.g. 001234...).
+  if (digits.startsWith("00")) {
+    digits = digits.slice(2);
+  }
+
+  // Backward compatibility for Indonesian local input without country code.
   if (digits.startsWith("8")) return `62${digits}`;
+  if (digits.startsWith("08")) return `62${digits.slice(1)}`;
 
   return digits;
 }
 
-export function isValidPhone62(value: string): boolean {
-  return PHONE_62_REGEX.test(value);
+export function isValidPhoneInternational(value: string): boolean {
+  return PHONE_INTL_REGEX.test(value);
 }
+
+// Backward compatible aliases used across current codebase.
+export const normalizePhoneTo62 = normalizePhoneInternational;
+export const isValidPhone62 = isValidPhoneInternational;

@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Running E2E with configured env and implementing combobox, PH appointment tracking, and Dasbor PH labeling updates |
+| Task | Relaxing phone validation from Indonesia-only (62) to international country-code format support (e.g. +1, +44, +62) |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 15:31 |
+| Last Updated | 2026-03-14 15:42 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -234,6 +234,15 @@
 - **15:26** - IMPLEMENT - Adjusted admin availability combobox trigger width and no-clamp text to prevent `Offline` truncation
 - **15:29** - IMPLEMENT - Executed real Playwright E2E with .env.local fallback parsing; run fails at data precondition step (sender report selection / report detail visibility)
 - **15:31** - IMPLEMENT - Final validation passed: `bun run lint`, `bun run build`, `bun run test` (10/10)
+- **15:34** - IMPLEMENT - Started full Playwright hardening per user request (multi-scenario E2E coverage and selector stabilization)
+- **15:36** - IMPLEMENT - Added shared test helper module (`tests/helpers/e2e-helpers.ts`) and refactored clarification flow spec for maintainability
+- **15:37** - IMPLEMENT - Added new E2E specs: appointment tracking, attachment modal, route guard, and chat reliability
+- **15:38** - IMPLEMENT - Added UI test hooks (`data-testid`) across appointment, report attachment, and chat screens for deterministic interaction
+- **15:39** - IMPLEMENT - Expanded env/docs for optional HR route-guard credentials and documented full Playwright coverage set
+- **15:40** - IMPLEMENT - Revalidated: `bun run lint` passed, full Playwright suite executed and currently reports `5 skipped` (precondition-gated)
+- **15:42** - IMPLEMENT - Started phone-format relaxation from Indonesia-only `62` to international country-code support
+- **15:44** - IMPLEMENT - Updated phone utilities, auth validation, profile/register copy, and WA-related messages for international phone numbers
+- **15:44** - IMPLEMENT - Validation passed: `bun run lint` and `bun run test` (10/10)
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references

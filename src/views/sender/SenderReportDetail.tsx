@@ -50,7 +50,7 @@ export default function SenderReportDetail() {
   };
 
   return (
-    <div className="space-y-4 page-enter max-w-3xl mx-auto">
+    <div data-testid="sender-report-detail" className="space-y-4 page-enter max-w-3xl mx-auto">
       <Button variant="ghost" size="sm" onClick={() => navigate("/laporan")} className="gap-1 transition-transform duration-200 hover:scale-105">
         <ArrowLeft className="h-4 w-4" /> Kembali
       </Button>
@@ -109,7 +109,7 @@ export default function SenderReportDetail() {
                     mediaMime={report.attachment_mime}
                     title="Pratinjau Lampiran Laporan"
                   >
-                    <div className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent">
+                    <div data-testid="sender-report-attachment-preview" className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent">
                       <Download className="h-4 w-4" /> Lihat
                     </div>
                   </MediaViewerDialog>

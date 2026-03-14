@@ -300,7 +300,7 @@ export default function ProfilePage() {
     const normalizedPhone = normalizePhoneTo62(phoneNumber);
     if (!isValidPhone62(normalizedPhone)) {
       toast({
-        title: "Nomor HP wajib berformat 62xxxxxxxxxx.",
+        title: "Nomor HP wajib pakai kode negara (contoh: +628123... / +1202555...).",
         variant: "destructive",
       });
       return;
@@ -379,8 +379,8 @@ export default function ProfilePage() {
           </div>
           <div>
             <Label>Nomor HP</Label>
-            <Input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Contoh: 628123456789" />
-            <p className="text-xs text-muted-foreground mt-1">Format wajib 62xxxxxxxxxx agar bisa dipakai langsung ke WhatsApp.</p>
+            <Input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Contoh: +628123456789 / +12025550123" />
+            <p className="text-xs text-muted-foreground mt-1">Gunakan nomor dengan kode negara agar kompatibel untuk WhatsApp internasional.</p>
           </div>
           <div>
             <Label>Biro/Bidang</Label>

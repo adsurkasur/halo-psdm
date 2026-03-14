@@ -193,7 +193,7 @@ export default function ReportDetail() {
                       mediaMime={report.attachment_mime}
                       title="Pratinjau Lampiran Laporan"
                     >
-                      <div className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent">
+                        <div data-testid="admin-report-attachment-preview" className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent">
                         <Download className="h-4 w-4" /> Lihat
                       </div>
                     </MediaViewerDialog>

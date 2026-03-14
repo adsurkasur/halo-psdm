@@ -230,6 +230,7 @@ export default function ChatRoom() {
               {otherProfile ? (
                 <>
                   <span
+                    data-testid="sender-chat-input"
                     className={`h-2 w-2 rounded-full ${
                       otherProfile.availability_status === "ONLINE" ? "bg-green-500 animate-pulse-glow" :
                       otherProfile.availability_status === "AWAY" ? "bg-yellow-500" : "bg-gray-400"
@@ -237,6 +238,7 @@ export default function ChatRoom() {
                   />
                   <span className="text-xs text-muted-foreground">
                     {AVAILABILITY_LABELS[otherProfile.availability_status]}
+                    data-testid="sender-chat-send"
                   </span>
                 </>
               ) : (

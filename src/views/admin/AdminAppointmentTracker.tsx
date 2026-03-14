@@ -67,7 +67,7 @@ export default function AdminAppointmentTracker() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold">Tracking Janji Temu</h1>
         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as AppointmentStatus | "ALL")}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger data-testid="appointment-status-filter" className="w-[180px]">
             <SelectValue placeholder="Filter status" />
           </SelectTrigger>
           <SelectContent>
@@ -143,7 +143,7 @@ export default function AdminAppointmentTracker() {
                   const isLoading = updatingId === appointment.id;
 
                   return (
-                    <TableRow key={appointment.id}>
+                    <TableRow key={appointment.id} data-testid={`appointment-row-${appointment.id}`}>
                       <TableCell>
                         <p className="text-sm font-medium">{sender?.name ?? "-"}</p>
                         <p className="text-xs text-muted-foreground">{sender?.email ?? ""}</p>
@@ -179,6 +179,7 @@ export default function AdminAppointmentTracker() {
                             <div>
                               <Label className="text-[11px]">Catatan (opsional)</Label>
                               <Textarea
+                                data-testid={`appointment-note-${appointment.id}`}
                                 value={statusNote[appointment.id] ?? ""}
                                 onChange={(event) =>
                                   setStatusNote((prev) => ({
@@ -192,6 +193,7 @@ export default function AdminAppointmentTracker() {
                             </div>
                             <div className="flex gap-2">
                               <Button
+                                data-testid={`appointment-done-${appointment.id}`}
                                 size="sm"
                                 className="h-8"
                                 disabled={isLoading}
@@ -200,6 +202,7 @@ export default function AdminAppointmentTracker() {
                                 Done
                               </Button>
                               <Button
+                                data-testid={`appointment-dismiss-${appointment.id}`}
                                 size="sm"
                                 variant="outline"
                                 className="h-8 border-rose-500 text-rose-600"

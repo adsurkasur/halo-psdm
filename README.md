@@ -82,6 +82,11 @@ Set these environment variables first:
 - `E2E_SENDER_PASSWORD`
 - `E2E_REPORT_ID`
 
+Optional (for role guard coverage):
+
+- `E2E_HR_EMAIL`
+- `E2E_HR_PASSWORD`
+
 Then run:
 
 ```sh
@@ -95,6 +100,14 @@ bun run test:e2e:headed
 ```
 
 The scenario validates: PH opens clarification from report detail, sender sees the same report-linked session in Ruang Curhat, and sender can open identical chat session via report detail.
+
+Current Playwright coverage includes:
+
+- Clarification flow (PH -> Sender session continuity)
+- Appointment tracking flow (OPEN -> DONE and retry)
+- Attachment modal behavior (sender and PH report detail)
+- Chat reliability (sender/PH two-way message exchange)
+- Route guard (HR blocked from PH-only routes, PH allowed)
 
 ## Route Hosting Note
 

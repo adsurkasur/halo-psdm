@@ -266,6 +266,8 @@ export default function AdminChatQueue() {
                   return (
                     <div
                       key={session.id}
+                      data-testid={`admin-chat-session-${session.id}`}
+                      data-report-id={session.report_id ?? ""}
                       role="button"
                       tabIndex={0}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
@@ -519,13 +521,14 @@ export default function AdminChatQueue() {
                         <ImageIcon className="h-4 w-4" />
                       </Button>
                     <Input
+                      data-testid="admin-chat-input"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                       placeholder="Ketik balasan..."
                       className="flex-1"
                     />
-                    <Button size="icon" onClick={sendMessage} disabled={sendingMedia || (!input.trim() && !mediaPreview)}>
+                    <Button data-testid="admin-chat-send" size="icon" onClick={sendMessage} disabled={sendingMedia || (!input.trim() && !mediaPreview)}>
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>

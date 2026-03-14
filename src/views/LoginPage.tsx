@@ -126,7 +126,7 @@ export default function LoginPage() {
 
     const normalizedPhone = normalizePhoneTo62(phoneNumber);
     if (!isValidPhone62(normalizedPhone)) {
-      setError("Nomor HP wajib berformat 62xxxxxxxxxx.");
+      setError("Nomor HP wajib menyertakan kode negara, contoh +628123... atau +1202555...");
       setShaking(true);
       setTimeout(() => setShaking(false), 600);
       return;
@@ -424,11 +424,11 @@ export default function LoginPage() {
                   <Input
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="62xxxxxxxxxx"
+                    placeholder="+628123456789 / +12025550123"
                     className="mt-1 transition-all duration-200 focus:shadow-md"
                     required
                   />
-                  <p className="text-[11px] text-muted-foreground mt-1">Gunakan format 62 tanpa spasi. Contoh: 628123456789.</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">Gunakan format internasional dengan kode negara. Contoh: +628123456789 atau +12025550123.</p>
                 </div>
                 <div>
                   <Label>Password</Label>

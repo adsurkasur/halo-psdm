@@ -37,7 +37,7 @@ export default function AdminManagement() {
     if (!isValidPhone62(normalizedPhone)) {
       toast({
         title: "Nomor HP belum valid",
-        description: "Isi nomor HP profil dengan format 62xxxxxxxxxx terlebih dahulu.",
+        description: "Isi nomor HP profil dengan kode negara (contoh: +628... atau +1...) terlebih dahulu.",
         variant: "destructive",
       });
       return false;

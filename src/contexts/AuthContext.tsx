@@ -507,7 +507,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const normalizedPhone = normalizePhoneTo62(data.phone_number);
       if (!isValidPhone62(normalizedPhone)) {
-        return { success: false, error: "Nomor HP wajib berformat 62xxxxxxxxxx." };
+        return { success: false, error: "Nomor HP wajib menyertakan kode negara (contoh: +628123..., +1202555...)." };
       }
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -587,7 +587,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : undefined;
 
       if (typeof normalizedPhone !== "undefined" && !isValidPhone62(normalizedPhone)) {
-        return { success: false, error: "Nomor HP wajib berformat 62xxxxxxxxxx." };
+        return { success: false, error: "Nomor HP wajib menyertakan kode negara (contoh: +628123..., +1202555...)." };
       }
 
       const updatePayload: Record<string, unknown> = {};

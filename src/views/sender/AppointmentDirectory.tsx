@@ -57,7 +57,7 @@ export default function AppointmentDirectory() {
     if (!isValidPhone62(waNumber)) {
       toast({
         title: "Nomor WhatsApp penerima belum valid",
-        description: "Penerima belum mengatur nomor format 62xxxxxxxxxx di profil.",
+        description: "Penerima belum mengatur nomor dengan kode negara (contoh: +628... atau +1...).",
         variant: "destructive",
       });
       return;
@@ -113,7 +113,7 @@ export default function AppointmentDirectory() {
               : "bg-gray-400";
 
           return (
-            <Card key={profile.user_id} className="hover:shadow-md transition-shadow">
+            <Card key={profile.user_id} data-testid={`appointment-target-${profile.user_id}`} className="hover:shadow-md transition-shadow">
               <CardContent className="py-5 space-y-4">
                 {/* Profile */}
                 <div className="flex items-center gap-3">
@@ -139,6 +139,7 @@ export default function AppointmentDirectory() {
 
                 {/* Contact button */}
                 <Button
+                  data-testid={`appointment-contact-${profile.user_id}`}
                   className="w-full gap-2"
                   onClick={() => handleContact(profile)}
                   disabled={processingTargetId !== null}
