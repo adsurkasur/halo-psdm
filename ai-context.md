@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Implement full cross-role data visibility fixes: realtime updates, partial-success loading, and explicit error feedback |
+| Task | Add PH last-sync indicator and optimize realtime/data refresh pipeline for higher efficiency |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 14:33 |
+| Last Updated | 2026-03-14 21:22 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -56,6 +56,9 @@
 > 2. buat sistem lebih efisien lagi, masih sangat lag
 >
 > iya, tolong fixing semua itu
+>
+> 1. tambahkan indikator kecil last sync di ph
+> 2. optimasi lagi hingga sangat efisien
 
 ## Execution Plan
 
@@ -156,6 +159,10 @@
 - **14:18** - IMPLEMENT - Started global loading overlay and performance optimization pass (dedupe/caching/reduced payload)
 - **14:33** - APPROVAL - User approved full fix set for cross-role visibility issues with: "iya, tolong fixing semua itu"
 - **14:33** - IMPLEMENT - Started realtime subscriptions, partial-success data loading, and explicit load error feedback
+- **14:49** - IMPLEMENT - Started PH last-sync UI and targeted realtime refresh optimization to reduce full reload overhead
+- **21:18** - IMPLEMENT - Finalized targeted realtime refresh batching by changed table and added `lastSyncedAt` state exposure from DataContext
+- **21:20** - IMPLEMENT - Added compact PH dashboard sync indicator (`Sedang sinkron...` / `Sinkron terakhir ...`)
+- **21:22** - IMPLEMENT - Revalidated with Bun (`bun run test`, `bun run build`) and both passed
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references

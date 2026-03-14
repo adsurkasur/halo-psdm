@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface DataContextType {
   isBusy: boolean;
   dataLoadIssues: string[];
+  lastSyncedAt: string | null;
   reloadData: () => Promise<void>;
   reports: Report[];
   statusHistory: ReportStatusHistory[];
@@ -75,6 +76,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [pendingOps, setPendingOps] = useState(0);
   const [dataLoadIssues, setDataLoadIssues] = useState<string[]>([]);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [statusHistory, setStatusHistory] = useState<ReportStatusHistory[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -83,6 +85,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const inFlightRequestsRef = useRef<Map<string, Promise<unknown>>>(new Map());
+  const pendingRealtimeTablesRef = useRef<Set<string>>(new Set());
   const reloadDebounceTimerRef = useRef<number | null>(null);
   const isBusy = pendingOps > 0;
 
@@ -135,6 +138,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         created_at: raw.created_at,
       };
     });
+  }, []);
+
+  const markSyncedNow = useCallback(() => {
+    setLastSyncedAt(new Date().toISOString());
   }, []);
 
   const withBusy = useCallback(async <T,>(executor: () => Promise<T>): Promise<T> => {
@@ -207,118 +214,250 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [withBusy]
   );
 
-  const loadAllData = useCallback(async () => {
+  const clearAllData = useCallback(() => {
+    setReports([]);
+    setStatusHistory([]);
+    setChatSessions([]);
+    setChatMessages([]);
+    setAdminProfiles([]);
+    setAppointments([]);
+    setNotifications([]);
+    setDataLoadIssues([]);
+  }, []);
+
+  const reloadReportsAndHistory = useCallback(async (): Promise<string[]> => {
     if (!user) {
       setReports([]);
       setStatusHistory([]);
+      return [];
+    }
+
+    const issues: string[] = [];
+    const isPh = user.role === "PH";
+    const reportsRes = isPh
+      ? await supabase.from("reports").select("*").order("created_at", { ascending: false })
+      : await supabase.from("reports").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+
+    if (reportsRes.error) {
+      setReports([]);
+      setStatusHistory([]);
+      issues.push(`Laporan: ${reportsRes.error.message}`);
+      return issues;
+    }
+
+    const mappedReports = (reportsRes.data ?? []).map((r) => r as Report);
+    setReports(mappedReports);
+
+    const reportIds = mappedReports.map((r) => r.id);
+    if (reportIds.length === 0) {
+      setStatusHistory([]);
+      markSyncedNow();
+      return issues;
+    }
+
+    const historyRes = await supabase
+      .from("report_status_history")
+      .select("*")
+      .in("report_id", reportIds)
+      .order("created_at", { ascending: true });
+
+    if (historyRes.error) {
+      setStatusHistory([]);
+      issues.push(`Riwayat status: ${historyRes.error.message}`);
+    } else {
+      setStatusHistory((historyRes.data ?? []).map((h) => h as ReportStatusHistory));
+    }
+
+    markSyncedNow();
+    return issues;
+  }, [markSyncedNow, user]);
+
+  const reloadSessionsAndMessages = useCallback(async (): Promise<string[]> => {
+    if (!user) {
       setChatSessions([]);
       setChatMessages([]);
-      setAdminProfiles([]);
+      return [];
+    }
+
+    const issues: string[] = [];
+    const isPh = user.role === "PH";
+    const sessionsRes = isPh
+      ? await supabase.from("chat_sessions").select("*").order("created_at", { ascending: false })
+      : await supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+
+    if (sessionsRes.error) {
+      setChatSessions([]);
+      setChatMessages([]);
+      issues.push(`Sesi chat: ${sessionsRes.error.message}`);
+      return issues;
+    }
+
+    const mappedSessions = (sessionsRes.data ?? []).map((s) => s as ChatSession);
+    setChatSessions(mappedSessions);
+
+    const sessionIds = mappedSessions.map((s) => s.id);
+    if (sessionIds.length === 0) {
+      setChatMessages([]);
+      markSyncedNow();
+      return issues;
+    }
+
+    const messagesRes = await supabase
+      .from("chat_messages")
+      .select("*")
+      .in("session_id", sessionIds)
+      .order("created_at", { ascending: true });
+
+    if (messagesRes.error) {
+      setChatMessages([]);
+      issues.push(`Pesan chat: ${messagesRes.error.message}`);
+    } else {
+      setChatMessages((messagesRes.data ?? []).map((m) => ({
+        ...(m as ChatMessage),
+        type: ((m as { type?: ChatMessageType }).type ?? "TEXT") as ChatMessageType,
+      })));
+    }
+
+    markSyncedNow();
+    return issues;
+  }, [markSyncedNow, user]);
+
+  const reloadAppointments = useCallback(async (): Promise<string[]> => {
+    if (!user) {
       setAppointments([]);
+      return [];
+    }
+
+    const isPh = user.role === "PH";
+    const res = isPh
+      ? await supabase.from("appointments").select("*").order("created_at", { ascending: false })
+      : await supabase.from("appointments").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+
+    if (res.error) {
+      setAppointments([]);
+      return [`Janji temu: ${res.error.message}`];
+    }
+
+    setAppointments((res.data ?? []).map((a) => a as Appointment));
+    markSyncedNow();
+    return [];
+  }, [markSyncedNow, user]);
+
+  const reloadAdminProfiles = useCallback(async (): Promise<string[]> => {
+    const res = await supabase.from("admin_profiles").select("*");
+    if (res.error) {
+      setAdminProfiles([]);
+      return [`Direktori admin: ${res.error.message}`];
+    }
+
+    setAdminProfiles(mapAdminProfiles(res.data ?? []));
+    markSyncedNow();
+    return [];
+  }, [mapAdminProfiles, markSyncedNow]);
+
+  const reloadNotifications = useCallback(async (): Promise<string[]> => {
+    if (!user) {
       setNotifications([]);
-      setDataLoadIssues([]);
+      return [];
+    }
+
+    const res = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (res.error) {
+      setNotifications([]);
+      return [`Notifikasi: ${res.error.message}`];
+    }
+
+    setNotifications(mapNotifications(res.data ?? []));
+    markSyncedNow();
+    return [];
+  }, [mapNotifications, markSyncedNow, user]);
+
+  const runReloadsAndCollectIssues = useCallback(async (reloaders: Array<() => Promise<string[]>>) => {
+    const grouped = await Promise.all(reloaders.map((reloader) => reloader()));
+    const issues = grouped.flat();
+    if (issues.length > 0 && user) {
+      console.warn("[DATA_LOAD_PARTIAL_WARN]", { userId: user.id, issues });
+    }
+    setDataLoadIssues(issues);
+  }, [user]);
+
+  const refreshByTables = useCallback(async (tables: Set<string>) => {
+    if (!user) {
+      clearAllData();
+      return;
+    }
+
+    const reloaders = new Set<() => Promise<string[]>>();
+    for (const table of tables) {
+      if (table === "reports" || table === "report_status_history") {
+        reloaders.add(reloadReportsAndHistory);
+      } else if (table === "chat_sessions" || table === "chat_messages") {
+        reloaders.add(reloadSessionsAndMessages);
+      } else if (table === "appointments") {
+        reloaders.add(reloadAppointments);
+      } else if (table === "notifications") {
+        reloaders.add(reloadNotifications);
+      } else if (table === "admin_profiles") {
+        reloaders.add(reloadAdminProfiles);
+      }
+    }
+
+    const chosenReloaders = reloaders.size > 0
+      ? Array.from(reloaders)
+      : [
+          reloadReportsAndHistory,
+          reloadSessionsAndMessages,
+          reloadAdminProfiles,
+          reloadAppointments,
+          reloadNotifications,
+        ];
+
+    await withBusy(async () => {
+      await runReloadsAndCollectIssues(chosenReloaders);
+    });
+  }, [
+    clearAllData,
+    reloadAdminProfiles,
+    reloadAppointments,
+    reloadNotifications,
+    reloadReportsAndHistory,
+    reloadSessionsAndMessages,
+    runReloadsAndCollectIssues,
+    user,
+    withBusy,
+  ]);
+
+  const loadAllData = useCallback(async () => {
+    if (!user) {
+      clearAllData();
       return;
     }
 
     await withBusy(async () => {
-      const isPh = user.role === "PH";
-      const issues: string[] = [];
-
-      const reportsQuery = isPh
-        ? supabase.from("reports").select("*").order("created_at", { ascending: false })
-        : supabase.from("reports").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-
-      const sessionsQuery = isPh
-        ? supabase.from("chat_sessions").select("*").order("created_at", { ascending: false })
-        : supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-
-      const appointmentsQuery = isPh
-        ? supabase.from("appointments").select("*").order("created_at", { ascending: false })
-        : supabase.from("appointments").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-
-      const [reportsRes, sessionsRes, profilesRes, appointmentsRes, notificationsRes] = await Promise.all([
-        reportsQuery,
-        sessionsQuery,
-        supabase.from("admin_profiles").select("*"),
-        appointmentsQuery,
-        supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      await runReloadsAndCollectIssues([
+        reloadReportsAndHistory,
+        reloadSessionsAndMessages,
+        reloadAdminProfiles,
+        reloadAppointments,
+        reloadNotifications,
       ]);
-
-      if (reportsRes.error) {
-        issues.push(`Laporan: ${reportsRes.error.message}`);
-      }
-      if (sessionsRes.error) {
-        issues.push(`Sesi chat: ${sessionsRes.error.message}`);
-      }
-      if (profilesRes.error) {
-        issues.push(`Direktori admin: ${profilesRes.error.message}`);
-      }
-      if (appointmentsRes.error) {
-        issues.push(`Janji temu: ${appointmentsRes.error.message}`);
-      }
-      if (notificationsRes.error) {
-        issues.push(`Notifikasi: ${notificationsRes.error.message}`);
-      }
-
-      const mappedReports = reportsRes.error
-        ? []
-        : (reportsRes.data ?? []).map((r) => r as Report);
-      setReports(mappedReports);
-
-      const mappedSessions = sessionsRes.error
-        ? []
-        : (sessionsRes.data ?? []).map((s) => s as ChatSession);
-      setChatSessions(mappedSessions);
-
-      const sessionIds = mappedSessions.map((s) => s.id);
-      if (sessionIds.length > 0) {
-        const { data: rawMessages, error: messagesError } = await supabase
-          .from("chat_messages")
-          .select("*")
-          .in("session_id", sessionIds)
-          .order("created_at", { ascending: true });
-
-        if (messagesError) {
-          issues.push(`Pesan chat: ${messagesError.message}`);
-          setChatMessages([]);
-        } else {
-          setChatMessages((rawMessages ?? []).map((m) => ({
-            ...(m as ChatMessage),
-            type: ((m as { type?: ChatMessageType }).type ?? "TEXT") as ChatMessageType,
-          })));
-        }
-      } else {
-        setChatMessages([]);
-      }
-
-      const reportIds = mappedReports.map((r) => r.id);
-      if (reportIds.length > 0) {
-        const { data: rawHistory, error: historyError } = await supabase
-          .from("report_status_history")
-          .select("*")
-          .in("report_id", reportIds)
-          .order("created_at", { ascending: true });
-
-        if (historyError) {
-          issues.push(`Riwayat status: ${historyError.message}`);
-          setStatusHistory([]);
-        } else {
-          setStatusHistory((rawHistory ?? []).map((h) => h as ReportStatusHistory));
-        }
-      } else {
-        setStatusHistory([]);
-      }
-
-      setAdminProfiles(profilesRes.error ? [] : mapAdminProfiles(profilesRes.data ?? []));
-      setAppointments(appointmentsRes.error ? [] : (appointmentsRes.data ?? []).map((a) => a as Appointment));
-      setNotifications(notificationsRes.error ? [] : mapNotifications(notificationsRes.data ?? []));
-
-      if (issues.length > 0) {
-        console.warn("[DATA_LOAD_PARTIAL_WARN]", { userId: user.id, issues });
-      }
-      setDataLoadIssues(issues);
     });
-  }, [mapAdminProfiles, mapNotifications, user, withBusy]);
+  }, [
+    clearAllData,
+    reloadAdminProfiles,
+    reloadAppointments,
+    reloadNotifications,
+    reloadReportsAndHistory,
+    reloadSessionsAndMessages,
+    runReloadsAndCollectIssues,
+    user,
+    withBusy,
+  ]);
 
   const reloadData = useCallback(async () => {
     await loadAllData();
@@ -333,14 +472,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (typeof supabase.channel !== "function" || typeof supabase.removeChannel !== "function") {
       return;
     }
+    const pendingRealtimeTables = pendingRealtimeTablesRef.current;
 
-    const scheduleReload = () => {
+    const scheduleReload = (table: string) => {
+      pendingRealtimeTables.add(table);
       if (reloadDebounceTimerRef.current) {
         window.clearTimeout(reloadDebounceTimerRef.current);
       }
 
       reloadDebounceTimerRef.current = window.setTimeout(() => {
-        void loadAllData();
+        const tablesToRefresh = new Set(pendingRealtimeTables);
+        pendingRealtimeTables.clear();
+        void refreshByTables(tablesToRefresh);
       }, 350);
     };
 
@@ -359,7 +502,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       channel.on(
         "postgres_changes",
         { event: "*", schema: "public", table },
-        () => scheduleReload()
+        () => scheduleReload(table)
       );
     }
 
@@ -370,9 +513,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         window.clearTimeout(reloadDebounceTimerRef.current);
         reloadDebounceTimerRef.current = null;
       }
+      pendingRealtimeTables.clear();
       void supabase.removeChannel(channel);
     };
-  }, [loadAllData, user]);
+  }, [refreshByTables, user]);
 
   const addNotification = useCallback(
     async (data: { user_id: string; type: NotificationType; title: string; message: string; link?: string }) => {
@@ -679,6 +823,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       value={{
         isBusy,
         dataLoadIssues,
+        lastSyncedAt,
         reloadData,
         reports, statusHistory, addReport, updateReportStatus, updateReportUrgency, updateReportNotes,
         chatSessions, chatMessages, createChatSession, assignAdminToSession, closeChatSession, addChatMessage, markMessagesRead,

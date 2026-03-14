@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const { reports, chatSessions, appointments, notifications } = useData();
+  const { reports, chatSessions, appointments, notifications, lastSyncedAt, isBusy } = useData();
   const navigate = useNavigate();
 
   if (!user) return null;
@@ -30,7 +30,14 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h1 className="text-xl font-bold">Dasbor Admin</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-bold">Dasbor Admin</h1>
+        {user.role === "PH" && (
+          <p className="text-xs text-muted-foreground">
+            {isBusy ? "Sedang sinkron..." : `Sinkron terakhir ${formatLastSync(lastSyncedAt)}`}
+          </p>
+        )}
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -86,6 +93,25 @@ export default function AdminDashboard() {
       </Card>
     </div>
   );
+}
+
+function formatLastSync(lastSyncedAt: string | null): string {
+  if (!lastSyncedAt) return "belum tersedia";
+
+  const date = new Date(lastSyncedAt);
+  const diff = Date.now() - date.getTime();
+  const secs = Math.max(0, Math.floor(diff / 1000));
+
+  if (secs < 5) return "baru saja";
+  if (secs < 60) return `${secs} detik lalu`;
+
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins} menit lalu`;
+
+  return date.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function formatTimeAgo(dateStr: string): string {
