@@ -5,7 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { DataProvider } from "@/contexts/DataContext";
+import { DataProvider, useData } from "@/contexts/DataContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ThemeProvider } from "next-themes";
 
@@ -53,6 +53,76 @@ function AppLoadingScreen() {
             Memuat lebih lama dari biasanya. Koneksi ke server mungkin sedang lambat.
           </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+function GlobalBusyPopup() {
+  const { isLoading: authLoading } = useAuth();
+  const { isBusy } = useData();
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!isBusy || authLoading) {
+      setVisible(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setVisible(true);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [authLoading, isBusy]);
+
+  if (!visible) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-[120] pointer-events-none">
+      <div className="rounded-lg border bg-card/95 backdrop-blur px-3 py-2 shadow-lg flex items-center gap-2">
+        <span className="h-4 w-4 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+        <span className="text-xs font-medium">Memproses permintaan...</span>
+      </div>
+    </div>
+  );
+}
+
+function GlobalDataIssueBanner() {
+  const { dataLoadIssues, reloadData } = useData();
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (dataLoadIssues.length > 0) {
+      setDismissed(false);
+    }
+  }, [dataLoadIssues]);
+
+  if (dismissed || dataLoadIssues.length === 0) return null;
+
+  return (
+    <div className="fixed top-16 left-1/2 z-[120] -translate-x-1/2 w-[min(94vw,760px)]">
+      <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-900 shadow px-4 py-3">
+        <p className="text-sm font-semibold">Sebagian data belum termuat.</p>
+        <p className="text-xs mt-1 line-clamp-2">
+          {dataLoadIssues.join(" | ")}
+        </p>
+        <div className="mt-2 flex gap-2">
+          <button
+            className="text-xs font-medium underline"
+            onClick={() => void reloadData()}
+          >
+            Coba Muat Ulang
+          </button>
+          <button
+            className="text-xs"
+            onClick={() => setDismissed(true)}
+          >
+            Tutup
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -150,6 +220,8 @@ const App = () => (
         <AuthProvider>
           <DataProvider>
             <BrowserRouter>
+              <GlobalBusyPopup />
+              <GlobalDataIssueBanner />
               <AppRoutes />
             </BrowserRouter>
           </DataProvider>

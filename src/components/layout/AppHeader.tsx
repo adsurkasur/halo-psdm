@@ -12,22 +12,31 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { JABATAN_LABELS } from "@/data/domain";
+import { JABATAN_LABELS, type ThemePreference } from "@/data/domain";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export function AppHeader() {
   const { user, logout, updateProfile } = useAuth();
   const { notifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } = useData();
   const navigate = useNavigate();
   const { resolvedTheme, theme, setTheme } = useTheme();
+  const [pendingThemePreference, setPendingThemePreference] = useState<ThemePreference | null>(null);
+
+  const targetTheme = useMemo<ThemePreference | null>(() => {
+    if (pendingThemePreference) return pendingThemePreference;
+    if (user?.theme_preference === "light" || user?.theme_preference === "dark") {
+      return user.theme_preference;
+    }
+    return null;
+  }, [pendingThemePreference, user?.theme_preference]);
 
   useEffect(() => {
-    if (!user?.theme_preference) return;
-    if (theme !== user.theme_preference) {
-      setTheme(user.theme_preference);
+    if (!targetTheme) return;
+    if (theme !== targetTheme) {
+      setTheme(targetTheme);
     }
-  }, [setTheme, theme, user?.theme_preference]);
+  }, [setTheme, targetTheme, theme]);
 
   if (!user) return null;
 
@@ -49,10 +58,18 @@ export function AppHeader() {
 
   const isDark = resolvedTheme === "dark";
 
-  const handleToggleTheme = () => {
+  const handleToggleTheme = async () => {
     const nextTheme = isDark ? "light" : "dark";
+    setPendingThemePreference(nextTheme);
     setTheme(nextTheme);
-    void updateProfile({ theme_preference: nextTheme });
+
+    const result = await updateProfile({ theme_preference: nextTheme });
+    if (!result.success) {
+      const rollbackTheme = nextTheme === "dark" ? "light" : "dark";
+      setTheme(rollbackTheme);
+    }
+
+    setPendingThemePreference(null);
   };
 
   return (
@@ -80,7 +97,7 @@ export function AppHeader() {
               )}
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-80 p-0">
+          <PopoverContent align="end" className="w-80 p-0 max-h-[70vh] overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h4 className="text-sm font-semibold">Notifikasi</h4>
               {unreadCount > 0 && (
@@ -95,7 +112,7 @@ export function AppHeader() {
                 </Button>
               )}
             </div>
-            <ScrollArea className="max-h-[320px]">
+            <ScrollArea className="h-[320px]">
               {userNotifs.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   Belum ada notifikasi

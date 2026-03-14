@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import {
   type User,
@@ -61,7 +61,7 @@ interface AuthContextType {
   }) => Promise<{ success: boolean; error?: string; message?: string }>;
   logout: () => void;
   allUsers: User[];
-  refreshUsers: () => Promise<void>;
+  refreshUsers: (force?: boolean) => Promise<void>;
   syncProfileNow: () => Promise<{ success: boolean; error?: string; profile?: User }>;
   updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "phone_number" | "theme_preference">>) => Promise<{ success: boolean; error?: string; message?: string }>;
   changeUserRole: (userId: string, newRole: UserRole) => Promise<{ success: boolean; error?: string }>;
@@ -107,9 +107,12 @@ function appendDiagnostic(error: string, code?: string, stage?: string) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const USERS_CACHE_TTL_MS = 15000;
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshUsersInFlightRef = useRef<Promise<void> | null>(null);
+  const usersCacheRef = useRef<{ at: number; users: User[] } | null>(null);
 
   const ensureAppProfileForAuthUser = useCallback(async (authUser: SupabaseAuthUser) => {
     const metadata = authUser.user_metadata ?? {};
@@ -188,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const readProfile = async () =>
       supabase
       .from("users")
-      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, password_hash, is_active, created_at")
+      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
       .eq("id", userId)
       .maybeSingle();
 
@@ -212,17 +215,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(mapRowToUser(data as UsersRow));
   }, [ensureAppProfileForAuthUser]);
 
-  const refreshUsers = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
-      .order("created_at", { ascending: true });
-
-    if (error) {
+  const refreshUsers = useCallback(async (force = false) => {
+    const now = Date.now();
+    const cached = usersCacheRef.current;
+    if (!force && cached && now - cached.at < USERS_CACHE_TTL_MS) {
+      setUsers(cached.users);
       return;
     }
 
-    setUsers((data ?? []).map((row) => mapRowToUser(row as UsersRow)));
+    if (refreshUsersInFlightRef.current) {
+      await refreshUsersInFlightRef.current;
+      return;
+    }
+
+    const refreshPromise = (async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        return;
+      }
+
+      const mapped = (data ?? []).map((row) => mapRowToUser(row as UsersRow));
+      usersCacheRef.current = { at: Date.now(), users: mapped };
+      setUsers(mapped);
+    })();
+
+    refreshUsersInFlightRef.current = refreshPromise;
+    try {
+      await refreshPromise;
+    } finally {
+      refreshUsersInFlightRef.current = null;
+    }
   }, []);
 
   const syncProfileThroughServer = useCallback(async (): Promise<SyncProfileResult> => {
@@ -328,7 +354,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (ensured.success) {
         const { data, error } = await supabase
           .from("users")
-          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, password_hash, is_active, created_at")
+          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
           .eq("id", authUserData.user.id)
           .maybeSingle();
 
@@ -378,11 +404,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!synced.success) {
           setUser(null);
           setUsers([]);
+          usersCacheRef.current = null;
         } else {
           await refreshUsers();
         }
       } else {
         setUsers([]);
+        usersCacheRef.current = null;
       }
 
       setIsLoading(false);
@@ -397,6 +425,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!sessionUserId) {
         setUser(null);
         setUsers([]);
+        usersCacheRef.current = null;
         return;
       }
 
@@ -437,7 +466,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!synced.profile) {
         const { data: fallbackProfile } = await supabase
           .from("users")
-          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, password_hash, is_active, created_at")
+          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
           .eq("id", authData.user.id)
           .maybeSingle();
 
@@ -521,6 +550,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     void supabase.auth.signOut();
     setUser(null);
+    setUsers([]);
+    usersCacheRef.current = null;
   }, []);
 
   const changeUserRole = useCallback(

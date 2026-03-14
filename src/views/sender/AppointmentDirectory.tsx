@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,10 +13,22 @@ export default function AppointmentDirectory() {
   const { toast } = useToast();
   const { user, allUsers } = useAuth();
   const { adminProfiles, appointments, addAppointment } = useData();
+  const [processingTargetId, setProcessingTargetId] = useState<string | null>(null);
 
   if (!user) return null;
 
   const handleContact = async (adminProfile: typeof adminProfiles[0]) => {
+    if (processingTargetId) {
+      toast({
+        title: "Permintaan sedang diproses",
+        description: "Mohon tunggu sebentar sebelum klik lagi.",
+      });
+      return;
+    }
+
+    setProcessingTargetId(adminProfile.user_id);
+
+    try {
     const admin = allUsers.find((u) => u.id === adminProfile.user_id);
     const adminName = adminProfile.display_name || admin?.name || "HR";
 
@@ -62,6 +75,15 @@ export default function AppointmentDirectory() {
 
     // Open WA in new tab
     window.open(waUrl, "_blank");
+    } catch (error) {
+      toast({
+        title: "Gagal memproses janji temu",
+        description: error instanceof Error ? error.message : "Coba lagi beberapa saat.",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingTargetId(null);
+    }
   };
 
   return (
@@ -118,9 +140,10 @@ export default function AppointmentDirectory() {
                 <Button
                   className="w-full gap-2"
                   onClick={() => handleContact(profile)}
+                  disabled={processingTargetId !== null}
                 >
                   <Phone className="h-4 w-4" />
-                  Hubungi via WhatsApp
+                  {processingTargetId === profile.user_id ? "Memproses..." : "Hubungi via WhatsApp"}
                 </Button>
               </CardContent>
             </Card>

@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Fix clear-accounts-profiles SQL to handle Supabase storage deletion restrictions safely |
+| Task | Implement full cross-role data visibility fixes: realtime updates, partial-success loading, and explicit error feedback |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 14:04 |
+| Last Updated | 2026-03-14 14:33 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -51,6 +51,11 @@
 > aku rename filenya. sekarang dia error gini
 >
 > Error: Failed to run sql query: ERROR: 42501: Direct deletion from storage tables is not allowed. Use the Storage API instead.
+>
+> 1. tambahkan loading screen/modal/popup/apapun itu secara global biar ga ada silent waiting
+> 2. buat sistem lebih efisien lagi, masih sangat lag
+>
+> iya, tolong fixing semua itu
 
 ## Execution Plan
 
@@ -148,6 +153,9 @@
 - **13:33** - STUDY - Started investigation for slow/blank refresh, loading UX fallback, and role-management updates for HR/PH
 - **13:52** - IMPLEMENT - Started enhancing clear-legacy SQL to remove both auth account and full profile footprint
 - **14:04** - IMPLEMENT - Handling storage.protect_delete restriction by converting direct storage delete into API-cleanup target output
+- **14:18** - IMPLEMENT - Started global loading overlay and performance optimization pass (dedupe/caching/reduced payload)
+- **14:33** - APPROVAL - User approved full fix set for cross-role visibility issues with: "iya, tolong fixing semua itu"
+- **14:33** - IMPLEMENT - Started realtime subscriptions, partial-success data loading, and explicit load error feedback
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references
