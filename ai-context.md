@@ -5,25 +5,28 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Add report attachment feature end-to-end (form upload, secure API, schema, detail display) |
+| Task | Fix registration UX: confirm password field and graceful email confirmation/profile sync flow |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 10:04 |
+| Last Updated | 2026-03-14 10:08 |
 | Session ID | 20260314-1001 |
 
 ## User Request
 
-> tambahkan fitur memberikan attachment untuk laporan
+> 1. di layar register, buat kolom password ada 2, untuk memastikan passwordnya sama
+> 2. saat ini registrasi harus konfirmasi email dulu, tapi app belum menanganinya secara graceful, dia handlingnya "Akun auth dibuat, tetapi profil pengguna gagal disimpan." sehingga ketika pun sudah dikonfirmasi, app tidak membuat profil, jadinya akun authnya tidak bisa login karena profilnya kosong
+>
+> fix all
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
-| Intended Phases | Study → Propose → Implement |
-| Evidence to Produce | Type/API/schema diffs for attachment metadata, UI upload flow implementation, lint/test/build validation |
-| Anticipated Stops | Missing report attachment columns in existing DB, missing Storage bucket/policies, upload size/type constraints |
-| Known Information | Secure report create route and DataContext already carry attachment metadata fields. |
-| Unknown Information | Whether runtime DB has attachment columns and storage bucket policy already applied. |
-| Initial Risk Level | Medium - end-to-end feature spans client upload, API persistence, DB schema, and storage security policies. |
+| Intended Phases | Study → Implement |
+| Evidence to Produce | AuthContext register-flow diff, LoginPage confirm-password UX diff, updated tests and validation output |
+| Anticipated Stops | Existing RLS/policy/trigger may be absent in runtime DB, auth session availability differs by email-confirm setting |
+| Known Information | Current register path surfaces profile insert failure when auth account exists but profile write fails. |
+| Unknown Information | Exact register UI/test assumptions and current profile bootstrap behavior after email verification. |
+| Initial Risk Level | Medium - authentication and profile bootstrap paths are critical and regressions can block login. |
 
 ## File Context
 
@@ -56,6 +59,9 @@
 | src/views/admin/ReportDetail.tsx | edited | Added attachment section and open/download action for admin |
 | supabase/bootstrap.sql | edited | Added attachment metadata columns to reports table bootstrap schema |
 | supabase/auth-hardening.sql | edited | Added attachment column migration and storage bucket/policy setup |
+| src/contexts/AuthContext.tsx | edited | Fix graceful register/login profile bootstrap for email-confirmation flow |
+| src/views/LoginPage.tsx | edited | Add confirm-password input and improved register success UX |
+| src/test/setup.ts | edited | Add auth.getUser mock support for profile bootstrap path |
 
 ## Workflow History
 
@@ -127,6 +133,13 @@
 - **10:03** - IMPLEMENT - Added sender/admin report detail attachment rendering and open action
 - **10:03** - IMPLEMENT - Extended SQL scripts for attachment columns and storage bucket/policies
 - **10:04** - IMPLEMENT - Revalidated quality gates with `npm run lint`, `npm run test`, and `npm run build` (all passed)
+- **10:10** - PLAN - User requested registration UX and email-confirmation graceful handling fixes
+- **10:10** - STUDY - Starting analysis on AuthContext registration/profile bootstrap and LoginPage register form validation
+- **10:11** - IMPLEMENT - Added confirm-password field and mismatch validation on register form
+- **10:13** - IMPLEMENT - Refactored AuthContext register flow to handle email-confirmation without false profile-save failure
+- **10:16** - IMPLEMENT - Added profile bootstrap fallback on login/auth state to auto-create missing public.users profile safely
+- **10:18** - IMPLEMENT - Fixed regression by preserving existing user role/name when syncing profile metadata
+- **10:19** - IMPLEMENT - Revalidated with `npm run lint`, `npm run test`, and `npm run build` (all passed)
 
 ## Research Evidence
 
@@ -246,6 +259,9 @@
 | src/views/admin/ReportDetail.tsx | Modified | Show admin-facing attachment block with open/download action | Yes |
 | supabase/bootstrap.sql | Modified | Ensure bootstrap schema includes attachment columns on reports | Yes |
 | supabase/auth-hardening.sql | Modified | Add safe column migration and storage bucket/policies for attachments | Yes |
+| src/contexts/AuthContext.tsx | Modified | Handle register email-confirmation mode gracefully and self-heal missing profile on authenticated login | Yes |
+| src/views/LoginPage.tsx | Modified | Add password confirmation field and register success notice flow | Yes |
+| src/test/setup.ts | Modified | Support `auth.getUser()` in Supabase test mock for new bootstrap logic | Yes |
 
 ## Notes
 

@@ -25,10 +25,12 @@ export default function LoginPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [biro, setBiro] = useState<BiroBidang | "">("");
   const [jabatan, setJabatan] = useState<Jabatan | "">("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const [shaking, setShaking] = useState(false);
 
@@ -43,6 +45,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     setLoading(true);
     setTimeout(async () => {
       const result = await login(email, password);
@@ -60,9 +63,17 @@ export default function LoginPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setInfo("");
 
-    if (!name.trim() || !email.trim() || !password.trim() || !biro || !jabatan) {
+    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || !biro || !jabatan) {
       setError("Semua kolom wajib diisi.");
+      setShaking(true);
+      setTimeout(() => setShaking(false), 600);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Konfirmasi password tidak sama.");
       setShaking(true);
       setTimeout(() => setShaking(false), 600);
       return;
@@ -78,6 +89,16 @@ export default function LoginPage() {
         setTimeout(() => setShaking(false), 600);
         return;
       }
+
+      // In email-confirmation mode Supabase returns success without session.
+      if (result.message) {
+        setMode("login");
+        setPassword("");
+        setConfirmPassword("");
+        setInfo(result.message);
+        return;
+      }
+
       redirectAfterAuth();
     }, 600);
   };
@@ -85,8 +106,10 @@ export default function LoginPage() {
   const switchMode = (newMode: AuthMode) => {
     setMode(newMode);
     setError("");
+    setInfo("");
     setEmail("");
     setPassword("");
+    setConfirmPassword("");
     setName("");
     setBiro("");
     setJabatan("");
@@ -136,6 +159,12 @@ export default function LoginPage() {
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg mb-4 animate-scale-in">
                 {error}
+              </div>
+            )}
+
+            {info && (
+              <div className="bg-emerald-100/70 text-emerald-800 text-sm p-3 rounded-lg mb-4 animate-scale-in border border-emerald-200">
+                {info}
               </div>
             )}
 
@@ -210,6 +239,18 @@ export default function LoginPage() {
                   />
                 </div>
                 <div>
+                  <Label>Konfirmasi Password</Label>
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Ulangi password"
+                    className="mt-1 transition-all duration-200 focus:shadow-md"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div>
                   <Label>Biro / Bidang</Label>
                   <Select value={biro} onValueChange={(v) => setBiro(v as BiroBidang)}>
                     <SelectTrigger className="mt-1">
@@ -242,7 +283,7 @@ export default function LoginPage() {
                       Mendaftarkan...
                     </span>
                   ) : (
-                    "Daftar & Masuk"
+                    "Daftar"
                   )}
                 </Button>
               </form>

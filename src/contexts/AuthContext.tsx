@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import {
   type User,
   type UserRole,
@@ -47,7 +48,7 @@ interface AuthContextType {
     password: string;
     biro: BiroBidang;
     jabatan: Jabatan;
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; error?: string; message?: string }>;
   logout: () => void;
   allUsers: User[];
   refreshUsers: () => Promise<void>;
@@ -57,17 +58,104 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const VALID_BIRO: BiroBidang[] = ["KETUM", "ADKEU", "PSDM", "PENKOM", "RISTEK", "INFOKOM"];
+const VALID_JABATAN: Jabatan[] = ["PENGURUS_HARIAN", "STAF_AHLI", "STAF", "ANGGOTA_MUDA"];
+
+function normalizeBiro(input: unknown): BiroBidang {
+  return VALID_BIRO.includes(input as BiroBidang) ? (input as BiroBidang) : "INFOKOM";
+}
+
+function normalizeJabatan(input: unknown): Jabatan {
+  return VALID_JABATAN.includes(input as Jabatan) ? (input as Jabatan) : "ANGGOTA_MUDA";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const ensureAppProfileForAuthUser = useCallback(async (authUser: SupabaseAuthUser) => {
+    const metadata = authUser.user_metadata ?? {};
+    const defaultName = authUser.email?.split("@")[0] ?? "User";
+    const createdAt = authUser.created_at ? new Date(authUser.created_at).toISOString() : new Date().toISOString();
+
+    const metadataName =
+      typeof metadata.name === "string" && metadata.name.trim().length > 0
+        ? metadata.name.trim()
+        : null;
+    const metadataBiro = VALID_BIRO.includes(metadata.biro as BiroBidang)
+      ? (metadata.biro as BiroBidang)
+      : null;
+    const metadataJabatan = VALID_JABATAN.includes(metadata.jabatan as Jabatan)
+      ? (metadata.jabatan as Jabatan)
+      : null;
+
+    const { data: existingProfile, error: existingProfileError } = await supabase
+      .from("users")
+      .select("id, name, email, biro, jabatan")
+      .eq("id", authUser.id)
+      .maybeSingle();
+
+    if (existingProfileError) {
+      return { success: false, error: existingProfileError.message };
+    }
+
+    if (existingProfile) {
+      const profilePatch = {
+        name: metadataName ?? (existingProfile as UsersRow).name,
+        email: authUser.email ?? (existingProfile as UsersRow).email,
+        biro: metadataBiro ?? (existingProfile as UsersRow).biro,
+        jabatan: metadataJabatan ?? (existingProfile as UsersRow).jabatan,
+      };
+
+      const { error } = await supabase
+        .from("users")
+        .update(profilePatch)
+        .eq("id", authUser.id);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    }
+
+    const { error } = await supabase.from("users").insert({
+      id: authUser.id,
+      name: metadataName ?? defaultName,
+      email: authUser.email ?? "",
+      biro: metadataBiro ?? "INFOKOM",
+      jabatan: metadataJabatan ?? "ANGGOTA_MUDA",
+      role: "SENDER",
+      is_active: true,
+      created_at: createdAt,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  }, []);
+
   const loadAppUserById = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
+    const readProfile = async () =>
+      supabase
       .from("users")
       .select("id, name, biro, jabatan, role, email, password_hash, is_active, created_at")
       .eq("id", userId)
       .maybeSingle();
+
+    let { data, error } = await readProfile();
+
+    if (!data) {
+      const { data: authUserData } = await supabase.auth.getUser();
+      if (authUserData.user && authUserData.user.id === userId) {
+        await ensureAppProfileForAuthUser(authUserData.user);
+        const secondRead = await readProfile();
+        data = secondRead.data;
+        error = secondRead.error;
+      }
+    }
 
     if (error || !data || !data.is_active) {
       setUser(null);
@@ -75,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setUser(mapRowToUser(data as UsersRow));
-  }, []);
+  }, [ensureAppProfileForAuthUser]);
 
   const refreshUsers = useCallback(async () => {
     const { data, error } = await supabase
@@ -134,6 +222,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Email atau password salah." };
       }
 
+      const ensuredProfile = await ensureAppProfileForAuthUser(authData.user);
+      if (!ensuredProfile.success) {
+        return { success: false, error: "Akun berhasil diverifikasi, tetapi profil pengguna belum bisa disinkronkan. Coba lagi." };
+      }
+
       const { data, error } = await supabase
         .from("users")
         .select("id, name, biro, jabatan, role, email, password_hash, is_active, created_at")
@@ -155,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: true };
     },
-    [refreshUsers]
+    [refreshUsers, ensureAppProfileForAuthUser]
   );
 
   const register = useCallback(
@@ -184,39 +277,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: authError?.message ?? "Registrasi gagal. Silakan coba lagi." };
       }
 
-      const now = new Date().toISOString();
-      const insertPayload = {
-        id: authData.user.id,
-        name: data.name,
-        email: data.email,
-        biro: data.biro,
-        jabatan: data.jabatan,
-        role: "SENDER",
-        is_active: true,
-        created_at: now,
-      };
+      if (!authData.session) {
+        return {
+          success: true,
+          message: "Registrasi berhasil. Silakan cek email untuk konfirmasi akun, lalu login kembali.",
+        };
+      }
 
-      const { error } = await supabase.from("users").upsert(insertPayload);
-      if (error) {
+      const ensuredProfile = await ensureAppProfileForAuthUser(authData.user);
+      if (!ensuredProfile.success) {
         return { success: false, error: "Akun auth dibuat, tetapi profil pengguna gagal disimpan." };
       }
 
-      const newUser: User = {
-        id: authData.user.id,
-        name: data.name,
-        email: data.email,
-        biro: data.biro,
-        jabatan: data.jabatan,
-        role: "SENDER",
-        is_active: true,
-        created_at: now,
-      };
-
+      await loadAppUserById(authData.user.id);
       await refreshUsers();
-      setUser(newUser);
+
       return { success: true };
     },
-    [users, refreshUsers]
+    [users, refreshUsers, ensureAppProfileForAuthUser, loadAppUserById]
   );
 
   const logout = useCallback(() => {

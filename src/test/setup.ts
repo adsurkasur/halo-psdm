@@ -347,6 +347,42 @@ const supabaseMock = {
       },
       error: null,
     }),
+    getUser: async () => {
+      if (!currentAuthUserId) {
+        return { data: { user: null }, error: null };
+      }
+
+      const row = db.users.find((u) => String(u.id) === currentAuthUserId) as Row | undefined;
+      if (!row) {
+        return {
+          data: {
+            user: {
+              id: currentAuthUserId,
+              email: null,
+              user_metadata: {},
+              created_at: new Date().toISOString(),
+            },
+          },
+          error: null,
+        };
+      }
+
+      return {
+        data: {
+          user: {
+            id: String(row.id),
+            email: String(row.email),
+            user_metadata: {
+              name: String(row.name ?? "User"),
+              biro: String(row.biro ?? "INFOKOM"),
+              jabatan: String(row.jabatan ?? "ANGGOTA_MUDA"),
+            },
+            created_at: String(row.created_at ?? new Date().toISOString()),
+          },
+        },
+        error: null,
+      };
+    },
     onAuthStateChange: (callback: (event: string, session: { user: { id: string; email?: string | null } } | null) => void) => {
       authListeners.add(callback);
       return {
