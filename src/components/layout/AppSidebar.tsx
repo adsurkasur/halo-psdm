@@ -45,7 +45,7 @@ export function AppSidebar() {
     ...(isPh
       ? [
           { title: "Rekap & Analitik", url: "/admin/rekap", icon: BarChart3, badge: 0 },
-        { title: "Kelola HR", url: "/admin/kelola-admin", icon: Users, badge: 0 },
+        { title: "Kelola HR dan PH", url: "/admin/kelola-admin", icon: Users, badge: 0 },
         ]
       : []),
   ];

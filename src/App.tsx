@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,11 +29,40 @@ import NotFound from "./views/NotFound";
 
 const queryClient = new QueryClient();
 
+function AppLoadingScreen() {
+  const [showLongWaitHint, setShowLongWaitHint] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setShowLongWaitHint(true);
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md rounded-xl border bg-card p-6 text-center shadow-sm">
+        <div className="mx-auto mb-3 h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+        <p className="font-medium">Memuat sesi akun...</p>
+        <p className="text-sm text-muted-foreground mt-1">Menyiapkan data profil dan akses halaman.</p>
+        {showLongWaitHint && (
+          <p className="text-xs text-amber-600 mt-3">
+            Memuat lebih lama dari biasanya. Koneksi ke server mungkin sedang lambat.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ProtectedRoutes() {
   const { isAuthenticated, isSender, isPh, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="min-h-[40vh]" />;
+    return <AppLoadingScreen />;
   }
 
   if (!isAuthenticated) {
@@ -97,7 +127,7 @@ export function AppRoutes() {
   const isRecoveryRoute = searchParams.get("recovery") === "1" || hashParams.get("type") === "recovery";
 
   if (isLoading) {
-    return <div className="min-h-[40vh]" />;
+    return <AppLoadingScreen />;
   }
 
   return (

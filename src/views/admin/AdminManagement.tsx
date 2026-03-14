@@ -21,6 +21,7 @@ export default function AdminManagement() {
   const { toast } = useToast();
 
   const [newAdminId, setNewAdminId] = useState<string>("");
+  const [newElevatedRole, setNewElevatedRole] = useState<"HR" | "PH">("HR");
   const [search, setSearch] = useState("");
   const [addSearch, setAddSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -55,9 +56,9 @@ export default function AdminManagement() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <h1 className="text-xl font-bold">Kelola HR</h1>
+      <h1 className="text-xl font-bold">Kelola HR dan PH</h1>
       <p className="text-sm text-muted-foreground">
-        Kelola profil dan ketersediaan penerima janji temu PSDM (HR/PH). Hanya PH yang dapat mengakses halaman ini.
+        Kelola role dan ketersediaan penerima janji temu PSDM (HR/PH). Hanya PH yang dapat mengakses halaman ini.
       </p>
 
       {user?.role === "PH" && (
@@ -124,7 +125,7 @@ export default function AdminManagement() {
                   {allUsers
                     .filter(
                       (u) =>
-                        u.role !== "HR" &&
+                        u.role !== newElevatedRole &&
                         (u.name.toLowerCase().includes(addSearch.toLowerCase()) ||
                           u.email.toLowerCase().includes(addSearch.toLowerCase()))
                     )
@@ -140,7 +141,7 @@ export default function AdminManagement() {
                         {u.name} ({u.email})
                       </div>
                     ))}
-                  {allUsers.filter((u) => u.role !== "HR").length === 0 && (
+                  {allUsers.filter((u) => u.role !== newElevatedRole).length === 0 && (
                     <div className="px-3 py-2 text-sm text-muted-foreground">
                       Tidak ada kandidat
                     </div>
@@ -148,19 +149,28 @@ export default function AdminManagement() {
                 </div>
               )}
             </div>
+            <Select value={newElevatedRole} onValueChange={(v) => setNewElevatedRole(v as "HR" | "PH") }>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="HR">HR</SelectItem>
+                <SelectItem value="PH">PH</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
               disabled={!newAdminId}
               onClick={async () => {
                 const user = allUsers.find((u) => u.id === newAdminId);
                 if (user) {
-                  await changeUserRole(user.id, "HR");
+                  await changeUserRole(user.id, newElevatedRole);
                   await ensureDirectoryProfile(user);
                   setNewAdminId("");
                   setAddSearch("");
                 }
               }}
             >
-              Angkat Jadi HR
+              Angkat Jadi {newElevatedRole}
             </Button>
           </div>
         </div>  
@@ -171,11 +181,11 @@ export default function AdminManagement() {
         <CardContent className="pt-4 space-y-4">
           <div>
             <label className="sr-only" htmlFor="admin-search">
-              Cari admin
+              Cari HR/PH
             </label>
             <Input
               id="admin-search"
-              placeholder="Cari admin..."
+              placeholder="Cari HR/PH..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full max-w-sm"
@@ -184,7 +194,7 @@ export default function AdminManagement() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>HR</TableHead>
+                <TableHead>HR/PH</TableHead>
                 <TableHead>Jabatan</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>No. WhatsApp</TableHead>

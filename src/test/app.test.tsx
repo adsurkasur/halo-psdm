@@ -189,8 +189,8 @@ describe("app behavior", () => {
       </ThemeProvider>
     );
 
-    expect(await screen.findByText(/Kelola HR/i)).toBeInTheDocument();
-    const search = screen.getByPlaceholderText(/Cari admin|Cari HR/i);
+    expect(await screen.findByText(/Kelola HR dan PH/i)).toBeInTheDocument();
+    const search = screen.getByPlaceholderText(/Cari admin|Cari HR|Cari HR\/PH/i);
     expect(search).toBeInTheDocument();
     fireEvent.change(search, { target: { value: "Sarah" } });
     expect(await screen.findByText(/Sarah Amelia/i)).toBeInTheDocument();

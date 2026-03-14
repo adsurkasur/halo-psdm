@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Update promote-user SQL and add more explanatory usage guidance |
+| Task | Fix clear-accounts-profiles SQL to handle Supabase storage deletion restrictions safely |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 13:18 |
+| Last Updated | 2026-03-14 14:04 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -41,6 +41,16 @@
 > pastikan theme state tersimpan juga di "user's preference"
 >
 > perbarui sql promote user ini dan tambahkan panduan yang lebih explanatory
+>
+> bagi seluruh pengguna, tiba-tiba blank screen setelah refresh. apakah ini loading? atau error? harusnya dihandle dengan feedback, bukan silent error. setelah aku coba, ternyata loading lama banget. coba cek, apakah sistem ini ada kebocoran sehingga boros resource? apakah tidak efisien? atau gimana. sepertinya lemot di supabasenya
+>
+> terus untuk PH, bukan hanya bisa mengangkat jadi HR, tapi jadi PH juga. jadi daripada Kelola HR, mending Kelola HR dan PH.
+>
+> buat sql ini, bikin dia bisa clear akun dan profile, bukan hanya akun aja
+>
+> aku rename filenya. sekarang dia error gini
+>
+> Error: Failed to run sql query: ERROR: 42501: Direct deletion from storage tables is not allowed. Use the Storage API instead.
 
 ## Execution Plan
 
@@ -135,6 +145,9 @@
 - **13:00** - STUDY - Audited current theme handling and confirmed no DB-backed preference persistence
 - **13:02** - IMPLEMENT - Started adding theme_preference persistence and UI sync wiring
 - **13:18** - IMPLEMENT - Started revision of promote-user SQL script with clearer guide and safer role handling
+- **13:33** - STUDY - Started investigation for slow/blank refresh, loading UX fallback, and role-management updates for HR/PH
+- **13:52** - IMPLEMENT - Started enhancing clear-legacy SQL to remove both auth account and full profile footprint
+- **14:04** - IMPLEMENT - Handling storage.protect_delete restriction by converting direct storage delete into API-cleanup target output
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references

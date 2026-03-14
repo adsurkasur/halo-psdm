@@ -215,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUsers = useCallback(async () => {
     const { data, error } = await supabase
       .from("users")
-      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, password_hash, is_active, created_at")
+      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -321,7 +321,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         setUser(mapRowToUser(serverSync.profile));
-        await refreshUsers();
         return { success: true, profile: serverSync.profile };
       }
 
@@ -340,7 +339,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           setUser(mapRowToUser(profile));
-          await refreshUsers();
           return { success: true, profile };
         }
       }
@@ -368,19 +366,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       diagnosticCode: "CLIENT_SYNC_ALL_PATHS_FAILED",
       stage: "final",
     };
-  }, [ensureAppProfileForAuthUser, refreshUsers, syncProfileThroughServer]);
+  }, [ensureAppProfileForAuthUser, syncProfileThroughServer]);
 
   useEffect(() => {
     const bootstrap = async () => {
       const { data } = await supabase.auth.getSession();
-      await refreshUsers();
 
       const sessionUserId = data.session?.user?.id;
       if (sessionUserId) {
         const synced = await syncProfileNow();
         if (!synced.success) {
           setUser(null);
+          setUsers([]);
+        } else {
+          await refreshUsers();
         }
+      } else {
+        setUsers([]);
       }
 
       setIsLoading(false);
@@ -390,15 +392,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       const sessionUserId = session?.user?.id;
       if (!sessionUserId) {
         setUser(null);
+        setUsers([]);
         return;
       }
 
-      void syncProfileNow();
-      void refreshUsers();
+      if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+        void (async () => {
+          const synced = await syncProfileNow();
+          if (synced.success) {
+            await refreshUsers();
+          }
+        })();
+      }
     });
 
     return () => {
