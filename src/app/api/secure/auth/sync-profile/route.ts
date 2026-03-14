@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   const { data: existing, error: existingError } = await supabaseServer
     .from("users")
-    .select("id, name, email, biro, jabatan")
+    .select("id, name, email, biro, jabatan, avatar_url")
     .eq("id", authUser.id)
     .maybeSingle();
 
@@ -44,6 +44,10 @@ export async function POST(request: Request) {
         email: authUser.email ?? existing.email,
         biro: VALID_BIRO.includes(metadata.biro as BiroBidang) ? metadata.biro : existing.biro,
         jabatan: VALID_JABATAN.includes(metadata.jabatan as Jabatan) ? metadata.jabatan : existing.jabatan,
+          avatar_url:
+            typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
+              ? metadata.avatar_url
+              : existing.avatar_url,
       })
       .eq("id", authUser.id);
 
@@ -51,25 +55,63 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
   } else {
-    const { error: insertError } = await supabaseServer.from("users").insert({
+    const profilePayload = {
       id: authUser.id,
       name: metadataName ?? fallbackName,
       email: authUser.email ?? "",
       biro: pickBiro(metadata.biro),
       jabatan: pickJabatan(metadata.jabatan),
+      avatar_url:
+        typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
+          ? metadata.avatar_url
+          : null,
       role: "SENDER",
       is_active: true,
       created_at: authUser.created_at ? new Date(authUser.created_at).toISOString() : new Date().toISOString(),
-    });
+    };
+
+    const { error: insertError } = await supabaseServer.from("users").insert(profilePayload);
 
     if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 400 });
+      // Legacy conflict case: same email exists with old/non-auth id.
+      const { data: legacyByEmail, error: legacyReadError } = await supabaseServer
+        .from("users")
+        .select("id")
+        .eq("email", profilePayload.email)
+        .maybeSingle();
+
+      if (legacyReadError || !legacyByEmail) {
+        return NextResponse.json({ error: insertError.message }, { status: 400 });
+      }
+
+      const { error: legacyUpdateError } = await supabaseServer
+        .from("users")
+        .update({
+          id: authUser.id,
+          name: profilePayload.name,
+          biro: profilePayload.biro,
+          jabatan: profilePayload.jabatan,
+          is_active: true,
+          email: profilePayload.email,
+          avatar_url: profilePayload.avatar_url,
+        })
+        .eq("id", legacyByEmail.id);
+
+      if (legacyUpdateError) {
+        return NextResponse.json(
+          {
+            error:
+              "Konflik data profil lama terdeteksi. Hubungi admin untuk menjalankan sinkronisasi manual akun/profil.",
+          },
+          { status: 409 }
+        );
+      }
     }
   }
 
   const { data: profile, error: profileError } = await supabaseServer
     .from("users")
-    .select("id, name, biro, jabatan, role, email, is_active, created_at")
+    .select("id, name, biro, jabatan, role, email, avatar_url, is_active, created_at")
     .eq("id", authUser.id)
     .maybeSingle();
 

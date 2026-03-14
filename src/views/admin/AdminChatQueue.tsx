@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Send, Lock, UserPlus } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { AVAILABILITY_LABELS, type AvailabilityStatus } from "@/data/domain";
+import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
 
 export default function AdminChatQueue() {
   const { toast } = useToast();
@@ -127,18 +127,30 @@ export default function AdminChatQueue() {
                   const isUnassigned = !session.assigned_admin_id;
 
                   return (
-                    <button
+                    <div
                       key={session.id}
+                      role="button"
+                      tabIndex={0}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
                         selectedSession?.id === session.id ? "bg-accent" : "hover:bg-muted"
                       }`}
                       onClick={() => setSelectedSessionId(session.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedSessionId(session.id);
+                        }
+                      }}
                     >
-                      <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                          {senderName.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <UserAvatarWithPreview
+                          name={senderName}
+                          avatarUrl={sender?.avatar_url}
+                          sizeClassName="h-9 w-9"
+                          fallbackClassName="bg-primary text-primary-foreground text-xs"
+                          modalTitle="Foto Profil Pengirim"
+                        />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center">
                           <p className={`text-sm truncate ${unreadCount > 0 ? "font-bold" : "font-medium"}`}>
@@ -162,7 +174,7 @@ export default function AdminChatQueue() {
                           {unreadCount}
                         </Badge>
                       )}
-                    </button>
+                    </div>
                   );
                 })
               )}
@@ -181,11 +193,13 @@ export default function AdminChatQueue() {
               {/* Header */}
               <CardHeader className="border-b py-3 px-4 flex flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {(allUsers.find((u) => u.id === selectedSession.user_id)?.name ?? "Pengirim").slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatarWithPreview
+                    name={allUsers.find((u) => u.id === selectedSession.user_id)?.name ?? "Pengirim"}
+                    avatarUrl={allUsers.find((u) => u.id === selectedSession.user_id)?.avatar_url}
+                    sizeClassName="h-9 w-9"
+                    fallbackClassName="bg-primary text-primary-foreground text-xs"
+                    modalTitle="Foto Profil Pengirim"
+                  />
                   <div>
                     <h3 className="font-semibold text-sm">
                       {allUsers.find((u) => u.id === selectedSession.user_id)?.name ?? "Pengirim"}

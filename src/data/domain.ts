@@ -51,6 +51,7 @@ export interface User {
   jabatan: Jabatan;
   role: UserRole;
   email: string;
+  avatar_url?: string | null;
   password?: string;
   is_active: boolean;
   created_at: string;

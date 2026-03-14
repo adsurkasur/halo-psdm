@@ -1,7 +1,6 @@
-import { Bell, LogOut, Check, Sun, Moon, User, Settings } from "lucide-react";
+import { Bell, LogOut, Check, Sun, Moon, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -14,9 +13,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { JABATAN_LABELS } from "@/data/domain";
+import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
 
 export function AppHeader() {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, logout } = useAuth();
   const { notifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } = useData();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
@@ -27,13 +27,6 @@ export function AppHeader() {
   const userNotifs = notifications
     .filter((n) => n.user_id === user.id)
     .slice(0, 20);
-
-  const initials = user.name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
   const handleLogout = () => {
     logout();
@@ -134,11 +127,14 @@ export function AppHeader() {
         <Popover>
           <PopoverTrigger asChild>
             <button className="flex items-start gap-2">
-              <span className="relative flex shrink-0 overflow-hidden rounded-full h-8 w-8">
-                <span className="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">
-                  {initials}
-                </span>
-              </span>
+              <UserAvatarWithPreview
+                name={user.name}
+                avatarUrl={user.avatar_url}
+                sizeClassName="h-8 w-8"
+                fallbackClassName="bg-primary text-primary-foreground text-xs font-semibold"
+                modalTitle="Foto Profil Anda"
+                disablePreview
+              />
               <div className="hidden md:block">
                 <p className="text-xs font-medium leading-none">{user.name}</p>
                 <p className="text-[10px] text-muted-foreground">

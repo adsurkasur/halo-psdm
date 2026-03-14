@@ -15,6 +15,7 @@ type UsersRow = {
   jabatan: Jabatan;
   role: UserRole;
   email: string;
+  avatar_url?: string | null;
   password_hash?: string | null;
   is_active: boolean;
   created_at: string;
@@ -28,6 +29,7 @@ function mapRowToUser(row: UsersRow): User {
     jabatan: row.jabatan,
     role: row.role,
     email: row.email,
+    avatar_url: row.avatar_url,
     password: row.password_hash ?? undefined,
     is_active: row.is_active,
     created_at: row.created_at,
@@ -53,7 +55,7 @@ interface AuthContextType {
   allUsers: User[];
   refreshUsers: () => Promise<void>;
   syncProfileNow: () => Promise<{ success: boolean; error?: string }>;
-  updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan">>) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url">>) => Promise<{ success: boolean; error?: string }>;
   changeUserRole: (userId: string, newRole: UserRole) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -97,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: existingProfile, error: existingProfileError } = await supabase
       .from("users")
-      .select("id, name, email, biro, jabatan")
+      .select("id, name, email, biro, jabatan, avatar_url")
       .eq("id", authUser.id)
       .maybeSingle();
 
@@ -146,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const readProfile = async () =>
       supabase
       .from("users")
-      .select("id, name, biro, jabatan, role, email, password_hash, is_active, created_at")
+      .select("id, name, biro, jabatan, role, email, avatar_url, password_hash, is_active, created_at")
       .eq("id", userId)
       .maybeSingle();
 
@@ -173,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUsers = useCallback(async () => {
     const { data, error } = await supabase
       .from("users")
-      .select("id, name, biro, jabatan, role, email, password_hash, is_active, created_at")
+      .select("id, name, biro, jabatan, role, email, avatar_url, password_hash, is_active, created_at")
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -203,7 +205,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const payload = (await response.json().catch(() => null)) as { error?: string } | null;
         return {
           success: false,
-          error: payload?.error ?? "Sinkronisasi profil via server gagal.",
+          error:
+            payload?.error ??
+            "Sinkronisasi profil via server gagal. Coba lagi sebentar, atau hubungi admin untuk sinkronisasi manual.",
         };
       }
 
@@ -301,7 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data, error } = await supabase
         .from("users")
-        .select("id, name, biro, jabatan, role, email, password_hash, is_active, created_at")
+        .select("id, name, biro, jabatan, role, email, avatar_url, password_hash, is_active, created_at")
         .eq("id", authData.user.id)
         .maybeSingle();
 
@@ -398,13 +402,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile = useCallback(
-    async (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan">>) => {
+    async (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url">>) => {
       if (!user) return { success: false, error: "User tidak ditemukan." };
 
       const updatePayload: Record<string, unknown> = {};
       if (typeof updates.name !== "undefined") updatePayload.name = updates.name;
       if (typeof updates.biro !== "undefined") updatePayload.biro = updates.biro;
       if (typeof updates.jabatan !== "undefined") updatePayload.jabatan = updates.jabatan;
+      if (typeof updates.avatar_url !== "undefined") updatePayload.avatar_url = updates.avatar_url;
 
       if (typeof updates.email !== "undefined" || typeof updates.password !== "undefined") {
         const { error: authUpdateError } = await supabase.auth.updateUser({

@@ -13,6 +13,7 @@ create table if not exists public.users (
   jabatan text not null check (jabatan in ('PENGURUS_HARIAN', 'STAF_AHLI', 'STAF', 'ANGGOTA_MUDA')),
   role text not null default 'SENDER' check (role in ('SENDER', 'ADMIN', 'SUPER_ADMIN')),
   email text not null unique,
+  avatar_url text,
   password_hash text,
   is_active boolean not null default true,
   created_at timestamptz not null default now()

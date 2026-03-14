@@ -30,29 +30,34 @@ begin
   raw_biro := coalesce(new.raw_user_meta_data ->> 'biro', 'INFOKOM');
   raw_jabatan := coalesce(new.raw_user_meta_data ->> 'jabatan', 'ANGGOTA_MUDA');
 
-  insert into public.users (
-    id,
-    name,
-    biro,
-    jabatan,
-    role,
-    email,
-    is_active,
-    created_at
-  )
-  values (
-    new.id::text,
-    raw_name,
-    raw_biro,
-    raw_jabatan,
-    'SENDER',
-    new.email,
-    true,
-    now()
-  )
-  on conflict (id) do update
-    set email = excluded.email,
-        name = coalesce(public.users.name, excluded.name);
+  begin
+    insert into public.users (
+      id,
+      name,
+      biro,
+      jabatan,
+      role,
+      email,
+      is_active,
+      created_at
+    )
+    values (
+      new.id::text,
+      raw_name,
+      raw_biro,
+      raw_jabatan,
+      'SENDER',
+      new.email,
+      true,
+      now()
+    )
+    on conflict (id) do update
+      set email = excluded.email,
+          name = coalesce(public.users.name, excluded.name);
+  exception when others then
+    -- Never block auth signup if profile bootstrap fails.
+    null;
+  end;
 
   return new;
 end;
@@ -86,6 +91,7 @@ execute function public.handle_auth_user_email_update();
 
 -- Keep legacy column for compatibility but no longer required for auth.
 alter table public.users alter column password_hash drop not null;
+alter table public.users add column if not exists avatar_url text;
 
 -- Report attachment metadata columns.
 alter table public.reports add column if not exists attachment_url text;
@@ -148,6 +154,60 @@ for delete
 to authenticated
 using (
   bucket_id = 'report-attachments'
+  and (
+    split_part(name, '/', 1) = auth.uid()::text
+    or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')
+  )
+);
+
+-- Storage bucket for user profile pictures.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'profile-pictures',
+  'profile-pictures',
+  true,
+  5242880,
+  array['image/png', 'image/jpeg', 'image/webp']
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists profile_pictures_select_auth on storage.objects;
+create policy profile_pictures_select_auth on storage.objects
+for select
+to authenticated
+using (bucket_id = 'profile-pictures');
+
+drop policy if exists profile_pictures_insert_own on storage.objects;
+create policy profile_pictures_insert_own on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'profile-pictures'
+  and split_part(name, '/', 1) = auth.uid()::text
+);
+
+drop policy if exists profile_pictures_update_own on storage.objects;
+create policy profile_pictures_update_own on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'profile-pictures'
+  and split_part(name, '/', 1) = auth.uid()::text
+)
+with check (
+  bucket_id = 'profile-pictures'
+  and split_part(name, '/', 1) = auth.uid()::text
+);
+
+drop policy if exists profile_pictures_delete_own_or_admin on storage.objects;
+create policy profile_pictures_delete_own_or_admin on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'profile-pictures'
   and (
     split_part(name, '/', 1) = auth.uid()::text
     or public.current_app_role() in ('ADMIN', 'SUPER_ADMIN')

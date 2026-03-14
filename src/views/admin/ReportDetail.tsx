@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { BIRO_LABELS, JABATAN_LABELS, CATEGORY_LABELS, STATUS_LABELS, URGENCY_LABELS, type ReportStatus, type Urgency } from "@/data/domain";
+import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
 
 const statusOptions: ReportStatus[] = ["RECEIVED", "IN_PROGRESS", "NEEDS_CLARIFICATION", "DONE"];
 
@@ -124,7 +125,20 @@ export default function ReportDetail() {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs">Pengirim</p>
-                <p className="font-medium">{sender?.name ?? "-"}</p>
+                {sender ? (
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <UserAvatarWithPreview
+                      name={sender.name}
+                      avatarUrl={sender.avatar_url}
+                      sizeClassName="h-8 w-8"
+                      fallbackClassName="bg-primary text-primary-foreground text-[10px]"
+                      modalTitle="Foto Profil Pengirim"
+                    />
+                    <p className="font-medium">{sender.name}</p>
+                  </div>
+                ) : (
+                  <p className="font-medium">-</p>
+                )}
                 {sender && (
                   <p className="text-[10px] text-muted-foreground">{BIRO_LABELS[sender.biro]} · {JABATAN_LABELS[sender.jabatan]}</p>
                 )}

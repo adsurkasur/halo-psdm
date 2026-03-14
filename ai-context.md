@@ -5,29 +5,27 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Make account-profile synchronization fully seamless via secure server sync flow + improve sync button UI/feedback |
+| Task | Add profile picture feature with upload, view modal, and visibility in admin report context |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 10:46 |
+| Last Updated | 2026-03-14 11:12 |
 | Session ID | 20260314-1001 |
 
 ## User Request
 
-> boleh kamu tambahkan halaman baru, tapi yang jelas kamu buat agar sinkronisasi akun dan profil bisa otomatis dan seamless. karena ini aku buat akun pertama aja ga bisa, aku rencana buat akun dari frontend terus rolenya aku ubah lewat sql editor supabase, tapi register tetep dihandle langsung oleh app
+> sembari aku testing dulu, tambahkan fitur profile picture.
 >
-> selain itu, tolong fix UI tombol "sinkronkan profil sekarang" karena tampilannya kurang bagus (brown on black itu sulit dibaca) dan berikan "feedback" kalau sinkron itu sukses atau gagal
->
-> prioritaskan sinkronisasi akun dan profil bisa otomatis dan seamless
+> nanti profile picture ini juga bisa dilihat, jadi ketika diklik profile picturenya akan muncul popup/modal untuk view profile picturenya. intentnya adalah untuk admin mengenali anggota yang sedang lapor atau curhat
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
 | Intended Phases | Study → Implement |
-| Evidence to Produce | New secure sync API route, AuthContext integration for automatic seamless sync, improved LoginPage sync UI and feedback, validation output |
-| Anticipated Stops | Missing service role env or server auth helper mismatch can block secure route |
-| Known Information | Client-side sync may fail due policy/config drift; first account flow is critical and currently brittle. |
-| Unknown Information | Existing secure-route helper capabilities for auth user extraction and role-independent sync execution. |
-| Initial Risk Level | Medium-High - auth bootstrap flow is critical path and must remain backward compatible. |
+| Evidence to Produce | Schema/type/context/UI changes for profile picture upload + modal view + report detail visibility, with lint/test/build output |
+| Anticipated Stops | Missing storage bucket/policies, absent user avatar column, image upload constraints in current profile flow |
+| Known Information | Current app shows avatar initials and lacks user profile picture upload/view for sender recognition context. |
+| Unknown Information | Exact profile page/header/report components needing updates and existing modal/avatar UI patterns. |
+| Initial Risk Level | Medium - touches auth/profile data model and shared UI surfaces. |
 
 ## File Context
 
@@ -65,6 +63,12 @@
 | src/test/setup.ts | edited | Add auth.getUser mock support for profile bootstrap path |
 | src/lib/supabase/secure-route.ts | edited | Added auth-only helper to support secure sync endpoint without existing app profile |
 | src/app/api/secure/auth/sync-profile/route.ts | created | New secure profile sync endpoint for seamless first-login/profile bootstrap |
+| src/components/shared/UserAvatarWithPreview.tsx | created | Reusable avatar with click-to-preview modal |
+| src/views/ProfilePage.tsx | edited | Add profile picture upload UI and full-size preview modal |
+| src/views/admin/ReportDetail.tsx | edited | Show sender profile picture for admin recognition on report detail |
+| src/views/admin/AdminChatQueue.tsx | edited | Show sender profile picture for admin recognition on chat queue and room header |
+| src/components/layout/AppHeader.tsx | edited | Use user profile picture in top bar profile card |
+| src/data/domain.ts | edited | Add avatar_url to User model |
 
 ## Workflow History
 
@@ -159,6 +163,17 @@
 - **10:22** - IMPLEMENT - Wired AuthContext auto sync to server route first with local fallback and applied flow to register+login
 - **10:23** - IMPLEMENT - Improved login sync panel contrast and added explicit sync success/failure inline feedback
 - **10:24** - IMPLEMENT - Updated test fetch mocks and revalidated lint/test/build successfully
+- **10:55** - PLAN - User reported new registration blocker: "Database error saving new user"
+- **10:55** - IMPLEMENT - Starting hotfix on auth trigger reliability and sync conflict handling
+- **10:56** - IMPLEMENT - Updated `handle_new_auth_user` trigger to be best-effort and never block Auth signup
+- **10:57** - IMPLEMENT - Added legacy email-conflict recovery in secure profile sync route (re-link profile id when possible)
+- **10:58** - IMPLEMENT - Revalidated `npm run lint`, `npm run test`, and `npm run build` (all passed)
+- **11:05** - PLAN - User requested profile picture upload + modal preview and admin-facing visibility for report/chat context
+- **11:06** - IMPLEMENT - Added avatar schema/type wiring and reusable avatar-preview component
+- **11:09** - IMPLEMENT - Integrated profile picture upload on profile page and avatar rendering in header/admin report/chat views
+- **11:12** - IMPLEMENT - Revalidated `npm run lint`, `npm run test`, and `npm run build` (all passed)
+- **11:05** - PLAN - User requested profile picture feature with modal viewer and admin-facing visibility for report context
+- **11:05** - STUDY - Starting profile/avatar data-path and UI touchpoint analysis
 
 ## Research Evidence
 
@@ -290,6 +305,17 @@
 | src/contexts/AuthContext.tsx | Modified | Route profile sync through secure endpoint first with fallback and retry | Yes |
 | src/views/LoginPage.tsx | Modified | Improve sync helper panel readability and display explicit inline result feedback | Yes |
 | src/test/setup.ts | Modified | Mock secure auth profile sync endpoint to keep tests deterministic | Yes |
+| supabase/auth-hardening.sql | Modified | Make auth trigger resilient so signup does not fail on profile bootstrap errors | Yes |
+| src/app/api/secure/auth/sync-profile/route.ts | Modified | Recover from legacy profile email conflicts by attempting id re-link | Yes |
+| src/data/domain.ts | Modified | Add optional `avatar_url` in `User` domain type | Yes |
+| src/contexts/AuthContext.tsx | Modified | Include `avatar_url` in user mapping/selects and allow avatar update in profile API | Yes |
+| src/components/shared/UserAvatarWithPreview.tsx | Created | Reusable clickable avatar with dialog preview modal | Yes |
+| src/views/ProfilePage.tsx | Modified | Add profile picture upload flow to Supabase Storage and modal preview | Yes |
+| src/components/layout/AppHeader.tsx | Modified | Display profile picture in user header card | Yes |
+| src/views/admin/ReportDetail.tsx | Modified | Display sender profile picture + modal preview for admin identification | Yes |
+| src/views/admin/AdminChatQueue.tsx | Modified | Display sender profile pictures in queue and session header with modal preview | Yes |
+| supabase/bootstrap.sql | Modified | Add `avatar_url` column to users table bootstrap schema | Yes |
+| supabase/auth-hardening.sql | Modified | Add `avatar_url` migration and `profile-pictures` bucket policies | Yes |
 
 ## Notes
 
