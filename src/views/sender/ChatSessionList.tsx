@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { Plus, MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { AVAILABILITY_LABELS } from "@/data/domain";
@@ -13,13 +13,15 @@ import { getChatMessagePreview } from "@/lib/supabase-storage";
 export default function ChatSessionList() {
   const navigate = useNavigate();
   const { user, allUsers } = useAuth();
-  const { chatSessions, chatMessages, adminProfiles, createChatSession } = useData();
+  const { chatSessions, chatMessages, adminProfiles, reports, createChatSession } = useData();
   const { toast } = useToast();
 
   if (!user) return null;
 
+  const myReportIds = new Set(reports.filter((r) => r.user_id === user.id).map((r) => r.id));
+
   const mySessions = chatSessions
-    .filter((s) => s.user_id === user.id)
+    .filter((s) => s.user_id === user.id || (!!s.report_id && myReportIds.has(s.report_id)))
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const hasOpenSession = mySessions.some((s) => s.status === "OPEN");
@@ -100,11 +102,15 @@ export default function ChatSessionList() {
                 onClick={() => navigate(`/chat/${session.id}`)}
               >
                 <CardContent className="py-4 flex items-center gap-3">
-                  <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {adminName.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="shrink-0">
+                    <UserAvatarWithPreview
+                      name={adminName}
+                      avatarUrl={adminProfile?.avatar_url ?? admin?.avatar_url ?? null}
+                      sizeClassName="h-10 w-10"
+                      fallbackClassName="bg-primary text-primary-foreground text-xs"
+                      modalTitle="Foto Profil Admin"
+                    />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium truncate">

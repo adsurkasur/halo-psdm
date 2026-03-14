@@ -69,6 +69,7 @@ export default function ReportDetail() {
   );
   const isImageAttachment = isImageResource(report.attachment_mime, report.attachment_name, report.attachment_url);
   const isVideoAttachment = isVideoResource(report.attachment_mime, report.attachment_name, report.attachment_url);
+  const isPreviewableAttachment = isImageAttachment || isVideoAttachment;
 
   const formatAttachmentSize = (size?: number | null) => {
     if (!size) return "Ukuran tidak diketahui";
@@ -185,11 +186,24 @@ export default function ReportDetail() {
                       </p>
                     </div>
                   </div>
-                  <Button asChild variant="outline" size="sm" className="gap-2 shrink-0">
-                    <a href={report.attachment_url} target="_blank" rel="noreferrer">
-                      <Download className="h-4 w-4" /> Buka
-                    </a>
-                  </Button>
+                  {isPreviewableAttachment ? (
+                    <MediaViewerDialog
+                      mediaUrl={report.attachment_url}
+                      mediaName={report.attachment_name}
+                      mediaMime={report.attachment_mime}
+                      title="Pratinjau Lampiran Laporan"
+                    >
+                      <div className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent">
+                        <Download className="h-4 w-4" /> Lihat
+                      </div>
+                    </MediaViewerDialog>
+                  ) : (
+                    <Button asChild variant="outline" size="sm" className="gap-2 shrink-0">
+                      <a href={report.attachment_url} target="_blank" rel="noreferrer">
+                        <Download className="h-4 w-4" /> Buka
+                      </a>
+                    </Button>
+                  )}
                 </div>
                 {isImageAttachment && (
                   <MediaViewerDialog
@@ -343,7 +357,7 @@ export default function ReportDetail() {
                   onClick={() => navigate(`/admin/chat`)}
                 >
                   <MessageCircle className="h-4 w-4" />
-                  Buka Chat Klarifikasi
+                  Buka Chat
                 </Button>
               )}
             </CardContent>

@@ -13,7 +13,7 @@ export default function SenderReportDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, allUsers } = useAuth();
-  const { reports, statusHistory, chatSessions } = useData();
+  const { reports, statusHistory, chatSessions, createChatSession } = useData();
 
   if (!user) return null;
 
@@ -33,11 +33,13 @@ export default function SenderReportDetail() {
     .filter((h) => h.report_id === report.id)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-  const linkedChat = chatSessions.find(
-    (cs) => cs.report_id === report.id && cs.status === "OPEN"
-  );
+  const reportChats = chatSessions
+    .filter((cs) => cs.report_id === report.id)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const linkedChat = reportChats.find((cs) => cs.status === "OPEN") ?? reportChats[0] ?? null;
   const isImageAttachment = isImageResource(report.attachment_mime, report.attachment_name, report.attachment_url);
   const isVideoAttachment = isVideoResource(report.attachment_mime, report.attachment_name, report.attachment_url);
+  const isPreviewableAttachment = isImageAttachment || isVideoAttachment;
 
   const senderUser = allUsers.find((u) => u.id === report.user_id);
   const formatAttachmentSize = (size?: number | null) => {
@@ -100,11 +102,24 @@ export default function SenderReportDetail() {
                     </p>
                   </div>
                 </div>
-                <Button asChild variant="outline" size="sm" className="gap-2 shrink-0">
-                  <a href={report.attachment_url} target="_blank" rel="noreferrer">
-                    <Download className="h-4 w-4" /> Buka
-                  </a>
-                </Button>
+                {isPreviewableAttachment ? (
+                  <MediaViewerDialog
+                    mediaUrl={report.attachment_url}
+                    mediaName={report.attachment_name}
+                    mediaMime={report.attachment_mime}
+                    title="Pratinjau Lampiran Laporan"
+                  >
+                    <div className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent">
+                      <Download className="h-4 w-4" /> Lihat
+                    </div>
+                  </MediaViewerDialog>
+                ) : (
+                  <Button asChild variant="outline" size="sm" className="gap-2 shrink-0">
+                    <a href={report.attachment_url} target="_blank" rel="noreferrer">
+                      <Download className="h-4 w-4" /> Buka
+                    </a>
+                  </Button>
+                )}
               </div>
               {isImageAttachment && (
                 <MediaViewerDialog
@@ -152,17 +167,22 @@ export default function SenderReportDetail() {
             </div>
           )}
 
-          {/* Clarification chat link */}
-          {report.status === "NEEDS_CLARIFICATION" && linkedChat && (
-            <Button
-              variant="outline"
-              className="w-full gap-2 border-primary text-primary transition-all duration-200 hover:shadow-md"
-              onClick={() => navigate(`/chat/${linkedChat.id}`)}
-            >
-              <MessageCircle className="h-4 w-4" />
-              Buka Chat Klarifikasi
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            className="w-full gap-2 border-primary text-primary transition-all duration-200 hover:shadow-md"
+            onClick={async () => {
+              if (linkedChat) {
+                navigate(`/chat/${linkedChat.id}`);
+                return;
+              }
+
+              const session = await createChatSession(user.id, report.id);
+              navigate(`/chat/${session.id}`);
+            }}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Buka Chat
+          </Button>
         </CardContent>
       </Card>
 

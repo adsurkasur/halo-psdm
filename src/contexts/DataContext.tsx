@@ -88,6 +88,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const pendingRealtimeTablesRef = useRef<Set<string>>(new Set());
   const reloadDebounceTimerRef = useRef<number | null>(null);
   const backgroundRefreshInFlightRef = useRef(false);
+  const lastUserActivityAtRef = useRef(Date.now());
   const isBusy = pendingOps > 0;
 
   const mapAdminProfiles = useCallback((rows: unknown[]) => {
@@ -282,18 +283,62 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const issues: string[] = [];
     const isPh = user.role === "PH";
-    const sessionsRes = isPh
-      ? await supabase.from("chat_sessions").select("*").order("created_at", { ascending: false })
-      : await supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    let mappedSessions: ChatSession[] = [];
 
-    if (sessionsRes.error) {
-      setChatSessions([]);
-      setChatMessages([]);
-      issues.push(`Sesi chat: ${sessionsRes.error.message}`);
-      return issues;
+    if (isPh) {
+      const sessionsRes = await supabase.from("chat_sessions").select("*").order("created_at", { ascending: false });
+      if (sessionsRes.error) {
+        setChatSessions([]);
+        setChatMessages([]);
+        issues.push(`Sesi chat: ${sessionsRes.error.message}`);
+        return issues;
+      }
+      mappedSessions = (sessionsRes.data ?? []).map((s) => s as ChatSession);
+    } else {
+      const sessionsByUserRes = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (sessionsByUserRes.error) {
+        setChatSessions([]);
+        setChatMessages([]);
+        issues.push(`Sesi chat: ${sessionsByUserRes.error.message}`);
+        return issues;
+      }
+
+      const reportIdsRes = await supabase.from("reports").select("id").eq("user_id", user.id);
+      if (reportIdsRes.error) {
+        issues.push(`ID laporan untuk sinkron sesi chat: ${reportIdsRes.error.message}`);
+      }
+
+      const reportIds = (reportIdsRes.data ?? []).map((row) => row.id as string);
+      let sessionsByReport: ChatSession[] = [];
+      if (reportIds.length > 0) {
+        const sessionsByReportRes = await supabase
+          .from("chat_sessions")
+          .select("*")
+          .in("report_id", reportIds)
+          .order("created_at", { ascending: false });
+
+        if (sessionsByReportRes.error) {
+          issues.push(`Sesi chat berbasis laporan: ${sessionsByReportRes.error.message}`);
+        } else {
+          sessionsByReport = (sessionsByReportRes.data ?? []).map((s) => s as ChatSession);
+        }
+      }
+
+      const merged = [...(sessionsByUserRes.data ?? []), ...sessionsByReport];
+      const deduped = new Map<string, ChatSession>();
+      for (const session of merged) {
+        deduped.set(session.id, session as ChatSession);
+      }
+      mappedSessions = Array.from(deduped.values()).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
     }
 
-    const mappedSessions = (sessionsRes.data ?? []).map((s) => s as ChatSession);
     setChatSessions(mappedSessions);
 
     const sessionIds = mappedSessions.map((s) => s.id);
@@ -549,37 +594,63 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const isChatRoute = (path: string) => path.includes("/chat") || path.includes("/admin/chat");
     const isReportRoute = (path: string) => path.includes("/laporan") || path.includes("/admin");
 
-    const chatInterval = window.setInterval(() => {
+    const markActivity = () => {
+      lastUserActivityAtRef.current = Date.now();
+    };
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      "mousemove",
+      "keydown",
+      "pointerdown",
+      "touchstart",
+      "scroll",
+    ];
+
+    for (const eventName of activityEvents) {
+      window.addEventListener(eventName, markActivity, { passive: true });
+    }
+
+    let lastChatSyncAt = 0;
+    let lastReportSyncAt = 0;
+    let lastNotificationSyncAt = 0;
+
+    const syncTick = window.setInterval(() => {
       if (!shouldSyncNow()) return;
 
+      const now = Date.now();
+      const isIdle = now - lastUserActivityAtRef.current > 30000;
       const path = window.location.pathname;
+
       if (isChatRoute(path)) {
-        void refreshByTablesBackground(new Set(["chat_sessions", "chat_messages", "notifications"]));
+        const chatIntervalMs = isIdle ? 4500 : 1200;
+        if (now - lastChatSyncAt >= chatIntervalMs) {
+          lastChatSyncAt = now;
+          void refreshByTablesBackground(new Set(["chat_sessions", "chat_messages", "notifications"]));
+        }
+        return;
       }
-    }, 1200);
 
-    const reportInterval = window.setInterval(() => {
-      if (!shouldSyncNow()) return;
-
-      const path = window.location.pathname;
-      if (!isChatRoute(path) && isReportRoute(path)) {
-        void refreshByTablesBackground(new Set(["reports", "report_status_history", "appointments", "admin_profiles", "notifications"]));
+      if (isReportRoute(path)) {
+        const reportIntervalMs = isIdle ? 18000 : 10000;
+        if (now - lastReportSyncAt >= reportIntervalMs) {
+          lastReportSyncAt = now;
+          void refreshByTablesBackground(new Set(["reports", "report_status_history", "appointments", "admin_profiles", "notifications"]));
+        }
+        return;
       }
-    }, 10000);
 
-    const notificationInterval = window.setInterval(() => {
-      if (!shouldSyncNow()) return;
-
-      const path = window.location.pathname;
-      if (!isChatRoute(path) && !isReportRoute(path)) {
+      const notificationIntervalMs = isIdle ? 45000 : 20000;
+      if (now - lastNotificationSyncAt >= notificationIntervalMs) {
+        lastNotificationSyncAt = now;
         void refreshByTablesBackground(new Set(["notifications"]));
       }
-    }, 20000);
+    }, 1000);
 
     return () => {
-      window.clearInterval(chatInterval);
-      window.clearInterval(reportInterval);
-      window.clearInterval(notificationInterval);
+      window.clearInterval(syncTick);
+      for (const eventName of activityEvents) {
+        window.removeEventListener(eventName, markActivity);
+      }
     };
   }, [refreshByTablesBackground, user]);
 
@@ -707,11 +778,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const createChatSession = useCallback(
     async (userId: string, reportId: string | null = null) => {
-      void userId;
-
       const response = await callSecureApi<{ session: ChatSession }>("/api/secure/chat/sessions", {
         method: "POST",
-        body: JSON.stringify({ reportId }),
+        body: JSON.stringify({ userId, reportId }),
       });
 
       setChatSessions((prev) => [response.session, ...prev]);

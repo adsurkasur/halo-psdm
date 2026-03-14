@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Completed fallback cadence tuning, bidirectional read receipts, and wider availability combobox for Offline label readability |
+| Task | Implementing final sender clarification visibility, modal-first attachment preview consistency, and PH avatar parity in sender chat list |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 22:39 |
+| Last Updated | 2026-03-14 14:46 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -220,6 +220,10 @@
 - **22:36** - IMPLEMENT - Added periodic visible-session mark-as-read loops for sender and PH chat screens to strengthen bidirectional read receipts
 - **22:36** - IMPLEMENT - Widened admin availability combobox trigger to `w-[148px]` to prevent `Offline` truncation
 - **22:39** - IMPLEMENT - Validation passed with `bun run lint`, `bun run build`, and `bun run test` (10/10)
+- **14:40** - IMPLEMENT - Updated sender report detail action so `Buka Chat` is always visible and can create/open linked session directly
+- **14:43** - IMPLEMENT - Switched admin report attachment primary action to modal-first preview for image/video assets
+- **14:45** - IMPLEMENT - Started sender chat list/session sync hardening for clarification visibility and PH avatar parity
+- **14:46** - IMPLEMENT - Revalidated latest patch set with `bun run lint`, `bun run build`, and `bun run test` (10/10)
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references
