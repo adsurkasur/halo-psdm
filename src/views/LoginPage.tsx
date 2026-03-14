@@ -31,6 +31,7 @@ export default function LoginPage() {
   const [jabatan, setJabatan] = useState<Jabatan | "">("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncingProfile, setSyncingProfile] = useState(false);
   const [shaking, setShaking] = useState(false);
@@ -42,17 +43,23 @@ export default function LoginPage() {
   const handleSyncProfileNow = async () => {
     setSyncingProfile(true);
     setInfo("");
+    setSyncFeedback(null);
 
     const result = await syncProfileNow();
     setSyncingProfile(false);
 
     if (!result.success) {
       setError(result.error ?? "Profil belum bisa disinkronkan.");
+      setSyncFeedback({
+        type: "error",
+        message: "Sinkronisasi gagal. Kamu bisa coba lagi, atau hubungi admin jika berulang.",
+      });
       return;
     }
 
     setError("");
     setInfo("Profil berhasil disinkronkan. Mengarahkan...");
+    setSyncFeedback({ type: "success", message: "Sinkronisasi berhasil. Profil akun sudah siap." });
     setTimeout(() => redirectAfterAuth(), 250);
   };
 
@@ -129,6 +136,7 @@ export default function LoginPage() {
     setMode(newMode);
     setError("");
     setInfo("");
+    setSyncFeedback(null);
     setEmail("");
     setPassword("");
     setConfirmPassword("");
@@ -185,7 +193,7 @@ export default function LoginPage() {
             )}
 
             {showProfileSyncHelp && (
-              <div className="bg-amber-100/70 text-amber-900 text-sm p-3 rounded-lg mb-4 border border-amber-200 animate-scale-in">
+              <div className="bg-card text-foreground text-sm p-3 rounded-lg mb-4 border border-border animate-scale-in">
                 <p className="font-medium mb-1">Yang bisa kamu lakukan sekarang:</p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>Tunggu 1-2 menit lalu klik Masuk lagi.</li>
@@ -194,13 +202,24 @@ export default function LoginPage() {
                 </ul>
                 <Button
                   type="button"
-                  variant="outline"
                   className="mt-3 w-full"
                   onClick={handleSyncProfileNow}
                   disabled={syncingProfile || loading}
                 >
                   {syncingProfile ? "Menyinkronkan..." : "Sinkronkan Profil Sekarang"}
                 </Button>
+
+                {syncFeedback && (
+                  <div
+                    className={`mt-2 rounded-md px-3 py-2 text-xs border ${
+                      syncFeedback.type === "success"
+                        ? "bg-emerald-100/70 text-emerald-800 border-emerald-200"
+                        : "bg-destructive/10 text-destructive border-destructive/30"
+                    }`}
+                  >
+                    {syncFeedback.message}
+                  </div>
+                )}
               </div>
             )}
 

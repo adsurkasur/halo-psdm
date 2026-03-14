@@ -146,6 +146,15 @@ beforeEach(() => {
       return new Response(JSON.stringify({ report, historyEntry }), { status: 200 });
     }
 
+    if (path === "/api/secure/auth/sync-profile" && method === "POST") {
+      const authUser = db.users.find((u) => String(u.id) === currentAuthUserId);
+      if (!authUser) {
+        return new Response(JSON.stringify({ error: "Profil pengguna tidak ditemukan." }), { status: 404 });
+      }
+
+      return new Response(JSON.stringify({ profile: authUser }), { status: 200 });
+    }
+
     const statusMatch = path.match(/^\/api\/secure\/reports\/([^/]+)\/status$/);
     if (statusMatch && method === "PATCH") {
       const reportId = statusMatch[1];

@@ -183,6 +183,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsers((data ?? []).map((row) => mapRowToUser(row as UsersRow)));
   }, []);
 
+  const syncProfileThroughServer = useCallback(async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+
+    if (!accessToken) {
+      return { success: false, error: "Sesi login tidak ditemukan. Silakan login kembali." };
+    }
+
+    try {
+      const response = await fetch("/api/secure/auth/sync-profile", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        return {
+          success: false,
+          error: payload?.error ?? "Sinkronisasi profil via server gagal.",
+        };
+      }
+
+      return { success: true };
+    } catch {
+      return { success: false, error: "Sinkronisasi profil via server sedang tidak tersedia." };
+    }
+  }, []);
+
   const syncProfileNow = useCallback(async () => {
     const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
 
@@ -191,6 +221,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const serverSync = await syncProfileThroughServer();
+      if (serverSync.success) {
+        await loadAppUserById(authUserData.user.id);
+        await refreshUsers();
+        return { success: true };
+      }
+
       const ensured = await ensureAppProfileForAuthUser(authUserData.user);
       if (ensured.success) {
         await loadAppUserById(authUserData.user.id);
@@ -208,7 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error:
         "Profil belum bisa disinkronkan saat ini. Coba lagi beberapa saat, atau hubungi admin jika masalah berlanjut.",
     };
-  }, [ensureAppProfileForAuthUser, loadAppUserById, refreshUsers]);
+  }, [ensureAppProfileForAuthUser, loadAppUserById, refreshUsers, syncProfileThroughServer]);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -319,9 +356,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      const ensuredProfile = await ensureAppProfileForAuthUser(authData.user);
-      if (!ensuredProfile.success) {
-        return { success: false, error: "Akun auth dibuat, tetapi profil pengguna gagal disimpan." };
+      const synced = await syncProfileNow();
+      if (!synced.success) {
+        return { success: false, error: synced.error ?? "Akun auth dibuat, tetapi profil pengguna gagal disimpan." };
       }
 
       await loadAppUserById(authData.user.id);
@@ -329,7 +366,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: true };
     },
-    [users, refreshUsers, ensureAppProfileForAuthUser, loadAppUserById]
+    [users, refreshUsers, loadAppUserById, syncProfileNow]
   );
 
   const logout = useCallback(() => {

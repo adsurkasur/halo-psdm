@@ -5,25 +5,29 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Add automatic profile sync retry and manual "Sinkronkan Profil Sekarang" action on login |
+| Task | Make account-profile synchronization fully seamless via secure server sync flow + improve sync button UI/feedback |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 10:34 |
+| Last Updated | 2026-03-14 10:46 |
 | Session ID | 20260314-1001 |
 
 ## User Request
 
-> iya, harusnya otomatis tersinkron malah, dan ada tombol sinkronkan profil sekarang untuk "jaga-jaga" misal otomatisnya gagal jadi bisa attempt
+> boleh kamu tambahkan halaman baru, tapi yang jelas kamu buat agar sinkronisasi akun dan profil bisa otomatis dan seamless. karena ini aku buat akun pertama aja ga bisa, aku rencana buat akun dari frontend terus rolenya aku ubah lewat sql editor supabase, tapi register tetep dihandle langsung oleh app
+>
+> selain itu, tolong fix UI tombol "sinkronkan profil sekarang" karena tampilannya kurang bagus (brown on black itu sulit dibaca) dan berikan "feedback" kalau sinkron itu sukses atau gagal
+>
+> prioritaskan sinkronisasi akun dan profil bisa otomatis dan seamless
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
 | Intended Phases | Study → Implement |
-| Evidence to Produce | AuthContext auto-retry sync logic + LoginPage manual sync button flow + validation output |
-| Anticipated Stops | Missing DB permissions can still block both auto/manual sync attempts |
-| Known Information | Current flow already attempts auto sync once during login and has guidance panel when failing. |
-| Unknown Information | How often transient failure occurs and whether retry can recover in first/second attempt. |
-| Initial Risk Level | Medium - auth flow changes must avoid role/profile regression and keep login stable. |
+| Evidence to Produce | New secure sync API route, AuthContext integration for automatic seamless sync, improved LoginPage sync UI and feedback, validation output |
+| Anticipated Stops | Missing service role env or server auth helper mismatch can block secure route |
+| Known Information | Client-side sync may fail due policy/config drift; first account flow is critical and currently brittle. |
+| Unknown Information | Existing secure-route helper capabilities for auth user extraction and role-independent sync execution. |
+| Initial Risk Level | Medium-High - auth bootstrap flow is critical path and must remain backward compatible. |
 
 ## File Context
 
@@ -59,6 +63,8 @@
 | src/contexts/AuthContext.tsx | edited | Fix graceful register/login profile bootstrap for email-confirmation flow |
 | src/views/LoginPage.tsx | edited | Add confirm-password input and improved register success UX |
 | src/test/setup.ts | edited | Add auth.getUser mock support for profile bootstrap path |
+| src/lib/supabase/secure-route.ts | edited | Added auth-only helper to support secure sync endpoint without existing app profile |
+| src/app/api/secure/auth/sync-profile/route.ts | created | New secure profile sync endpoint for seamless first-login/profile bootstrap |
 
 ## Workflow History
 
@@ -147,6 +153,12 @@
 - **10:33** - IMPLEMENT - Added `syncProfileNow` in AuthContext with retry and wired login flow to use it
 - **10:33** - IMPLEMENT - Added "Sinkronkan Profil Sekarang" button in LoginPage guidance panel
 - **10:34** - IMPLEMENT - Fixed declaration-order TS error and revalidated lint/test/build successfully
+- **10:44** - PLAN - User requested fully seamless automatic sync reliability and improved sync button contrast + explicit feedback
+- **10:44** - IMPLEMENT - Starting secure server-based profile sync path and LoginPage feedback/UI refinements
+- **10:20** - IMPLEMENT - Added `/api/secure/auth/sync-profile` route with auth-token validation and service-role sync logic
+- **10:22** - IMPLEMENT - Wired AuthContext auto sync to server route first with local fallback and applied flow to register+login
+- **10:23** - IMPLEMENT - Improved login sync panel contrast and added explicit sync success/failure inline feedback
+- **10:24** - IMPLEMENT - Updated test fetch mocks and revalidated lint/test/build successfully
 
 ## Research Evidence
 
@@ -273,6 +285,11 @@
 | src/views/LoginPage.tsx | Modified | Add user-facing recovery steps panel when profile sync issue appears | Yes |
 | src/contexts/AuthContext.tsx | Modified | Add `syncProfileNow` retry method and use it for automatic login-time sync | Yes |
 | src/views/LoginPage.tsx | Modified | Add manual fallback button to trigger immediate profile synchronization | Yes |
+| src/lib/supabase/secure-route.ts | Modified | Add reusable `requireAuthUser` helper for secure routes that should work before app profile exists | Yes |
+| src/app/api/secure/auth/sync-profile/route.ts | Created | Service-role backed profile sync endpoint for seamless account-profile bootstrap | Yes |
+| src/contexts/AuthContext.tsx | Modified | Route profile sync through secure endpoint first with fallback and retry | Yes |
+| src/views/LoginPage.tsx | Modified | Improve sync helper panel readability and display explicit inline result feedback | Yes |
+| src/test/setup.ts | Modified | Mock secure auth profile sync endpoint to keep tests deterministic | Yes |
 
 ## Notes
 

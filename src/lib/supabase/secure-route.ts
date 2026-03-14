@@ -15,6 +15,10 @@ type AuthContext = {
   appUser: AppUser;
 };
 
+type AuthUserContext = {
+  authUser: SupabaseAuthUser;
+};
+
 function getBearerToken(request: Request): string | null {
   const authHeader = request.headers.get("authorization") || request.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
@@ -22,6 +26,34 @@ function getBearerToken(request: Request): string | null {
 }
 
 export async function requireAuthContext(request: Request): Promise<{ error: NextResponse } | { context: AuthContext }> {
+  const authUserResult = await requireAuthUser(request);
+  if ("error" in authUserResult) {
+    return authUserResult;
+  }
+
+  const { authUser } = authUserResult.context;
+
+  const { data: appUser, error: appUserError } = await supabaseServer
+    .from("users")
+    .select("id, name, role, email")
+    .eq("id", authUser.id)
+    .maybeSingle();
+
+  if (appUserError || !appUser) {
+    return {
+      error: NextResponse.json({ error: "Profil pengguna tidak ditemukan." }, { status: 403 }),
+    };
+  }
+
+  return {
+    context: {
+      authUser,
+      appUser: appUser as AppUser,
+    },
+  };
+}
+
+export async function requireAuthUser(request: Request): Promise<{ error: NextResponse } | { context: AuthUserContext }> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabasePublishableKey =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -58,22 +90,9 @@ export async function requireAuthContext(request: Request): Promise<{ error: Nex
     };
   }
 
-  const { data: appUser, error: appUserError } = await supabaseServer
-    .from("users")
-    .select("id, name, role, email")
-    .eq("id", userRes.user.id)
-    .maybeSingle();
-
-  if (appUserError || !appUser) {
-    return {
-      error: NextResponse.json({ error: "Profil pengguna tidak ditemukan." }, { status: 403 }),
-    };
-  }
-
   return {
     context: {
       authUser: userRes.user,
-      appUser: appUser as AppUser,
     },
   };
 }
