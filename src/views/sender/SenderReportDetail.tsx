@@ -168,6 +168,7 @@ export default function SenderReportDetail() {
           )}
 
           <Button
+            data-testid="sender-report-open-chat"
             variant="outline"
             className="w-full gap-2 border-primary text-primary transition-all duration-200 hover:shadow-md"
             onClick={async () => {

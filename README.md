@@ -72,6 +72,30 @@ bun run build
 bun run start
 ```
 
+### End-to-End Test (Playwright)
+
+Set these environment variables first:
+
+- `E2E_PH_EMAIL`
+- `E2E_PH_PASSWORD`
+- `E2E_SENDER_EMAIL`
+- `E2E_SENDER_PASSWORD`
+- `E2E_REPORT_ID`
+
+Then run:
+
+```sh
+bun run test:e2e
+```
+
+For headed mode:
+
+```sh
+bun run test:e2e:headed
+```
+
+The scenario validates: PH opens clarification from report detail, sender sees the same report-linked session in Ruang Curhat, and sender can open identical chat session via report detail.
+
 ## Route Hosting Note
 
 For migration parity, the existing React route graph is hosted through Next App Router catch-all entry points:

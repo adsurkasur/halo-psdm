@@ -88,6 +88,10 @@ create table if not exists public.appointments (
   id text primary key,
   user_id text not null references public.users(id) on delete cascade,
   target_admin_id text not null references public.users(id) on delete cascade,
+  status text not null default 'OPEN' check (status in ('OPEN', 'DONE', 'DISMISSED')),
+  status_note text,
+  handled_by text references public.users(id) on delete set null,
+  handled_at timestamptz,
   wa_redirect_logged_at timestamptz,
   created_at timestamptz not null default now()
 );

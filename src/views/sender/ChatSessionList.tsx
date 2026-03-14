@@ -98,6 +98,8 @@ export default function ChatSessionList() {
             return (
               <Card
                 key={session.id}
+                data-testid={`chat-session-${session.id}`}
+                data-report-id={session.report_id ?? ""}
                 className="cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => navigate(`/chat/${session.id}`)}
               >

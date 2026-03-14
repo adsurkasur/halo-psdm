@@ -25,6 +25,7 @@ import ReportDetail from "@/views/admin/ReportDetail";
 import AdminChatQueue from "@/views/admin/AdminChatQueue";
 import AdminRekap from "@/views/admin/AdminRekap";
 import AdminManagement from "@/views/admin/AdminManagement";
+import AdminAppointmentTracker from "@/views/admin/AdminAppointmentTracker";
 import NotFound from "./views/NotFound";
 
 const queryClient = new QueryClient();
@@ -178,6 +179,10 @@ export function ProtectedRoutes() {
         <Route
           path="/admin/rekap"
           element={isPh ? <AdminRekap /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/admin/janji-temu"
+          element={isPh ? <AdminAppointmentTracker /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/kelola-admin"

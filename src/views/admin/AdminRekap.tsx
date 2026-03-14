@@ -52,6 +52,8 @@ export default function AdminRekap() {
   const totalChatSessions = chatSessions.length;
   const totalMessages = chatMessages.length;
   const totalAppointments = appointments.length;
+  const openAppointments = appointments.filter((a) => a.status === "OPEN").length;
+  const doneAppointments = appointments.filter((a) => a.status === "DONE").length;
   const resolutionRate = totalReports > 0 ? Math.round((resolvedReports / totalReports) * 100) : 0;
 
   // CSV export
@@ -91,13 +93,15 @@ export default function AdminRekap() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-7 gap-4">
         {[
           { label: "Total Laporan", value: totalReports },
           { label: "Tingkat Penyelesaian", value: `${resolutionRate}%` },
           { label: "Sesi Chat", value: totalChatSessions },
           { label: "Total Pesan", value: totalMessages },
           { label: "Janji Temu", value: totalAppointments },
+          { label: "Janji Temu Aktif", value: openAppointments },
+          { label: "Janji Temu Selesai", value: doneAppointments },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="py-4 text-center">

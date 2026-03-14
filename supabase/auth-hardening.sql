@@ -513,6 +513,13 @@ with check (
   user_id = auth.uid()::text
 );
 
+drop policy if exists appointments_update_ph_only on public.appointments;
+create policy appointments_update_ph_only on public.appointments
+for update
+to authenticated
+using (public.current_app_role() in ('PH'))
+with check (public.current_app_role() in ('PH'));
+
 drop policy if exists notifications_select_own on public.notifications;
 create policy notifications_select_own on public.notifications
 for select

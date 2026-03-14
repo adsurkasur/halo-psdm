@@ -37,6 +37,7 @@ export default function AppointmentDirectory() {
       (a) =>
         a.user_id === user.id &&
         a.target_admin_id === adminProfile.user_id &&
+        a.status === "OPEN" &&
         Date.now() - new Date(a.created_at).getTime() < 24 * 60 * 60 * 1000
     );
 

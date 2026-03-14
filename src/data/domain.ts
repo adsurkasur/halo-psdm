@@ -4,6 +4,7 @@ export type ReportStatus = "RECEIVED" | "IN_PROGRESS" | "NEEDS_CLARIFICATION" | 
 export type ReportCategory = "KONFLIK" | "BEBAN_KERJA" | "KESEJAHTERAAN" | "AKADEMIK" | "LAINNYA";
 export type Urgency = "RENDAH" | "SEDANG" | "TINGGI";
 export type AvailabilityStatus = "ONLINE" | "AWAY" | "OFFLINE";
+export type AppointmentStatus = "OPEN" | "DONE" | "DISMISSED";
 export type ChatSessionStatus = "OPEN" | "CLOSED";
 export type ChatMessageType = "TEXT" | "IMAGE" | "FILE";
 export type NotificationType =
@@ -124,6 +125,10 @@ export interface Appointment {
   id: string;
   user_id: string;
   target_admin_id: string;
+  status: AppointmentStatus;
+  status_note?: string | null;
+  handled_by?: string | null;
+  handled_at?: string | null;
   created_at: string;
 }
 
@@ -163,6 +168,12 @@ export const AVAILABILITY_LABELS: Record<AvailabilityStatus, string> = {
   ONLINE: "Online",
   AWAY: "Sibuk",
   OFFLINE: "Offline",
+};
+
+export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
+  OPEN: "Aktif",
+  DONE: "Selesai",
+  DISMISSED: "Ditolak",
 };
 
 let idCounter = 0;

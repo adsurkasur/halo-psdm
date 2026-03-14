@@ -14,13 +14,13 @@ export default function AdminDashboard() {
   const totalReports = reports.length;
   const unresolvedReports = reports.filter((r) => r.status !== "DONE").length;
   const openChats = chatSessions.filter((s) => s.status === "OPEN").length;
-  const totalAppointments = appointments.length;
+  const openAppointments = appointments.filter((a) => a.status === "OPEN").length;
 
   const stats = [
     { label: "Total Laporan", value: totalReports, icon: FileText, color: "bg-primary", link: "/admin/laporan" },
     { label: "Belum Ditangani", value: unresolvedReports, icon: AlertCircle, color: "bg-destructive", link: "/admin/laporan" },
     { label: "Sesi Chat Terbuka", value: openChats, icon: MessageCircle, color: "bg-status-process", link: "/admin/chat" },
-    { label: "Permintaan Janji Temu", value: totalAppointments, icon: Calendar, color: "bg-status-done", link: null },
+    { label: "Permintaan Janji Temu", value: openAppointments, icon: Calendar, color: "bg-status-done", link: "/admin/janji-temu" },
   ];
 
   // Activity feed from user's notifications
@@ -31,7 +31,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-start justify-between gap-3">
-        <h1 className="text-xl font-bold">Dasbor Admin</h1>
+        <h1 className="text-xl font-bold">Dasbor PH</h1>
         {user.role === "PH" && (
           <p className="text-xs text-muted-foreground">
             {isBusy ? "Sedang sinkron..." : `Sinkron terakhir ${formatLastSync(lastSyncedAt)}`}

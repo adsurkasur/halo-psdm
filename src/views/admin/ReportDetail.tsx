@@ -321,7 +321,7 @@ export default function ReportDetail() {
               <div>
                 <Label>Update Status</Label>
                 <Select value={newStatus} onValueChange={(v) => setNewStatus(v as ReportStatus)}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1" data-testid="admin-report-status-trigger">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -343,6 +343,7 @@ export default function ReportDetail() {
               </div>
 
               <Button
+                data-testid="admin-report-update-status"
                 onClick={handleUpdateStatus}
                 className="w-full"
                 disabled={!newStatus || newStatus === report.status}
@@ -352,6 +353,7 @@ export default function ReportDetail() {
 
               {linkedChat && (
                 <Button
+                  data-testid="admin-report-open-chat"
                   variant="outline"
                   className="w-full gap-2 border-primary text-primary"
                   onClick={() => navigate(`/admin/chat`)}

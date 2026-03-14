@@ -5,9 +5,9 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Implementing final sender clarification visibility, modal-first attachment preview consistency, and PH avatar parity in sender chat list |
+| Task | Running E2E with configured env and implementing combobox, PH appointment tracking, and Dasbor PH labeling updates |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 14:46 |
+| Last Updated | 2026-03-14 15:31 |
 | Session ID | 20260314-1001 |
 
 ## User Request
@@ -224,6 +224,16 @@
 - **14:43** - IMPLEMENT - Switched admin report attachment primary action to modal-first preview for image/video assets
 - **14:45** - IMPLEMENT - Started sender chat list/session sync hardening for clarification visibility and PH avatar parity
 - **14:46** - IMPLEMENT - Revalidated latest patch set with `bun run lint`, `bun run build`, and `bun run test` (10/10)
+- **15:10** - IMPLEMENT - Started Playwright scenario implementation for PH clarification -> sender Ruang Curhat/report detail consistency check
+- **15:13** - IMPLEMENT - Added stable data-testid hooks in sender/admin report/chat list views for deterministic E2E interaction
+- **15:14** - IMPLEMENT - Added Playwright spec `tests/clarification-flow.spec.ts`, scripts (`test:e2e`), and local webServer/baseURL configuration
+- **15:15** - IMPLEMENT - Lint passed and Playwright run validated in skip-mode (env belum diisi): `1 skipped`
+- **15:20** - IMPLEMENT - Started requested patch set: combobox Offline truncation, PH appointment tracking lifecycle, and Dasbor PH relabeling
+- **15:23** - IMPLEMENT - Added appointment status model/API/pathing: OPEN/DONE/DISMISSED + PH tracking page + PH update endpoint
+- **15:25** - IMPLEMENT - Updated navigation/routes/dashboard/rekap for new PH appointment tracking flow and changed dashboard label to Dasbor PH
+- **15:26** - IMPLEMENT - Adjusted admin availability combobox trigger width and no-clamp text to prevent `Offline` truncation
+- **15:29** - IMPLEMENT - Executed real Playwright E2E with .env.local fallback parsing; run fails at data precondition step (sender report selection / report detail visibility)
+- **15:31** - IMPLEMENT - Final validation passed: `bun run lint`, `bun run build`, `bun run test` (10/10)
 - **19:35** - PLAN - User requested final cleanup + docs + commit + merge workflow
 - **19:37** - STUDY - Reviewed references and identified Bun/docs/lockfile cleanup actions
 - **19:40** - IMPLEMENT - Applied docs and lint cleanup updates aligned with references

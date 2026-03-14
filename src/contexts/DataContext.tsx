@@ -14,6 +14,7 @@ import {
   type Urgency,
   type AvailabilityStatus,
   type NotificationType,
+  type AppointmentStatus,
 } from "@/data/domain";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -55,6 +56,7 @@ interface DataContextType {
 
   appointments: Appointment[];
   addAppointment: (userId: string, targetAdminId: string) => Promise<Appointment>;
+  updateAppointmentStatus: (appointmentId: string, status: AppointmentStatus, statusNote?: string) => Promise<void>;
 
   notifications: Notification[];
   addNotification: (data: {
@@ -384,7 +386,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return [`Janji temu: ${res.error.message}`];
     }
 
-    setAppointments((res.data ?? []).map((a) => a as Appointment));
+    setAppointments(
+      (res.data ?? []).map((a) => {
+        const raw = a as Partial<Appointment>;
+        return {
+          id: raw.id ?? "",
+          user_id: raw.user_id ?? "",
+          target_admin_id: raw.target_admin_id ?? "",
+          status: raw.status ?? "OPEN",
+          status_note: raw.status_note ?? null,
+          handled_by: raw.handled_by ?? null,
+          handled_at: raw.handled_at ?? null,
+          created_at: raw.created_at ?? new Date().toISOString(),
+        } as Appointment;
+      }),
+    );
     markSyncedNow();
     return [];
   }, [markSyncedNow, user]);
@@ -925,6 +941,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [callSecureApi]
   );
 
+  const updateAppointmentStatus = useCallback(
+    async (appointmentId: string, status: AppointmentStatus, statusNote?: string) => {
+      const response = await callSecureApi<{ appointment: Appointment }>("/api/secure/appointments", {
+        method: "PATCH",
+        body: JSON.stringify({ appointmentId, status, statusNote }),
+      });
+
+      setAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.id === appointmentId ? response.appointment : appointment,
+        ),
+      );
+    },
+    [callSecureApi],
+  );
+
   const markNotificationRead = useCallback(async (notificationId: string) => {
     await supabase
       .from("notifications")
@@ -962,7 +994,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         reports, statusHistory, addReport, updateReportStatus, updateReportUrgency, updateReportNotes,
         chatSessions, chatMessages, createChatSession, assignAdminToSession, closeChatSession, addChatMessage, markMessagesRead,
         adminProfiles, updateAvailability, addAdminProfile, removeAdminProfile,
-        appointments, addAppointment,
+        appointments, addAppointment, updateAppointmentStatus,
         notifications, addNotification, markNotificationRead, markAllNotificationsRead, getUnreadCount,
       }}
     >
