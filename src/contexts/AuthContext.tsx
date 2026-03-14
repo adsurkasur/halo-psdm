@@ -52,6 +52,7 @@ interface AuthContextType {
   logout: () => void;
   allUsers: User[];
   refreshUsers: () => Promise<void>;
+  syncProfileNow: () => Promise<{ success: boolean; error?: string }>;
   updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan">>) => Promise<{ success: boolean; error?: string }>;
   changeUserRole: (userId: string, newRole: UserRole) => Promise<{ success: boolean; error?: string }>;
 }
@@ -67,6 +68,10 @@ function normalizeBiro(input: unknown): BiroBidang {
 
 function normalizeJabatan(input: unknown): Jabatan {
   return VALID_JABATAN.includes(input as Jabatan) ? (input as Jabatan) : "ANGGOTA_MUDA";
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -178,6 +183,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsers((data ?? []).map((row) => mapRowToUser(row as UsersRow)));
   }, []);
 
+  const syncProfileNow = useCallback(async () => {
+    const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
+
+    if (authUserError || !authUserData.user) {
+      return { success: false, error: "Sesi login tidak ditemukan. Silakan login kembali." };
+    }
+
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const ensured = await ensureAppProfileForAuthUser(authUserData.user);
+      if (ensured.success) {
+        await loadAppUserById(authUserData.user.id);
+        await refreshUsers();
+        return { success: true };
+      }
+
+      if (attempt < 2) {
+        await sleep(500);
+      }
+    }
+
+    return {
+      success: false,
+      error:
+        "Profil belum bisa disinkronkan saat ini. Coba lagi beberapa saat, atau hubungi admin jika masalah berlanjut.",
+    };
+  }, [ensureAppProfileForAuthUser, loadAppUserById, refreshUsers]);
+
   useEffect(() => {
     const bootstrap = async () => {
       const { data } = await supabase.auth.getSession();
@@ -222,9 +254,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Email atau password salah." };
       }
 
-      const ensuredProfile = await ensureAppProfileForAuthUser(authData.user);
-      if (!ensuredProfile.success) {
-        return { success: false, error: "Akun berhasil diverifikasi, tetapi profil pengguna belum bisa disinkronkan. Coba lagi." };
+      const synced = await syncProfileNow();
+      if (!synced.success) {
+        return {
+          success: false,
+          error: synced.error,
+        };
       }
 
       const { data, error } = await supabase
@@ -248,7 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: true };
     },
-    [refreshUsers, ensureAppProfileForAuthUser]
+    [refreshUsers, syncProfileNow]
   );
 
   const register = useCallback(
@@ -383,6 +418,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         allUsers: users,
         refreshUsers,
+        syncProfileNow,
         updateProfile,
         changeUserRole,
       }}

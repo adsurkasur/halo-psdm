@@ -5,28 +5,25 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Fix registration UX: confirm password field and graceful email confirmation/profile sync flow |
+| Task | Add automatic profile sync retry and manual "Sinkronkan Profil Sekarang" action on login |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 10:08 |
+| Last Updated | 2026-03-14 10:34 |
 | Session ID | 20260314-1001 |
 
 ## User Request
 
-> 1. di layar register, buat kolom password ada 2, untuk memastikan passwordnya sama
-> 2. saat ini registrasi harus konfirmasi email dulu, tapi app belum menanganinya secara graceful, dia handlingnya "Akun auth dibuat, tetapi profil pengguna gagal disimpan." sehingga ketika pun sudah dikonfirmasi, app tidak membuat profil, jadinya akun authnya tidak bisa login karena profilnya kosong
->
-> fix all
+> iya, harusnya otomatis tersinkron malah, dan ada tombol sinkronkan profil sekarang untuk "jaga-jaga" misal otomatisnya gagal jadi bisa attempt
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
 | Intended Phases | Study → Implement |
-| Evidence to Produce | AuthContext register-flow diff, LoginPage confirm-password UX diff, updated tests and validation output |
-| Anticipated Stops | Existing RLS/policy/trigger may be absent in runtime DB, auth session availability differs by email-confirm setting |
-| Known Information | Current register path surfaces profile insert failure when auth account exists but profile write fails. |
-| Unknown Information | Exact register UI/test assumptions and current profile bootstrap behavior after email verification. |
-| Initial Risk Level | Medium - authentication and profile bootstrap paths are critical and regressions can block login. |
+| Evidence to Produce | AuthContext auto-retry sync logic + LoginPage manual sync button flow + validation output |
+| Anticipated Stops | Missing DB permissions can still block both auto/manual sync attempts |
+| Known Information | Current flow already attempts auto sync once during login and has guidance panel when failing. |
+| Unknown Information | How often transient failure occurs and whether retry can recover in first/second attempt. |
+| Initial Risk Level | Medium - auth flow changes must avoid role/profile regression and keep login stable. |
 
 ## File Context
 
@@ -140,6 +137,16 @@
 - **10:16** - IMPLEMENT - Added profile bootstrap fallback on login/auth state to auto-create missing public.users profile safely
 - **10:18** - IMPLEMENT - Fixed regression by preserving existing user role/name when syncing profile metadata
 - **10:19** - IMPLEMENT - Revalidated with `npm run lint`, `npm run test`, and `npm run build` (all passed)
+- **10:24** - PLAN - User requested clearer actionable guidance for post-verification profile sync failure
+- **10:24** - IMPLEMENT - Starting UX message improvements for sync-failure case on login/register
+- **10:26** - IMPLEMENT - Updated AuthContext sync-failure message with concrete user actions
+- **10:27** - IMPLEMENT - Added LoginPage contextual guidance panel for profile sync failure state
+- **10:27** - IMPLEMENT - Revalidated with `npm run lint`, `npm run test`, and `npm run build` (all passed)
+- **10:31** - PLAN - User requested automatic sync plus manual fallback button for profile sync retry
+- **10:31** - IMPLEMENT - Starting AuthContext auto-retry sync and LoginPage manual sync action
+- **10:33** - IMPLEMENT - Added `syncProfileNow` in AuthContext with retry and wired login flow to use it
+- **10:33** - IMPLEMENT - Added "Sinkronkan Profil Sekarang" button in LoginPage guidance panel
+- **10:34** - IMPLEMENT - Fixed declaration-order TS error and revalidated lint/test/build successfully
 
 ## Research Evidence
 
@@ -262,6 +269,10 @@
 | src/contexts/AuthContext.tsx | Modified | Handle register email-confirmation mode gracefully and self-heal missing profile on authenticated login | Yes |
 | src/views/LoginPage.tsx | Modified | Add password confirmation field and register success notice flow | Yes |
 | src/test/setup.ts | Modified | Support `auth.getUser()` in Supabase test mock for new bootstrap logic | Yes |
+| src/contexts/AuthContext.tsx | Modified | Improve actionable message for profile sync failure after verification | Yes |
+| src/views/LoginPage.tsx | Modified | Add user-facing recovery steps panel when profile sync issue appears | Yes |
+| src/contexts/AuthContext.tsx | Modified | Add `syncProfileNow` retry method and use it for automatic login-time sync | Yes |
+| src/views/LoginPage.tsx | Modified | Add manual fallback button to trigger immediate profile synchronization | Yes |
 
 ## Notes
 

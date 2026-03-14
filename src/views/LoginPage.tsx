@@ -20,7 +20,7 @@ const jabatanEntries = Object.entries(JABATAN_LABELS) as [Jabatan, string][];
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, register, isSender, isAdmin, isSuperAdmin } = useAuth();
+  const { login, register, syncProfileNow, isSender, isAdmin, isSuperAdmin } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -32,7 +32,29 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
+  const [syncingProfile, setSyncingProfile] = useState(false);
   const [shaking, setShaking] = useState(false);
+  const showProfileSyncHelp =
+    error.toLowerCase().includes("profil belum siap") ||
+    error.toLowerCase().includes("profil belum bisa disinkronkan") ||
+    error.toLowerCase().includes("sinkronisasi profil");
+
+  const handleSyncProfileNow = async () => {
+    setSyncingProfile(true);
+    setInfo("");
+
+    const result = await syncProfileNow();
+    setSyncingProfile(false);
+
+    if (!result.success) {
+      setError(result.error ?? "Profil belum bisa disinkronkan.");
+      return;
+    }
+
+    setError("");
+    setInfo("Profil berhasil disinkronkan. Mengarahkan...");
+    setTimeout(() => redirectAfterAuth(), 250);
+  };
 
   const redirectAfterAuth = () => {
     setTimeout(() => {
@@ -159,6 +181,26 @@ export default function LoginPage() {
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg mb-4 animate-scale-in">
                 {error}
+              </div>
+            )}
+
+            {showProfileSyncHelp && (
+              <div className="bg-amber-100/70 text-amber-900 text-sm p-3 rounded-lg mb-4 border border-amber-200 animate-scale-in">
+                <p className="font-medium mb-1">Yang bisa kamu lakukan sekarang:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Tunggu 1-2 menit lalu klik Masuk lagi.</li>
+                  <li>Pastikan kamu login dengan email yang sama seperti saat verifikasi.</li>
+                  <li>Kalau masih gagal, hubungi admin untuk sinkronisasi profil akun.</li>
+                </ul>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-3 w-full"
+                  onClick={handleSyncProfileNow}
+                  disabled={syncingProfile || loading}
+                >
+                  {syncingProfile ? "Menyinkronkan..." : "Sinkronkan Profil Sekarang"}
+                </Button>
               </div>
             )}
 
