@@ -27,6 +27,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [biro, setBiro] = useState<BiroBidang | "">("");
   const [jabatan, setJabatan] = useState<Jabatan | "">("");
   const [error, setError] = useState("");
@@ -94,7 +95,7 @@ export default function LoginPage() {
     setError("");
     setInfo("");
 
-    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || !biro || !jabatan) {
+    if (!name.trim() || !email.trim() || !phoneNumber.trim() || !password.trim() || !confirmPassword.trim() || !biro || !jabatan) {
       setError("Semua kolom wajib diisi.");
       setShaking(true);
       setTimeout(() => setShaking(false), 600);
@@ -110,7 +111,14 @@ export default function LoginPage() {
 
     setLoading(true);
     setTimeout(async () => {
-      const result = await register({ name: name.trim(), email: email.trim(), password, biro, jabatan });
+      const result = await register({
+        name: name.trim(),
+        email: email.trim(),
+        phone_number: phoneNumber.trim(),
+        password,
+        biro,
+        jabatan,
+      });
       setLoading(false);
       if (!result.success) {
         setError(result.error ?? "Registrasi gagal.");
@@ -141,6 +149,7 @@ export default function LoginPage() {
     setPassword("");
     setConfirmPassword("");
     setName("");
+    setPhoneNumber("");
     setBiro("");
     setJabatan("");
   };
@@ -238,6 +247,16 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="nama@arsc.org"
+                    className="mt-1 transition-all duration-200 focus:shadow-md"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Nomor HP</Label>
+                  <Input
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="08xxxxxxxxxx"
                     className="mt-1 transition-all duration-200 focus:shadow-md"
                     required
                   />

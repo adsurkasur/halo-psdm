@@ -15,7 +15,6 @@ import { supabase } from "@/lib/supabase/client";
 import { CATEGORY_LABELS, BIRO_LABELS, JABATAN_LABELS, type ReportCategory, type Urgency } from "@/data/domain";
 
 const categories = Object.entries(CATEGORY_LABELS) as [ReportCategory, string][];
-const ATTACHMENT_BUCKET = "report-attachments";
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 
 interface ReportFormProps {
@@ -69,8 +68,6 @@ export default function ReportForm({
       return;
     }
 
-    let uploadedPath: string | null = null;
-
     try {
       setSubmitting(true);
 
@@ -85,33 +82,42 @@ export default function ReportForm({
         | undefined;
 
       if (attachment) {
-        const fileExt = attachment.name.includes(".")
-          ? attachment.name.split(".").pop()
-          : "bin";
-        const objectPath = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
-
-        const upload = await supabase.storage
-          .from(ATTACHMENT_BUCKET)
-          .upload(objectPath, attachment, {
-            upsert: false,
-            contentType: attachment.type || undefined,
-          });
-
-        if (upload.error) {
-          throw new Error(upload.error.message || "Upload attachment gagal.");
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) {
+          throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
         }
 
-        uploadedPath = objectPath;
-        const { data: publicUrlData } = supabase.storage
-          .from(ATTACHMENT_BUCKET)
-          .getPublicUrl(objectPath);
+        const formData = new FormData();
+        formData.append("attachment", attachment);
+
+        const response = await fetch("/api/secure/reports/attachments", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: formData,
+        });
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          attachment_url?: string;
+          attachment_name?: string;
+          attachment_path?: string;
+          attachment_mime?: string;
+          attachment_size?: number;
+        };
+
+        if (!response.ok || !payload.attachment_url || !payload.attachment_path) {
+          throw new Error(payload.error ?? "Upload attachment gagal.");
+        }
 
         attachmentPayload = {
-          attachment_url: publicUrlData.publicUrl,
-          attachment_name: attachment.name,
-          attachment_path: objectPath,
-          attachment_mime: attachment.type || "application/octet-stream",
-          attachment_size: attachment.size,
+          attachment_url: payload.attachment_url,
+          attachment_name: payload.attachment_name ?? attachment.name,
+          attachment_path: payload.attachment_path,
+          attachment_mime: payload.attachment_mime ?? attachment.type ?? "application/octet-stream",
+          attachment_size: payload.attachment_size ?? attachment.size,
         };
       }
 
@@ -129,14 +135,10 @@ export default function ReportForm({
       });
 
       setTimeout(() => navigate(`/laporan/${report.id}`), 800);
-    } catch {
-      if (uploadedPath) {
-        await supabase.storage.from(ATTACHMENT_BUCKET).remove([uploadedPath]);
-      }
-
+    } catch (error) {
       toast({
         title: "Gagal",
-        description: "Laporan gagal dikirim. Periksa koneksi Supabase lalu coba lagi.",
+        description: error instanceof Error ? error.message : "Laporan gagal dikirim. Periksa koneksi Supabase lalu coba lagi.",
         variant: "destructive",
       });
     } finally {

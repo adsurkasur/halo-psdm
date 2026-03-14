@@ -138,6 +138,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
       supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
     ]);
 
+    if (reportsRes.error || sessionsRes.error || profilesRes.error || appointmentsRes.error || notificationsRes.error) {
+      console.warn("[DATA_LOAD_WARN]", {
+        reports: reportsRes.error?.message,
+        sessions: sessionsRes.error?.message,
+        profiles: profilesRes.error?.message,
+        appointments: appointmentsRes.error?.message,
+        notifications: notificationsRes.error?.message,
+      });
+      return;
+    }
+
     const mappedReports = (reportsRes.data ?? []).map((r) => r as Report);
     setReports(mappedReports);
 
@@ -146,27 +157,37 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const sessionIds = mappedSessions.map((s) => s.id);
     if (sessionIds.length > 0) {
-      const { data: rawMessages } = await supabase
+      const { data: rawMessages, error: messagesError } = await supabase
         .from("chat_messages")
         .select("*")
         .in("session_id", sessionIds)
         .order("created_at", { ascending: true });
-      setChatMessages((rawMessages ?? []).map((m) => ({
-        ...(m as ChatMessage),
-        type: ((m as { type?: ChatMessageType }).type ?? "TEXT") as ChatMessageType,
-      })));
+
+      if (messagesError) {
+        console.warn("[DATA_LOAD_CHAT_MESSAGES_WARN]", messagesError.message);
+      } else {
+        setChatMessages((rawMessages ?? []).map((m) => ({
+          ...(m as ChatMessage),
+          type: ((m as { type?: ChatMessageType }).type ?? "TEXT") as ChatMessageType,
+        })));
+      }
     } else {
       setChatMessages([]);
     }
 
     const reportIds = mappedReports.map((r) => r.id);
     if (reportIds.length > 0) {
-      const { data: rawHistory } = await supabase
+      const { data: rawHistory, error: historyError } = await supabase
         .from("report_status_history")
         .select("*")
         .in("report_id", reportIds)
         .order("created_at", { ascending: true });
-      setStatusHistory((rawHistory ?? []).map((h) => h as ReportStatusHistory));
+
+      if (historyError) {
+        console.warn("[DATA_LOAD_REPORT_HISTORY_WARN]", historyError.message);
+      } else {
+        setStatusHistory((rawHistory ?? []).map((h) => h as ReportStatusHistory));
+      }
     } else {
       setStatusHistory([]);
     }

@@ -5,25 +5,37 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Add diagnostic logging and tighten sync logic flow to eliminate logical gaps in account-profile bootstrap |
+| Task | Analyze and propose end-to-end fixes for profile image, persistence, phone number, email change confirmation, admin role SQL, and account deletion flow |
 | Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 11:48 |
+| Last Updated | 2026-03-14 11:38 |
 | Session ID | 20260314-1001 |
 
 ## User Request
 
-> tambahkan log diagnostik itu, dan pastikan kalau flow datanya logis. kurasa ini bukan error teknis, tapi cacat logika
+> alhamdulillah udah bisa.
+>
+> sekarang lakukan ini:
+>
+> 1. jangan buat profile picture wajib
+> 2. fix upload profile picture selalu gagal "Gagal upload foto profil."
+> 3. tambahkan fitur untuk crop dan resize ketika memasang foto profil
+> 4. berikan sql untuk update permission akun tertentu agar jadi admin
+> 5. fitur laporan masih belum persistence, kayanya ketika buka lampiran laporannya auto hilang, atau malah memang belum persistence sama sekali
+> 6. fitur chat juga masih belum persistence, tiba-tiba hilang sendiri
+> 7. tambahkan nomor hp pada profil dan registrasi, karena bakal dipake di order janji temu khususnya untuk admin dan super admin
+> 8. tambahkan logika penggantian email yang mentrigger confirmation email lagi, gunakan bawaan supabase
+> 9. tambahkan opsi delete account untuk delete akun (auth) dan profil, dengan double check tentunya (misal "ketik 'delete account' dan masukkan email untuk delete, kaya github deletion confirmation lah)
 
 ## Execution Plan
 
 | Element | Details |
 | --- | --- |
-| Intended Phases | Study → Implement |
-| Evidence to Produce | Structured diagnostic codes emitted from sync route + client consumption, and flow updates that remove timing/race ambiguity |
-| Anticipated Stops | Production environment variables or DB conflicts may still surface but should now be diagnosable |
-| Known Information | User suspects logic flaw; current flow still has opaque failures from profile bootstrap path |
-| Unknown Information | Exact failure stage in runtime environment without detailed diagnostics |
-| Initial Risk Level | High - affects login reliability and onboarding path |
+| Intended Phases | Study → Propose → Implement |
+| Evidence to Produce | Root-cause analysis for upload/persistence failures, full implementation proposal for 9 requested features, and validation plan |
+| Anticipated Stops | Missing DB schema fields and storage policies, need secure server endpoints for destructive auth actions |
+| Known Information | Login issue fixed; now multi-area feature and reliability work requested across auth/profile/report/chat modules |
+| Unknown Information | Exact cause of profile-picture upload failure and report/chat persistence loss in current runtime |
+| Initial Risk Level | High - broad cross-cutting changes including auth deletion and persistence-critical flows |
 
 ## File Context
 
@@ -186,8 +198,25 @@
 - **11:46** - IMPLEMENT - Added structured diagnostic code/stage responses and server log events in sync profile API route
 - **11:47** - IMPLEMENT - Added client-side diagnostic propagation, token-readiness retry, and local fallback warning logs
 - **11:48** - IMPLEMENT - Revalidated `npm run lint`, `npm run test`, and `npm run build` (all passed)
+- **12:04** - PLAN - User requested 9-item enhancement set across profile, persistence, auth, and admin operations
+- **12:04** - STUDY - Starting deep analysis of current data flows and schema gaps before implementation proposal
+- **12:09** - STUDY - Identified chat media persistence bug (`blob:` URL stored instead of uploaded file URL)
+- **12:10** - STUDY - Identified report attachment race risk (uploaded file removed on client catch path, can orphan report attachment)
+- **12:12** - STUDY - Identified data disappearance symptom risk from silent Supabase query errors in DataContext load path
+- **12:14** - STUDY - Collected official Supabase auth/storage references for email change confirmation and secure user deletion
+- **12:15** - PROPOSE - Preparing end-to-end implementation proposal for user approval
+- **12:26** - APPROVAL - User approved with: "approve dengan best practice"
+- **12:27** - IMPLEMENT - Starting execution with data model/auth hardening, then persistence upload refactor and account deletion flow
+- **11:18** - IMPLEMENT - Added secure profile avatar upload API route and secure delete-account API route with phrase+email confirmation
+- **11:23** - IMPLEMENT - Refactored profile page with crop/resize avatar modal, phone number input, secure upload flow, and dangerous-zone delete UI
+- **11:27** - IMPLEMENT - Added secure upload routes for report attachments and chat media; sender chat/report UI now uploads to durable storage URL
+- **11:31** - IMPLEMENT - Hardened DataContext load flow to avoid empty-state overwrite on transient Supabase query errors
+- **11:33** - IMPLEMENT - Added SQL script for promoting users to ADMIN and updated hardening SQL for phone number + chat-media bucket/policies
+- **11:36** - VALIDATE - `bun run lint` passed
+- **11:37** - VALIDATE - `bun run test` passed (10/10)
+- **11:38** - VALIDATE - `bun run build` passed (Next.js production build)
 
-## Issues and Resolutions
+## Current Issues and Resolutions
 
 ### Issue 3: Login fails with "Profil pengguna belum tersedia di sistem."
 
@@ -218,6 +247,24 @@
 - **Key Findings**: `useRouter` from `next/navigation` replaces App Router client navigation APIs and supports `push`, `replace`, `back`.
 - **Relevance**: Informs possible full router migration path if React Router removal is included.
 
+### Source 4: Supabase `auth.updateUser` + auth admin references
+
+- **Type**: Official documentation
+- **Key Findings**: `auth.updateUser({ email })` triggers email change confirmation flow; `auth.admin.deleteUser` requires service role key and must only run on trusted server.
+- **Relevance**: Required for item #8 (email change confirmation) and item #9 (secure account deletion).
+
+### Source 5: Supabase managing user data guide
+
+- **Type**: Official documentation
+- **Key Findings**: Deleting auth users can fail if user still owns storage objects; profiles should use FK to auth user with `on delete cascade`.
+- **Relevance**: Required for robust delete-account implementation with cleanup and reliable profile removal.
+
+### Source 6: `react-easy-crop` docs
+
+- **Type**: Library documentation
+- **Key Findings**: `onCropComplete` provides pixel crop area; component is suitable for modal-based avatar crop + zoom flow.
+- **Relevance**: Required for item #3 (crop and resize profile picture).
+
 ## Codebase Evidence
 
 ### Patterns Identified
@@ -229,6 +276,18 @@
 - **Pattern**: Programmatic navigation is widely used in feature pages (`useNavigate`, `useParams`, `useLocation`).
 - **Location**: `src/pages/**/*`, `src/components/layout/AppHeader.tsx`, `src/components/NavLink.tsx`
 - **Application**: A direct full App Router migration requires broad code updates; SPA-host migration avoids this risk.
+
+- **Pattern**: Chat media preview currently uses browser-local `URL.createObjectURL(file)` and sends that URL directly as `media_url`.
+- **Location**: `src/views/sender/ChatRoom.tsx`
+- **Application**: This causes non-persistent media because `blob:` URLs are not valid after reload/session change; must upload file to Storage first.
+
+- **Pattern**: Report attachment upload/removal lifecycle is client-orchestrated with cleanup on any catch block.
+- **Location**: `src/views/sender/ReportForm.tsx`
+- **Application**: If report insert succeeds but client later throws, cleanup can delete actual persisted attachment, creating perceived missing attachment.
+
+- **Pattern**: Data loading swallows Supabase query errors and still overwrites state with empty arrays.
+- **Location**: `src/contexts/DataContext.tsx`
+- **Application**: Any transient RLS/network/select error can look like data "suddenly disappears"; requires explicit error handling/fallback and server-read paths.
 
 ### Integration Points
 
@@ -344,6 +403,18 @@
 | src/contexts/AuthContext.tsx | Modified | Ensure session bootstrap/auth-state changes self-heal via sync pipeline before setting user state | Yes |
 | src/app/api/secure/auth/sync-profile/route.ts | Modified | Add diagnosticCode/stage response contract and structured server logs per failure stage | Yes |
 | src/contexts/AuthContext.tsx | Modified | Add diagnostic-aware client sync flow, token readiness retry, and explicit fallback logging | Yes |
+| src/views/ProfilePage.tsx | Modified | Add crop/resize avatar flow, secure upload, phone number update, and delete account confirmation dialog | Yes |
+| src/views/sender/ChatRoom.tsx | Modified | Replace blob URL sending with secure media upload then persist durable URL | Yes |
+| src/views/sender/ReportForm.tsx | Modified | Move attachment upload to secure API route before report creation | Yes |
+| src/contexts/DataContext.tsx | Modified | Prevent state wipe when load queries fail and log fetch errors | Yes |
+| src/app/api/secure/profile/avatar/route.ts | Created | Server-side avatar upload with auth token validation and profile update | Yes |
+| src/app/api/secure/profile/delete-account/route.ts | Created | Server-side account deletion with strict phrase/email confirmation and storage cleanup | Yes |
+| src/app/api/secure/chat/media/route.ts | Created | Server-side chat media upload for persistent file URLs | Yes |
+| src/app/api/secure/reports/attachments/route.ts | Created | Server-side report attachment upload for persistent file URLs | Yes |
+| supabase/auth-hardening.sql | Modified | Add phone number migration and storage bucket/policies for chat media | Yes |
+| supabase/bootstrap.sql | Modified | Add `phone_number` column to users bootstrap schema | Yes |
+| supabase/promote-user-admin.sql | Created | Provide SQL helper to promote account role and upsert admin profile | Yes |
+| src/test/app.test.tsx | Modified | Update profile page test for required phone input flow | Yes |
 
 ## Notes
 

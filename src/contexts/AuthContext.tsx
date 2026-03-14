@@ -15,6 +15,7 @@ type UsersRow = {
   jabatan: Jabatan;
   role: UserRole;
   email: string;
+  phone_number?: string | null;
   avatar_url?: string | null;
   password_hash?: string | null;
   is_active: boolean;
@@ -29,6 +30,7 @@ function mapRowToUser(row: UsersRow): User {
     jabatan: row.jabatan,
     role: row.role,
     email: row.email,
+    phone_number: row.phone_number,
     avatar_url: row.avatar_url,
     password: row.password_hash ?? undefined,
     is_active: row.is_active,
@@ -47,6 +49,7 @@ interface AuthContextType {
   register: (data: {
     name: string;
     email: string;
+    phone_number: string;
     password: string;
     biro: BiroBidang;
     jabatan: Jabatan;
@@ -55,7 +58,7 @@ interface AuthContextType {
   allUsers: User[];
   refreshUsers: () => Promise<void>;
   syncProfileNow: () => Promise<{ success: boolean; error?: string; profile?: User }>;
-  updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url">>) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "phone_number">>) => Promise<{ success: boolean; error?: string; message?: string }>;
   changeUserRole: (userId: string, newRole: UserRole) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -121,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: existingProfile, error: existingProfileError } = await supabase
       .from("users")
-      .select("id, name, email, biro, jabatan, avatar_url")
+      .select("id, name, email, biro, jabatan, phone_number, avatar_url")
       .eq("id", authUser.id)
       .maybeSingle();
 
@@ -135,6 +138,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: authUser.email ?? (existingProfile as UsersRow).email,
         biro: metadataBiro ?? (existingProfile as UsersRow).biro,
         jabatan: metadataJabatan ?? (existingProfile as UsersRow).jabatan,
+        phone_number:
+          typeof metadata.phone_number === "string"
+            ? metadata.phone_number
+            : (existingProfile as UsersRow).phone_number ?? null,
       };
 
       const { error } = await supabase
@@ -152,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: authUser.id,
       name: metadataName ?? defaultName,
       email: authUser.email ?? "",
+      phone_number: typeof metadata.phone_number === "string" ? metadata.phone_number : null,
       biro: metadataBiro ?? "INFOKOM",
       jabatan: metadataJabatan ?? "ANGGOTA_MUDA",
       role: "SENDER",
@@ -170,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const readProfile = async () =>
       supabase
       .from("users")
-      .select("id, name, biro, jabatan, role, email, avatar_url, password_hash, is_active, created_at")
+      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, password_hash, is_active, created_at")
       .eq("id", userId)
       .maybeSingle();
 
@@ -197,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUsers = useCallback(async () => {
     const { data, error } = await supabase
       .from("users")
-      .select("id, name, biro, jabatan, role, email, avatar_url, password_hash, is_active, created_at")
+      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, password_hash, is_active, created_at")
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -311,7 +319,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (ensured.success) {
         const { data, error } = await supabase
           .from("users")
-          .select("id, name, biro, jabatan, role, email, avatar_url, password_hash, is_active, created_at")
+          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, password_hash, is_active, created_at")
           .eq("id", authUserData.user.id)
           .maybeSingle();
 
@@ -410,7 +418,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!synced.profile) {
         const { data: fallbackProfile } = await supabase
           .from("users")
-          .select("id, name, biro, jabatan, role, email, avatar_url, password_hash, is_active, created_at")
+          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, password_hash, is_active, created_at")
           .eq("id", authData.user.id)
           .maybeSingle();
 
@@ -440,7 +448,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (data: { name: string; email: string; password: string; biro: BiroBidang; jabatan: Jabatan }) => {
+    async (data: { name: string; email: string; phone_number: string; password: string; biro: BiroBidang; jabatan: Jabatan }) => {
       const exists = users.find((u) => u.email === data.email);
       if (exists) {
         return { success: false, error: "Email sudah terdaftar." };
@@ -457,6 +465,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: data.name,
             biro: data.biro,
             jabatan: data.jabatan,
+            phone_number: data.phone_number,
           },
         },
       });
@@ -514,7 +523,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile = useCallback(
-    async (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url">>) => {
+    async (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "phone_number">>) => {
       if (!user) return { success: false, error: "User tidak ditemukan." };
 
       const updatePayload: Record<string, unknown> = {};
@@ -522,6 +531,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (typeof updates.biro !== "undefined") updatePayload.biro = updates.biro;
       if (typeof updates.jabatan !== "undefined") updatePayload.jabatan = updates.jabatan;
       if (typeof updates.avatar_url !== "undefined") updatePayload.avatar_url = updates.avatar_url;
+      if (typeof updates.phone_number !== "undefined") updatePayload.phone_number = updates.phone_number;
+
+      let emailChangeMessage: string | undefined;
 
       if (typeof updates.email !== "undefined" || typeof updates.password !== "undefined") {
         const { error: authUpdateError } = await supabase.auth.updateUser({
@@ -533,8 +545,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { success: false, error: authUpdateError.message };
         }
 
-        if (typeof updates.email !== "undefined") {
-          updatePayload.email = updates.email;
+        if (typeof updates.email !== "undefined" && updates.email !== user.email) {
+          emailChangeMessage = "Permintaan ganti email dikirim. Cek email lama dan email baru untuk konfirmasi perubahan.";
         }
       }
 
@@ -547,11 +559,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Gagal memperbarui profil." };
       }
 
+      if ((user.role === "ADMIN" || user.role === "SUPER_ADMIN") && typeof updates.phone_number !== "undefined") {
+        await supabase
+          .from("admin_profiles")
+          .update({ wa_number: updates.phone_number ?? "" })
+          .or(`id.eq.${user.id},user_id.eq.${user.id}`);
+      }
+
       const updated: User = { ...user, ...updates };
       setUser(updated);
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
 
-      return { success: true };
+      return { success: true, message: emailChangeMessage };
     },
     [user]
   );

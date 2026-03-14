@@ -9,16 +9,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase/client";
 import { AVAILABILITY_LABELS, type ChatMessageType } from "@/data/domain";
 
 export default function ChatRoom() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { user, allUsers } = useAuth();
   const { chatSessions, chatMessages, adminProfiles, addChatMessage, markMessagesRead } = useData();
 
   const [input, setInput] = useState("");
-  const [mediaPreview, setMediaPreview] = useState<{ url: string; name: string; type: ChatMessageType } | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<{ url: string; name: string; type: ChatMessageType; file: File } | null>(null);
+  const [sendingMedia, setSendingMedia] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,8 +68,56 @@ export default function ChatRoom() {
     if (isClosed) return;
 
     if (mediaPreview) {
-      await addChatMessage(session.id, user.id, "", mediaPreview.type, mediaPreview.url, mediaPreview.name);
-      setMediaPreview(null);
+      try {
+        setSendingMedia(true);
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) {
+          throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
+        }
+
+        const formData = new FormData();
+        formData.append("sessionId", session.id);
+        formData.append("media", mediaPreview.file);
+
+        const response = await fetch("/api/secure/chat/media", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: formData,
+        });
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          media_url?: string;
+          media_name?: string;
+        };
+
+        if (!response.ok || !payload.media_url) {
+          throw new Error(payload.error ?? "Gagal upload media chat.");
+        }
+
+        await addChatMessage(
+          session.id,
+          user.id,
+          "",
+          mediaPreview.type,
+          payload.media_url,
+          payload.media_name ?? mediaPreview.name
+        );
+
+        URL.revokeObjectURL(mediaPreview.url);
+        setMediaPreview(null);
+      } catch (error) {
+        toast({
+          title: error instanceof Error ? error.message : "Gagal mengirim media.",
+          variant: "destructive",
+        });
+      } finally {
+        setSendingMedia(false);
+      }
       return;
     }
 
@@ -82,9 +134,10 @@ export default function ChatRoom() {
     const url = URL.createObjectURL(file);
 
     setMediaPreview({
-      url: isImage ? url : `https://placehold.co/200x80/f1f5f9/64748b?text=${encodeURIComponent(file.name)}`,
+      url,
       name: file.name,
       type: isImage ? "IMAGE" : "FILE",
+      file,
     });
 
     // Reset input so same file can be re-selected
@@ -205,7 +258,15 @@ export default function ChatRoom() {
                   <p className="text-xs font-medium truncate">{mediaPreview.name}</p>
                   <p className="text-[10px] text-muted-foreground">{mediaPreview.type === "IMAGE" ? "Gambar" : "File"}</p>
                 </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setMediaPreview(null)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  onClick={() => {
+                    URL.revokeObjectURL(mediaPreview.url);
+                    setMediaPreview(null);
+                  }}
+                >
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -236,7 +297,7 @@ export default function ChatRoom() {
               <Button
                 size="icon"
                 onClick={sendMessage}
-                disabled={!input.trim() && !mediaPreview}
+                disabled={sendingMedia || (!input.trim() && !mediaPreview)}
                 className="transition-transform duration-200 hover:scale-105"
               >
                 <Send className="h-4 w-4" />

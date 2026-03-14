@@ -155,10 +155,10 @@ describe("app behavior", () => {
     // ensure fields prefilled
     const nameInput = await screen.findByDisplayValue(new RegExp(TEST_SENDER.name, "i"));
     expect(nameInput).toBeInTheDocument();
-    const emailInput = screen.getByDisplayValue(new RegExp(TEST_SENDER.email, "i"));
+    const phoneInput = screen.getByPlaceholderText(/081234567890/i);
     // change some values
     fireEvent.change(nameInput, { target: { value: "Test User" } });
-    fireEvent.change(emailInput, { target: { value: "test@arsc.org" } });
+    fireEvent.change(phoneInput, { target: { value: "081234567890" } });
     fireEvent.click(screen.getByText(/Simpan/i));
 
     // toast should appear
