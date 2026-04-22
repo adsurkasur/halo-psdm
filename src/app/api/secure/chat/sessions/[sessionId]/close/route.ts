@@ -31,7 +31,7 @@ export async function POST(
     .eq("id", sessionId);
 
   await supabaseServer.from("notifications").insert({
-    id: `n_${crypto.randomUUID()}`,
+    id: crypto.randomUUID(),
     user_id: session.user_id,
     type: "SESSION_CLOSED",
     payload: {

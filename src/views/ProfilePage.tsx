@@ -26,7 +26,6 @@ import {
   type BiroBidang,
   type Jabatan,
 } from "@/data/domain";
-import { isValidPhone62, normalizePhoneTo62 } from "@/lib/phone";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -40,7 +39,6 @@ export default function ProfilePage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [biro, setBiro] = useState<BiroBidang | "">("");
   const [jabatan, setJabatan] = useState<Jabatan | "">("");
   const [password, setPassword] = useState("");
@@ -60,7 +58,6 @@ export default function ProfilePage() {
     if (user) {
       setName(user.name);
       setEmail(user.email);
-      setPhoneNumber(user.phone_number ?? "");
       setBiro(user.biro);
       setJabatan(user.jabatan);
       setAvatarPreviewUrl(null);
@@ -289,33 +286,17 @@ export default function ProfilePage() {
       });
       return;
     }
-    if (!phoneNumber.trim()) {
-      toast({
-        title: "Nomor HP wajib diisi.",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    const normalizedPhone = normalizePhoneTo62(phoneNumber);
-    if (!isValidPhone62(normalizedPhone)) {
-      toast({
-        title: "Nomor HP wajib pakai kode negara (contoh: +628123... / +1202555...).",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setSaving(true);
     setTimeout(() => {
       void (async () => {
         const result = await updateProfile({
-        name,
-        email,
-        phone_number: normalizedPhone,
-        biro: biro as BiroBidang,
-        jabatan: jabatan as Jabatan,
-        ...(password ? { password } : {}),
+          name,
+          email,
+          biro: biro as BiroBidang,
+          jabatan: jabatan as Jabatan,
+          ...(password ? { password } : {}),
         });
         if (!result.success) {
           toast({
@@ -389,11 +370,6 @@ export default function ProfilePage() {
             <Label>Email</Label>
             <Input value={email} onChange={(e) => setEmail(e.target.value)} />
             <p className="text-xs text-muted-foreground mt-1">Perubahan email akan meminta konfirmasi ulang di email lama dan email baru.</p>
-          </div>
-          <div>
-            <Label>Nomor HP</Label>
-            <Input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Contoh: +628123456789 / +12025550123" />
-            <p className="text-xs text-muted-foreground mt-1">Gunakan nomor dengan kode negara agar kompatibel untuk WhatsApp internasional.</p>
           </div>
           <div>
             <Label>Biro/Bidang</Label>

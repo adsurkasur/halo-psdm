@@ -5,10 +5,10 @@
 | Property | Value |
 | --- | --- |
 | Phase | Implement |
-| Task | Fixing broken image previews globally and enforcing true download behavior for attachments |
-| Started | 2026-03-14 10:01 |
-| Last Updated | 2026-03-14 22:18 |
-| Session ID | 20260314-1001 |
+| Task | Continue schema migration for Supabase user/role/profile changes |
+| Started | 2026-04-22 14:00 |
+| Last Updated | 2026-04-22 14:20 |
+| Session ID | 20260422-1400 |
 
 ## User Request
 
@@ -218,6 +218,8 @@
 - **22:24** - IMPLEMENT - Started targeted patch for DataContext fallback cadence and chat read-receipt reliability
 - **22:34** - IMPLEMENT - Tuned fallback intervals to 1.2s on chat routes, 10s on report/admin non-chat routes, and 20s notifications on other pages
 - **22:36** - IMPLEMENT - Added periodic visible-session mark-as-read loops for sender and PH chat screens to strengthen bidirectional read receipts
+- **14:00** - STUDY - Started Supabase database integration analysis requested by user
+- **14:10** - STUDY - Completed Supabase table/query integration audit
 - **22:36** - IMPLEMENT - Widened admin availability combobox trigger to `w-[148px]` to prevent `Offline` truncation
 - **22:39** - IMPLEMENT - Validation passed with `bun run lint`, `bun run build`, and `bun run test` (10/10)
 - **14:40** - IMPLEMENT - Updated sender report detail action so `Buka Chat` is always visible and can create/open linked session directly

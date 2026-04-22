@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireAuthUser } from "@/lib/supabase/secure-route";
 import type { BiroBidang, Jabatan } from "@/data/domain";
-import { normalizePhoneTo62 } from "@/lib/phone";
 
 const VALID_BIRO: BiroBidang[] = ["KETUM", "ADKEU", "PSDM", "PENKOM", "RISTEK", "INFOKOM"];
 const VALID_JABATAN: Jabatan[] = ["PENGURUS_HARIAN", "STAF_AHLI", "STAF", "ANGGOTA_MUDA"];
@@ -42,7 +41,7 @@ export async function POST(request: Request) {
 
   const { data: existing, error: existingError } = await supabaseServer
     .from("users")
-    .select("id, name, email, biro, jabatan, phone_number, avatar_url, theme_preference")
+    .select("id, name, email, biro, jabatan, avatar_url, theme_preference")
     .eq("id", authUser.id)
     .maybeSingle();
 
@@ -63,10 +62,10 @@ export async function POST(request: Request) {
         email: authUser.email ?? existing.email,
         biro: VALID_BIRO.includes(metadata.biro as BiroBidang) ? metadata.biro : existing.biro,
         jabatan: VALID_JABATAN.includes(metadata.jabatan as Jabatan) ? metadata.jabatan : existing.jabatan,
-        phone_number:
-          typeof metadata.phone_number === "string"
-            ? normalizePhoneTo62(metadata.phone_number)
-            : existing.phone_number,
+        avatar_url:
+          typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
+            ? metadata.avatar_url
+            : existing.avatar_url,
         avatar_url:
           typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
             ? metadata.avatar_url
@@ -92,19 +91,12 @@ export async function POST(request: Request) {
       email: authUser.email ?? "",
       biro: pickBiro(metadata.biro),
       jabatan: pickJabatan(metadata.jabatan),
-      phone_number: typeof metadata.phone_number === "string" ? normalizePhoneTo62(metadata.phone_number) : null,
-      avatar_url:
-        typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
-          ? metadata.avatar_url
-          : null,
-      theme_preference: metadata.theme_preference === "dark" ? "dark" : "light",
-      role: "SENDER",
-      is_active: true,
-      created_at: authUser.created_at ? new Date(authUser.created_at).toISOString() : new Date().toISOString(),
-    };
-
-    const { error: insertError } = await supabaseServer.from("users").insert(profilePayload);
-
+        avatar_url:
+          typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
+            ? metadata.avatar_url
+            : null,
+        theme_preference: metadata.theme_preference === "dark" ? "dark" : "light",
+        role: "MEMBER",
     if (insertError) {
       // Legacy conflict case: same email exists with old/non-auth id.
       const { data: legacyByEmail, error: legacyReadError } = await supabaseServer
@@ -135,7 +127,6 @@ export async function POST(request: Request) {
           name: profilePayload.name,
           biro: profilePayload.biro,
           jabatan: profilePayload.jabatan,
-          phone_number: profilePayload.phone_number,
           is_active: true,
           email: profilePayload.email,
           avatar_url: profilePayload.avatar_url,
@@ -160,7 +151,7 @@ export async function POST(request: Request) {
 
   const { data: profile, error: profileError } = await supabaseServer
     .from("users")
-    .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
+    .select("id, name, biro, jabatan, role, email, avatar_url, theme_preference, is_active, created_at")
     .eq("id", authUser.id)
     .maybeSingle();
 

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const now = new Date().toISOString();
 
   const appointment = {
-    id: `apt_${crypto.randomUUID()}`,
+    id: crypto.randomUUID(),
     user_id: auth.context.appUser.id,
     target_admin_id: body.targetAdminId,
     status: "OPEN",
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   await supabaseServer.from("notifications").insert({
-    id: `n_${crypto.randomUUID()}`,
+    id: crypto.randomUUID(),
     user_id: body.targetAdminId,
     type: "APPOINTMENT_REQUEST",
     payload: {

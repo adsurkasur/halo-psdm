@@ -146,9 +146,6 @@ export default function ReportDetail() {
                       {BIRO_LABELS[sender.biro]} · {JABATAN_LABELS[sender.jabatan]}
                     </p>
                     <p className="text-[11px] text-muted-foreground">{sender.email}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {sender.phone_number?.trim() ? sender.phone_number : "Nomor HP belum diisi"}
-                    </p>
                   </div>
                 ) : (
                   <p className="font-medium">Identitas pengirim tidak ditemukan.</p>

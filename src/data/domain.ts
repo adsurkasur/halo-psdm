@@ -1,4 +1,4 @@
-export type UserRole = "SENDER" | "HR" | "PH";
+export type UserRole = "MEMBER" | "HR" | "PH";
 
 export type ReportStatus = "RECEIVED" | "IN_PROGRESS" | "NEEDS_CLARIFICATION" | "DONE";
 export type ReportCategory = "KONFLIK" | "BEBAN_KERJA" | "KESEJAHTERAAN" | "AKADEMIK" | "LAINNYA";
@@ -53,12 +53,12 @@ export interface User {
   jabatan: Jabatan;
   role: UserRole;
   email: string;
-  phone_number?: string | null;
   avatar_url?: string | null;
   theme_preference?: ThemePreference | null;
   password?: string;
   is_active: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Report {
@@ -119,6 +119,7 @@ export interface AdminProfile {
   availability_status: AvailabilityStatus;
   wa_number: string;
   avatar_url: string;
+  updated_at: string;
 }
 
 export interface Appointment {

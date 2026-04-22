@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   const now = new Date().toISOString();
   const message = {
-    id: `cm_${crypto.randomUUID()}`,
+    id: crypto.randomUUID(),
     session_id: body.sessionId,
     sender_id: auth.context.appUser.id,
     content: body.content,
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     const mediaPreview = message.type === "TEXT" ? "" : `📎 ${body.mediaName ?? "Media"}`;
     const preview = [mediaPreview, contentPreview].filter((item) => item.length > 0).join(" • ");
     await supabaseServer.from("notifications").insert({
-      id: `n_${crypto.randomUUID()}`,
+      id: crypto.randomUUID(),
       user_id: targetUserId,
       type: isSender ? "NEW_CHAT_MESSAGE" : "NEW_CHAT_REPLY",
       payload: {

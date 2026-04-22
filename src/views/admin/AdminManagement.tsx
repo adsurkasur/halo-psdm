@@ -30,10 +30,10 @@ export default function AdminManagement() {
     id: string;
     name: string;
     jabatan: keyof typeof JABATAN_LABELS;
-    phone_number?: string | null;
+    wa_number?: string | null;
     avatar_url?: string | null;
   }) => {
-    const normalizedPhone = normalizePhoneTo62(target.phone_number ?? "");
+    const normalizedPhone = normalizePhoneTo62(target.wa_number ?? "");
     if (!isValidPhone62(normalizedPhone)) {
       toast({
         title: "Nomor HP belum valid",
@@ -81,11 +81,12 @@ export default function AdminManagement() {
                     return;
                   }
 
+                  const existingProfile = adminProfiles.find((p) => p.user_id === user.id);
                   const added = await ensureDirectoryProfile({
                     id: user.id,
                     name: user.name,
                     jabatan: user.jabatan,
-                    phone_number: user.phone_number,
+                    wa_number: existingProfile?.wa_number,
                     avatar_url: user.avatar_url,
                   });
 
@@ -165,7 +166,13 @@ export default function AdminManagement() {
                 const user = allUsers.find((u) => u.id === newAdminId);
                 if (user) {
                   await changeUserRole(user.id, newElevatedRole);
-                  await ensureDirectoryProfile(user);
+                  await ensureDirectoryProfile({
+                    id: user.id,
+                    name: user.name,
+                    jabatan: user.jabatan,
+                    wa_number: undefined,
+                    avatar_url: user.avatar_url,
+                  });
                   setNewAdminId("");
                   setAddSearch("");
                 }
@@ -249,10 +256,16 @@ export default function AdminManagement() {
                           onValueChange={async (v) => {
                             const newRole = v as UserRole;
                             await changeUserRole(adminUser.id, newRole);
-                            if (newRole === "SENDER") {
+                            if (newRole === "MEMBER") {
                               await removeAdminProfile(adminUser.id);
                             } else {
-                              await ensureDirectoryProfile(adminUser);
+                              await ensureDirectoryProfile({
+                                id: adminUser.id,
+                                name: adminUser.name,
+                                jabatan: adminUser.jabatan,
+                                wa_number: undefined,
+                                avatar_url: adminUser.avatar_url,
+                              });
                             }
                           }}
                         >
@@ -260,7 +273,7 @@ export default function AdminManagement() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="SENDER">Sender</SelectItem>
+                            <SelectItem value="MEMBER">Sender</SelectItem>
                             <SelectItem value="HR">HR</SelectItem>
                             <SelectItem value="PH">
                               PH

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   };
 
   const now = new Date().toISOString();
-  const reportId = `r_${crypto.randomUUID()}`;
+  const reportId = crypto.randomUUID();
 
   const report = {
     id: reportId,
@@ -36,7 +36,6 @@ export async function POST(request: Request) {
     status: "RECEIVED",
     admin_notes: "",
     created_at: now,
-    updated_at: now,
   };
 
   const insertReport = await supabaseServer.from("reports").insert(report);
@@ -45,7 +44,7 @@ export async function POST(request: Request) {
   }
 
   const historyEntry = {
-    id: `sh_${crypto.randomUUID()}`,
+    id: crypto.randomUUID(),
     report_id: reportId,
     old_status: null,
     new_status: "RECEIVED",
@@ -63,7 +62,7 @@ export async function POST(request: Request) {
 
   if (admins && admins.length > 0) {
     const notifications = admins.map((admin) => ({
-      id: `n_${crypto.randomUUID()}`,
+      id: crypto.randomUUID(),
       user_id: admin.id,
       type: "NEW_REPORT",
       payload: {

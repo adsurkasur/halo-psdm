@@ -13,7 +13,6 @@ import {
   type Jabatan,
 } from "@/data/domain";
 import { supabase } from "@/lib/supabase/client";
-import { isValidPhone62, normalizePhoneTo62 } from "@/lib/phone";
 
 type AuthMode = "login" | "register";
 
@@ -29,7 +28,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [biro, setBiro] = useState<BiroBidang | "">("");
   const [jabatan, setJabatan] = useState<Jabatan | "">("");
   const [error, setError] = useState("");
@@ -110,7 +108,7 @@ export default function LoginPage() {
     setError("");
     setInfo("");
 
-    if (!name.trim() || !email.trim() || !phoneNumber.trim() || !password.trim() || !confirmPassword.trim() || !biro || !jabatan) {
+    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || !biro || !jabatan) {
       setError("Semua kolom wajib diisi.");
       setShaking(true);
       setTimeout(() => setShaking(false), 600);
@@ -124,20 +122,11 @@ export default function LoginPage() {
       return;
     }
 
-    const normalizedPhone = normalizePhoneTo62(phoneNumber);
-    if (!isValidPhone62(normalizedPhone)) {
-      setError("Nomor HP wajib menyertakan kode negara, contoh +628123... atau +1202555...");
-      setShaking(true);
-      setTimeout(() => setShaking(false), 600);
-      return;
-    }
-
     setLoading(true);
     setTimeout(async () => {
       const result = await register({
         name: name.trim(),
         email: email.trim(),
-        phone_number: normalizedPhone,
         password,
         biro,
         jabatan,
@@ -230,7 +219,7 @@ export default function LoginPage() {
     setPassword("");
     setConfirmPassword("");
     setName("");
-    setPhoneNumber("");
+    
     setBiro("");
     setJabatan("");
   };
@@ -418,17 +407,6 @@ export default function LoginPage() {
                     className="mt-1 transition-all duration-200 focus:shadow-md"
                     required
                   />
-                </div>
-                <div>
-                  <Label>Nomor HP</Label>
-                  <Input
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+628123456789 / +12025550123"
-                    className="mt-1 transition-all duration-200 focus:shadow-md"
-                    required
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">Gunakan format internasional dengan kode negara. Contoh: +628123456789 atau +12025550123.</p>
                 </div>
                 <div>
                   <Label>Password</Label>

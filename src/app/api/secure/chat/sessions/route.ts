@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
   const now = new Date().toISOString();
   const session = {
-    id: `cs_${crypto.randomUUID()}`,
+    id: crypto.randomUUID(),
     report_id: body.reportId ?? null,
     user_id: targetUserId,
     assigned_admin_id: null,
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 
     if (admins && admins.length > 0) {
       const notifications = admins.map((admin) => ({
-        id: `n_${crypto.randomUUID()}`,
+        id: crypto.randomUUID(),
         user_id: admin.id,
         type: "NEW_CHAT_SESSION",
         payload: {
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     }
   } else {
     await supabaseServer.from("notifications").insert({
-      id: `n_${crypto.randomUUID()}`,
+      id: crypto.randomUUID(),
       user_id: targetUserId,
       type: "NEW_CHAT_SESSION",
       payload: {

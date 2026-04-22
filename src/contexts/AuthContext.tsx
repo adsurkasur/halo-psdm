@@ -9,7 +9,6 @@ import {
   JABATAN_LABELS,
 } from "@/data/domain";
 import { supabase } from "@/lib/supabase/client";
-import { isValidPhone62, normalizePhoneTo62 } from "@/lib/phone";
 
 type UsersRow = {
   id: string;
@@ -18,12 +17,11 @@ type UsersRow = {
   jabatan: Jabatan;
   role: UserRole;
   email: string;
-  phone_number?: string | null;
   avatar_url?: string | null;
   theme_preference?: ThemePreference | null;
-  password_hash?: string | null;
   is_active: boolean;
   created_at: string;
+  updated_at: string;
 };
 
 function mapRowToUser(row: UsersRow): User {
@@ -34,12 +32,11 @@ function mapRowToUser(row: UsersRow): User {
     jabatan: row.jabatan,
     role: row.role,
     email: row.email,
-    phone_number: row.phone_number,
     avatar_url: row.avatar_url,
     theme_preference: row.theme_preference,
-    password: row.password_hash ?? undefined,
     is_active: row.is_active,
     created_at: row.created_at,
+    updated_at: row.updated_at,
   };
 }
 
@@ -54,7 +51,6 @@ interface AuthContextType {
   register: (data: {
     name: string;
     email: string;
-    phone_number: string;
     password: string;
     biro: BiroBidang;
     jabatan: Jabatan;
@@ -63,7 +59,7 @@ interface AuthContextType {
   allUsers: User[];
   refreshUsers: (force?: boolean) => Promise<void>;
   syncProfileNow: () => Promise<{ success: boolean; error?: string; profile?: User }>;
-  updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "phone_number" | "theme_preference">>) => Promise<{ success: boolean; error?: string; message?: string }>;
+  updateProfile: (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "theme_preference">>) => Promise<{ success: boolean; error?: string; message?: string }>;
   changeUserRole: (userId: string, newRole: UserRole) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -132,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: existingProfile, error: existingProfileError } = await supabase
       .from("users")
-      .select("id, name, email, biro, jabatan, phone_number, avatar_url, theme_preference")
+      .select("id, name, email, biro, jabatan, avatar_url, theme_preference, is_active, created_at, updated_at")
       .eq("id", authUser.id)
       .maybeSingle();
 
@@ -150,10 +146,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           metadata.theme_preference === "dark" || metadata.theme_preference === "light"
             ? metadata.theme_preference
             : (existingProfile as UsersRow).theme_preference ?? "light",
-        phone_number:
-          typeof metadata.phone_number === "string"
-            ? normalizePhoneTo62(metadata.phone_number)
-            : (existingProfile as UsersRow).phone_number ?? null,
       };
 
       const { error } = await supabase
@@ -171,10 +163,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: authUser.id,
       name: metadataName ?? defaultName,
       email: authUser.email ?? "",
-      phone_number: typeof metadata.phone_number === "string" ? normalizePhoneTo62(metadata.phone_number) : null,
       biro: metadataBiro ?? "INFOKOM",
       jabatan: metadataJabatan ?? "ANGGOTA_MUDA",
-      role: "SENDER",
+      role: "MEMBER",
       theme_preference: metadata.theme_preference === "dark" ? "dark" : "light",
       is_active: true,
       created_at: createdAt,
@@ -191,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const readProfile = async () =>
       supabase
       .from("users")
-      .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
+      .select("id, name, biro, jabatan, role, email, avatar_url, theme_preference, is_active, created_at, updated_at")
       .eq("id", userId)
       .maybeSingle();
 
@@ -231,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const refreshPromise = (async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
+        .select("id, name, biro, jabatan, role, email, avatar_url, theme_preference, is_active, created_at, updated_at")
         .order("created_at", { ascending: true });
 
       if (error) {
@@ -354,7 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (ensured.success) {
         const { data, error } = await supabase
           .from("users")
-          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
+          .select("id, name, biro, jabatan, role, email, avatar_url, theme_preference, is_active, created_at")
           .eq("id", authUserData.user.id)
           .maybeSingle();
 
@@ -466,7 +457,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!synced.profile) {
         const { data: fallbackProfile } = await supabase
           .from("users")
-          .select("id, name, biro, jabatan, role, email, phone_number, avatar_url, theme_preference, is_active, created_at")
+          .select("id, name, biro, jabatan, role, email, avatar_url, theme_preference, is_active, created_at, updated_at")
           .eq("id", authData.user.id)
           .maybeSingle();
 
@@ -496,18 +487,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (data: { name: string; email: string; phone_number: string; password: string; biro: BiroBidang; jabatan: Jabatan }) => {
+    async (data: { name: string; email: string; password: string; biro: BiroBidang; jabatan: Jabatan }) => {
       const exists = users.find((u) => u.email === data.email);
       if (exists) {
         return { success: false, error: "Email sudah terdaftar." };
       }
       if (data.password.length < 6) {
         return { success: false, error: "Password minimal 6 karakter." };
-      }
-
-      const normalizedPhone = normalizePhoneTo62(data.phone_number);
-      if (!isValidPhone62(normalizedPhone)) {
-        return { success: false, error: "Nomor HP wajib menyertakan kode negara (contoh: +628123..., +1202555...)." };
       }
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -518,7 +504,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: data.name,
             biro: data.biro,
             jabatan: data.jabatan,
-            phone_number: normalizedPhone,
           },
         },
       });
@@ -578,24 +563,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile = useCallback(
-    async (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "phone_number" | "theme_preference">>) => {
+    async (updates: Partial<Pick<User, "name" | "password" | "email" | "biro" | "jabatan" | "avatar_url" | "theme_preference">>) => {
       if (!user) return { success: false, error: "User tidak ditemukan." };
-
-      const normalizedPhone =
-        typeof updates.phone_number !== "undefined"
-          ? normalizePhoneTo62(updates.phone_number ?? "")
-          : undefined;
-
-      if (typeof normalizedPhone !== "undefined" && !isValidPhone62(normalizedPhone)) {
-        return { success: false, error: "Nomor HP wajib menyertakan kode negara (contoh: +628123..., +1202555...)." };
-      }
 
       const updatePayload: Record<string, unknown> = {};
       if (typeof updates.name !== "undefined") updatePayload.name = updates.name;
       if (typeof updates.biro !== "undefined") updatePayload.biro = updates.biro;
       if (typeof updates.jabatan !== "undefined") updatePayload.jabatan = updates.jabatan;
       if (typeof updates.avatar_url !== "undefined") updatePayload.avatar_url = updates.avatar_url;
-      if (typeof normalizedPhone !== "undefined") updatePayload.phone_number = normalizedPhone;
       if (typeof updates.theme_preference !== "undefined") updatePayload.theme_preference = updates.theme_preference;
 
       let emailChangeMessage: string | undefined;
@@ -627,8 +602,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user.role === "HR" || user.role === "PH") {
         const { data: existingAdminProfile } = await supabase
           .from("admin_profiles")
-          .select("availability_status")
-          .or(`id.eq.${user.id},user_id.eq.${user.id}`)
+          .select("availability_status, wa_number")
+          .eq("user_id", user.id)
           .maybeSingle();
 
         const mergedName =
@@ -641,12 +616,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : user.avatar_url ?? "";
 
         await supabase.from("admin_profiles").upsert({
-          id: user.id,
           user_id: user.id,
           display_name: mergedName,
           jabatan_display: JABATAN_LABELS[mergedJabatan],
           availability_status: existingAdminProfile?.availability_status ?? "OFFLINE",
-          wa_number: normalizedPhone ?? normalizePhoneTo62(user.phone_number ?? ""),
+          wa_number: existingAdminProfile?.wa_number ?? "",
           avatar_url: mergedAvatar,
         });
       }
@@ -654,7 +628,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updated: User = {
         ...user,
         ...updates,
-        ...(typeof normalizedPhone !== "undefined" ? { phone_number: normalizedPhone } : {}),
       };
       setUser(updated);
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
@@ -672,7 +645,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
-        isSender: role === "SENDER" || role === "HR",
+        isSender: role === "MEMBER" || role === "HR",
         isHr: role === "HR",
         isPh: role === "PH",
         login,

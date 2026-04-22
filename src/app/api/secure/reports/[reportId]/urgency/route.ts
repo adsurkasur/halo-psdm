@@ -27,15 +27,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Report tidak ditemukan." }, { status: 404 });
   }
 
-  const now = new Date().toISOString();
-
   await supabaseServer
     .from("reports")
-    .update({ urgency: body.newUrgency, updated_at: now })
+    .update({ urgency: body.newUrgency })
     .eq("id", reportId);
 
   await supabaseServer.from("notifications").insert({
-    id: `n_${crypto.randomUUID()}`,
+    id: crypto.randomUUID(),
     user_id: report.user_id,
     type: "STATUS_UPDATED",
     payload: {

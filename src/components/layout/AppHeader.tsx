@@ -50,7 +50,7 @@ export function AppHeader() {
     navigate("/login");
   };
 
-  const roleBadge = user.role === "SENDER"
+  const roleBadge = user.role === "MEMBER"
     ? { label: "Sender", cls: "bg-blue-100 text-blue-700" }
     : user.role === "HR"
     ? { label: "HR", cls: "bg-orange-100 text-orange-700" }

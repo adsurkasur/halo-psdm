@@ -13,6 +13,10 @@ type TableName =
   | "notifications";
 
 const now = new Date().toISOString();
+const makeId = () =>
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : Date.now().toString(36);
 
 const initialDb: Record<TableName, Row[]> = {
   users: [
@@ -21,9 +25,9 @@ const initialDb: Record<TableName, Row[]> = {
       name: "Ade Surya Ananda",
       biro: "INFOKOM",
       jabatan: "ANGGOTA_MUDA",
-      role: "SENDER",
+      role: "MEMBER",
       email: "ade@arsc.org",
-      password_hash: "ade123",
+      password: "ade123",
       is_active: true,
       created_at: now,
     },
@@ -34,7 +38,7 @@ const initialDb: Record<TableName, Row[]> = {
       jabatan: "PENGURUS_HARIAN",
       role: "HR",
       email: "sarah@arsc.org",
-      password_hash: "sarah123",
+      password: "sarah123",
       is_active: true,
       created_at: now,
     },
@@ -45,7 +49,7 @@ const initialDb: Record<TableName, Row[]> = {
       jabatan: "PENGURUS_HARIAN",
       role: "PH",
       email: "nadia@arsc.org",
-      password_hash: "nadia123",
+      password: "nadia123",
       is_active: true,
       created_at: now,
     },
@@ -120,8 +124,9 @@ beforeEach(() => {
 
     if (path === "/api/secure/reports" && method === "POST") {
       const nowIso = new Date().toISOString();
+      const reportId = makeId();
       const report = {
-        id: `r_${Date.now().toString(36)}`,
+        id: reportId,
         case_id: `HP-${nowIso.slice(0, 10).replace(/-/g, "")}-0001`,
         user_id: currentAuthUserId,
         category: body.category,
@@ -133,7 +138,7 @@ beforeEach(() => {
         updated_at: nowIso,
       };
       const historyEntry = {
-        id: `sh_${Date.now().toString(36)}`,
+        id: makeId(),
         report_id: report.id,
         old_status: null,
         new_status: "RECEIVED",
@@ -162,7 +167,7 @@ beforeEach(() => {
       if (!report) return new Response(JSON.stringify({ error: "Not Found" }), { status: 404 });
       const nowIso = new Date().toISOString();
       const historyEntry = {
-        id: `sh_${Date.now().toString(36)}`,
+        id: makeId(),
         report_id: reportId,
         old_status: report.status,
         new_status: body.newStatus,
@@ -188,7 +193,7 @@ beforeEach(() => {
 
     if (path === "/api/secure/chat/sessions" && method === "POST") {
       const session = {
-        id: `cs_${Date.now().toString(36)}`,
+        id: makeId(),
         report_id: body.reportId ?? null,
         user_id: currentAuthUserId,
         assigned_admin_id: null,
@@ -213,7 +218,7 @@ beforeEach(() => {
 
     if (path === "/api/secure/chat/messages" && method === "POST") {
       const message = {
-        id: `cm_${Date.now().toString(36)}`,
+        id: makeId(),
         session_id: body.sessionId,
         sender_id: currentAuthUserId,
         content: body.content,
@@ -230,7 +235,7 @@ beforeEach(() => {
 
     if (path === "/api/secure/appointments" && method === "POST") {
       const appointment = {
-        id: `apt_${Date.now().toString(36)}`,
+        id: makeId(),
         user_id: currentAuthUserId,
         target_admin_id: body.targetAdminId,
         created_at: new Date().toISOString(),
@@ -405,7 +410,7 @@ const supabaseMock = {
       };
     },
     signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
-      const user = db.users.find((u) => u.email === email && u.password_hash === password) as Row | undefined;
+      const user = db.users.find((u) => u.email === email && u.password === password) as Row | undefined;
       if (!user) {
         return {
           data: { user: null, session: null },
@@ -458,7 +463,7 @@ const supabaseMock = {
       const idx = db.users.findIndex((u) => String(u.id) === currentAuthUserId);
       if (idx >= 0) {
         if (typeof email !== "undefined") db.users[idx].email = email;
-        if (typeof password !== "undefined") db.users[idx].password_hash = password;
+        if (typeof password !== "undefined") db.users[idx].password = password;
       }
 
       return {

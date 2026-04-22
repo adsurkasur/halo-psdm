@@ -102,7 +102,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         jabatan_display: string;
         availability_status: AvailabilityStatus;
         wa_number?: string;
-        wa_number_encrypted?: string;
         avatar_url: string;
       };
 
@@ -111,7 +110,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         display_name: raw.display_name,
         jabatan_display: raw.jabatan_display,
         availability_status: raw.availability_status,
-        wa_number: raw.wa_number ?? raw.wa_number_encrypted ?? "",
+        wa_number: raw.wa_number ?? "",
         avatar_url: raw.avatar_url,
       } satisfies AdminProfile;
     });
@@ -895,7 +894,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addAdminProfile = useCallback(async (profile: AdminProfile) => {
     await supabase.from("admin_profiles").upsert({
-      id: profile.user_id,
       user_id: profile.user_id,
       display_name: profile.display_name,
       jabatan_display: profile.jabatan_display,
