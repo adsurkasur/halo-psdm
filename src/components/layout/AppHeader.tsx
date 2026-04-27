@@ -137,7 +137,7 @@ export function AppHeader() {
         {/* Profile card with popover */}
         <Popover>
           <PopoverTrigger asChild>
-            <button className="flex items-start gap-2">
+            <button className="flex items-start gap-2" aria-label="Pengaturan Akun">
               <UserAvatarWithPreview
                 name={user.name}
                 avatarUrl={user.avatar_url}

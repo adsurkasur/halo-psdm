@@ -32,7 +32,7 @@ test.describe("Profile & Navigation", () => {
     await expect(page).toHaveURL(/\/$|\/dashboard$/, { timeout: 20_000 });
 
     // Core navigation items should be present
-    await expect(page.getByText("Dashboard").or(page.getByText("Beranda"))).toBeVisible();
+    await expect(page.getByText("Dasbor").or(page.getByText("Dashboard")).or(page.getByText("Beranda"))).toBeVisible();
   });
 
   test("admin sidebar has admin-specific navigation items", async ({ page }) => {
@@ -44,6 +44,6 @@ test.describe("Profile & Navigation", () => {
     await expect(page).toHaveURL(/\/admin\/dasbor|\/$/, { timeout: 20_000 });
 
     // Admin-specific items
-    await expect(page.getByText("Dasbor").or(page.getByText("Dashboard"))).toBeVisible();
+    await expect(page.getByRole("link", { name: /Dasbor/ }).or(page.getByText("Dashboard"))).toBeVisible();
   });
 });

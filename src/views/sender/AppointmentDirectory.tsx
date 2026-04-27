@@ -90,7 +90,7 @@ export default function AppointmentDirectory() {
   const visibleProfiles = adminProfiles.filter((p) => p.user_id !== user?.id);
 
   return (
-    <div className="container mx-auto p-4 lg:p-10 space-y-8 max-w-7xl page-enter">
+    <div className="w-full px-4 md:px-10 lg:px-16 py-8 space-y-8 page-enter">
       {/* Hero Header Section */}
       <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-12 text-primary-foreground shadow-xl shadow-primary/20">
         <div className="relative z-10 max-w-2xl">
