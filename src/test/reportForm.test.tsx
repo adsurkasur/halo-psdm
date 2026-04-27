@@ -16,7 +16,7 @@ import { ThemeProvider } from "next-themes";
 import ReportForm from "@/views/sender/ReportForm";
 import { Toaster } from "@/components/ui/toaster";
 import React, { useEffect } from "react";
-import { CATEGORY_LABELS } from "@/data/domain";
+import { CATEGORY_LABELS, type ReportCategory } from "@/data/domain";
 
 const TEST_SENDER = { email: "ade@arsc.org", password: "ade123" };
 
@@ -30,7 +30,7 @@ function AutoLogin({ children }: { children: React.ReactNode }) {
 }
 
 describe("ReportForm validation", () => {
-  const setup = (props: { initialCategory?: string; initialChronology?: string } = {}) => {
+  const setup = (props: { initialCategory?: ReportCategory | ""; initialChronology?: string } = {}) => {
     render(
       <ThemeProvider attribute="class" defaultTheme="system">
         <AuthProvider>
@@ -56,7 +56,7 @@ describe("ReportForm validation", () => {
 
   it("alerts when chronology is too short", async () => {
     // provide a valid category but leave chronology empty/short
-    const firstKey = Object.keys(CATEGORY_LABELS)[0];
+    const firstKey = Object.keys(CATEGORY_LABELS)[0] as ReportCategory;
     setup({ initialCategory: firstKey });
     const submit = await screen.findByRole("button", { name: /kirim laporan/i });
     fireEvent.click(submit);
@@ -64,7 +64,7 @@ describe("ReportForm validation", () => {
   });
 
   it("submits successfully when all fields are valid", async () => {
-    const firstKey = Object.keys(CATEGORY_LABELS)[0];
+    const firstKey = Object.keys(CATEGORY_LABELS)[0] as ReportCategory;
     setup({ initialCategory: firstKey, initialChronology: "a".repeat(55) });
     const submit = await screen.findByRole("button", { name: /kirim laporan/i });
     fireEvent.click(submit);

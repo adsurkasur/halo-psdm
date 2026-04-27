@@ -75,9 +75,13 @@ export async function hardResetToLogin(page: Page) {
       try {
         localStorage.clear();
         sessionStorage.clear();
-      } catch (e) {}
+      } catch (e) {
+        // Ignore storage errors on blank/protected pages
+      }
     });
-  } catch (e) {}
+  } catch (e) {
+    // Ignore navigation errors during reset
+  }
   await page.context().clearCookies();
   await page.goto("/login", { waitUntil: "load" });
 }

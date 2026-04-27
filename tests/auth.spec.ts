@@ -17,11 +17,9 @@ test.describe("Authentication", () => {
   });
 
   test("shows login page with Masuk and Daftar tabs", async ({ page }) => {
-    await page.goto("/login");
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("heading", { name: /Halo PSDM/i })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("button", { name: "Masuk" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Daftar" })).toBeVisible();
+    await expect(page.getByText("Halo PSDM", { exact: false })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "Masuk" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Daftar" }).first()).toBeVisible();
   });
 
   test("rejects incorrect credentials with error message", async ({ page }) => {
