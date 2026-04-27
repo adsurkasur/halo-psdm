@@ -322,7 +322,6 @@ export default function ProfilePage() {
       setSaving(false);
     }
   };
- Lively animations and transitions for a premium feel
 
   return (
     <div className="space-y-4 animate-fade-in">

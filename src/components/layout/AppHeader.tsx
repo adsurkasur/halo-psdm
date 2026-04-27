@@ -12,9 +12,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { JABATAN_LABELS, type ThemePreference } from "@/data/domain";
+import { JABATAN_LABELS } from "@/data/domain";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
-import { useEffect, useMemo, useState } from "react";
 
 export function AppHeader() {
   const { user, logout, updateProfile } = useAuth();

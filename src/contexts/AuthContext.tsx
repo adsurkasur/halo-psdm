@@ -24,7 +24,7 @@ type UsersRow = {
   updated_at: string;
 };
 
-function mapRowToUser(row: any): User {
+function mapRowToUser(row: UsersRow): User {
   return {
     id: row.id,
     name: row.name,
