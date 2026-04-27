@@ -53,7 +53,7 @@ export default function AppointmentDirectory() {
     // Log appointment
     await addAppointment(user.id, adminProfile.user_id);
 
-    const waNumber = normalizePhoneTo62(adminProfile.wa_number ?? "");
+    const waNumber = normalizePhoneTo62(adminProfile.wa_number || admin?.whatsapp || "");
     if (!isValidPhone62(waNumber)) {
       toast({
         title: "Nomor WhatsApp penerima belum valid",

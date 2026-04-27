@@ -610,32 +610,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (user.role === "HR" || user.role === "PH") {
-        const { data: existingAdminProfile } = await supabase
-          .from("admin_profiles")
-          .select("availability_status, wa_number")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        const mergedName =
-          typeof updates.name !== "undefined" ? updates.name : user.name;
-        const mergedJabatan =
-          typeof updates.jabatan !== "undefined" ? updates.jabatan : user.jabatan;
-        const mergedAvatar =
-          typeof updates.avatar_url !== "undefined"
-            ? updates.avatar_url ?? ""
-            : user.avatar_url ?? "";
-
-        await supabase.from("admin_profiles").upsert({
-          user_id: user.id,
-          display_name: mergedName,
-          jabatan_display: JABATAN_LABELS[mergedJabatan],
-          availability_status: existingAdminProfile?.availability_status ?? "OFFLINE",
-          wa_number: existingAdminProfile?.wa_number ?? "",
-          avatar_url: mergedAvatar,
-        });
-      }
-
       const updated: User = {
         ...user,
         ...updates,

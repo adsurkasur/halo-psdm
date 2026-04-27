@@ -632,7 +632,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await supabase
       .from("admin_profiles")
       .update({ availability_status: status })
-      .or(`id.eq.${adminUserId},user_id.eq.${adminUserId}`);
+      .eq("user_id", adminUserId);
 
     queryClient.setQueryData(QUERY_KEYS.adminProfiles, (prev: AdminProfile[] | undefined) => 
       prev?.map((p) => p.user_id === adminUserId ? { ...p, availability_status: status } : p)
@@ -646,7 +646,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       jabatan_display: profile.jabatan_display,
       availability_status: profile.availability_status,
       wa_number: profile.wa_number,
-      avatar_url: profile.avatar_url,
     });
 
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminProfiles });
@@ -656,7 +655,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await supabase
       .from("admin_profiles")
       .delete()
-      .or(`id.eq.${userId},user_id.eq.${userId}`);
+      .eq("user_id", userId);
 
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminProfiles });
   }, [queryClient]);
