@@ -230,19 +230,6 @@ export default function AdminChatQueue() {
           <CardHeader className="py-3 px-4 border-b space-y-0">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm">Antrean Chat</h3>
-              <Select
-                value={adminStatus}
-                onValueChange={(v) => void updateAvailability(user.id, v as AvailabilityStatus)}
-              >
-                <SelectTrigger className="w-[196px] min-w-[196px] h-7 text-xs [&>span]:line-clamp-none [&>span]:whitespace-nowrap">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ONLINE">Online</SelectItem>
-                  <SelectItem value="AWAY">Sibuk</SelectItem>
-                  <SelectItem value="OFFLINE">Offline</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CardHeader>
           <ScrollArea className="flex-1">

@@ -16,7 +16,7 @@ import { isValidPhone62, normalizePhoneTo62 } from "@/lib/phone";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
 
 export default function AdminManagement() {
-  const { adminProfiles, addAdminProfile, removeAdminProfile } = useData();
+  const { adminProfiles, addAdminProfile, removeAdminProfile, getEffectiveStatus } = useData();
   const { user, allUsers, changeUserRole } = useAuth();
   const { toast } = useToast();
 
@@ -289,8 +289,16 @@ export default function AdminManagement() {
                       {normalizePhoneTo62(profile.wa_number)}
                     </TableCell>
                     <TableCell className="text-sm flex items-center gap-1">
-                      {profile.availability_status === "ONLINE" ? "🟢" : profile.availability_status === "AWAY" ? "🟡" : "⚫"}
-                      {AVAILABILITY_LABELS[profile.availability_status]}
+                      {(() => {
+                        const effectiveStatus = getEffectiveStatus(profile);
+                        const availabilityColor = effectiveStatus === "ONLINE" ? "🟢" : effectiveStatus === "AWAY" ? "🟡" : "⚫";
+                        return (
+                          <>
+                            {availabilityColor}
+                            {AVAILABILITY_LABELS[effectiveStatus]}
+                          </>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>
                 );

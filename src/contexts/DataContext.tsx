@@ -655,7 +655,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const getEffectiveStatus = useCallback((profile: AdminProfile): AvailabilityStatus => {
-    const isStale = new Date().getTime() - new Date(profile.last_seen_at).getTime() > 5 * 60 * 1000;
+    // If manually set to OFFLINE (e.g. on logout), respect it immediately
+    if (profile.availability_status === "OFFLINE") return "OFFLINE";
+
+    // Otherwise use a short 2.5 min staleness threshold for automation
+    const lastSeen = new Date(profile.last_seen_at).getTime();
+    const now = new Date().getTime();
+    const isStale = now - lastSeen > 2.5 * 60 * 1000; 
+    
     return isStale ? "OFFLINE" : profile.availability_status;
   }, []);
 
@@ -756,12 +763,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     void initHeartbeat();
 
-    // Set up interval for subsequent heartbeats
+    // Set up interval for subsequent heartbeats (every 30 seconds for better accuracy)
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
         void updateLastSeen(user.id);
       }
-    }, 60000); // 1 minute
+    }, 30000); 
 
     return () => clearInterval(interval);
   }, [user, updateLastSeen, updateAvailability, adminProfiles]);
