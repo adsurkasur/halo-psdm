@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [biro, setBiro] = useState<BiroBidang | "">("");
   const [jabatan, setJabatan] = useState<Jabatan | "">("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -108,7 +109,7 @@ export default function LoginPage() {
     setError("");
     setInfo("");
 
-    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || !biro || !jabatan) {
+    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || !biro || !jabatan || !whatsapp.trim()) {
       setError("Semua kolom wajib diisi.");
       setShaking(true);
       setTimeout(() => setShaking(false), 600);
@@ -130,6 +131,7 @@ export default function LoginPage() {
         password,
         biro,
         jabatan,
+        whatsapp: whatsapp.trim(),
       });
       setLoading(false);
       if (!result.success) {
@@ -431,6 +433,17 @@ export default function LoginPage() {
                     required
                     minLength={6}
                   />
+                </div>
+                <div>
+                  <Label>Nomor WhatsApp</Label>
+                  <Input
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    placeholder="081234567890"
+                    className="mt-1 transition-all duration-200 focus:shadow-md"
+                    required
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">Gunakan format angka saja (contoh: 081234567890)</p>
                 </div>
                 <div>
                   <Label>Biro / Bidang</Label>

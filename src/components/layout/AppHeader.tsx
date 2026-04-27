@@ -21,22 +21,6 @@ export function AppHeader() {
   const { notifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } = useData();
   const navigate = useNavigate();
   const { resolvedTheme, theme, setTheme } = useTheme();
-  const [pendingThemePreference, setPendingThemePreference] = useState<ThemePreference | null>(null);
-
-  const targetTheme = useMemo<ThemePreference | null>(() => {
-    if (pendingThemePreference) return pendingThemePreference;
-    if (user?.theme_preference === "light" || user?.theme_preference === "dark") {
-      return user.theme_preference;
-    }
-    return null;
-  }, [pendingThemePreference, user?.theme_preference]);
-
-  useEffect(() => {
-    if (!targetTheme) return;
-    if (theme !== targetTheme) {
-      setTheme(targetTheme);
-    }
-  }, [setTheme, targetTheme, theme]);
 
   if (!user) return null;
 
@@ -58,18 +42,8 @@ export function AppHeader() {
 
   const isDark = resolvedTheme === "dark";
 
-  const handleToggleTheme = async () => {
-    const nextTheme = isDark ? "light" : "dark";
-    setPendingThemePreference(nextTheme);
-    setTheme(nextTheme);
-
-    const result = await updateProfile({ theme_preference: nextTheme });
-    if (!result.success) {
-      const rollbackTheme = nextTheme === "dark" ? "light" : "dark";
-      setTheme(rollbackTheme);
-    }
-
-    setPendingThemePreference(null);
+  const handleToggleTheme = () => {
+    setTheme(isDark ? "light" : "dark");
   };
 
   return (

@@ -54,7 +54,7 @@ export interface User {
   role: UserRole;
   email: string;
   avatar_url?: string | null;
-  theme_preference?: ThemePreference | null;
+  whatsapp?: string | null;
   password?: string;
   is_active: boolean;
   created_at: string;

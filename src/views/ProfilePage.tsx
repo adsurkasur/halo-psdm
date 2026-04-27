@@ -41,6 +41,7 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [biro, setBiro] = useState<BiroBidang | "">("");
   const [jabatan, setJabatan] = useState<Jabatan | "">("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [deletePhrase, setDeletePhrase] = useState("");
@@ -60,6 +61,7 @@ export default function ProfilePage() {
       setEmail(user.email);
       setBiro(user.biro);
       setJabatan(user.jabatan);
+      setWhatsapp(user.whatsapp ?? "");
       setAvatarPreviewUrl(null);
     }
   }, [user]);
@@ -289,29 +291,38 @@ export default function ProfilePage() {
 
 
     setSaving(true);
-    setTimeout(() => {
-      void (async () => {
-        const result = await updateProfile({
-          name,
-          email,
-          biro: biro as BiroBidang,
-          jabatan: jabatan as Jabatan,
-          ...(password ? { password } : {}),
-        });
-        if (!result.success) {
-          toast({
-            title: result.error ?? "Gagal memperbarui profil",
-            variant: "destructive",
-          });
-          setSaving(false);
-          return;
-        }
+    try {
+      const result = await updateProfile({
+        name,
+        email,
+        biro: biro as BiroBidang,
+        jabatan: jabatan as Jabatan,
+        whatsapp: whatsapp.trim(),
+        ...(password ? { password } : {}),
+      });
 
+      if (!result.success) {
+        toast({
+          title: result.error ?? "Gagal memperbarui profil",
+          variant: "destructive",
+        });
+      } else {
         toast({ title: result.message ?? "Profil diperbarui" });
-        setSaving(false);
-      })();
-    }, 400);
+        if (password) {
+          setPassword("");
+          setConfirm("");
+        }
+      }
+    } catch (err) {
+      toast({
+        title: "Terjadi kesalahan saat menyimpan profil.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
+ Lively animations and transitions for a premium feel
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -400,6 +411,15 @@ export default function ProfilePage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label>Nomor WhatsApp</Label>
+            <Input
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              placeholder="081234567890"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">Gunakan format angka saja (contoh: 081234567890)</p>
           </div>
           <div>
             <Label>Password Baru</Label>

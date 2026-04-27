@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
   const { data: existing, error: existingError } = await supabaseServer
     .from("users")
-    .select("id, name, email, biro, jabatan, role, avatar_url, is_active, created_at, updated_at")
+    .select("id, name, email, biro, jabatan, role, avatar_url, whatsapp, is_active, created_at, updated_at")
     .eq("id", authUser.id)
     .maybeSingle();
 
@@ -66,6 +66,10 @@ export async function POST(request: Request) {
           typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
             ? metadata.avatar_url
             : existing.avatar_url,
+        whatsapp:
+          typeof metadata.whatsapp === "string" && metadata.whatsapp.trim().length > 0
+            ? metadata.whatsapp
+            : existing.whatsapp,
       })
       .eq("id", authUser.id);
 
@@ -86,6 +90,10 @@ export async function POST(request: Request) {
       avatar_url:
         typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
           ? metadata.avatar_url
+          : null,
+      whatsapp:
+        typeof metadata.whatsapp === "string" && metadata.whatsapp.trim().length > 0
+          ? metadata.whatsapp
           : null,
       role: "MEMBER",
     };
@@ -127,6 +135,7 @@ export async function POST(request: Request) {
           is_active: true,
           email: profilePayload.email,
           avatar_url: profilePayload.avatar_url,
+          whatsapp: profilePayload.whatsapp,
         })
         .eq("id", legacyByEmail.id);
 
@@ -148,7 +157,7 @@ export async function POST(request: Request) {
 
   const { data: profile, error: profileError } = await supabaseServer
     .from("users")
-    .select("id, name, biro, jabatan, role, email, avatar_url, is_active, created_at, updated_at")
+    .select("id, name, biro, jabatan, role, email, avatar_url, whatsapp, is_active, created_at, updated_at")
     .eq("id", authUser.id)
     .maybeSingle();
 
