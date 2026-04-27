@@ -42,12 +42,11 @@ export function AppSidebar() {
     { title: "Dasbor PH", url: "/admin/dasbor", icon: LayoutDashboard, badge: 0 },
     { title: "Kelola Laporan", url: "/admin/laporan", icon: ClipboardList, badge: pendingReportsCount },
     { title: "Antrean Chat", url: "/admin/chat", icon: MessagesSquare, badge: openChatsCount },
-    { title: "Janji Temu", url: "/janji-temu", icon: Calendar, badge: 0 },
     ...(isPh
       ? [
           { title: "Tracking Janji Temu", url: "/admin/janji-temu", icon: ClipboardList, badge: 0 },
           { title: "Rekap & Analitik", url: "/admin/rekap", icon: BarChart3, badge: 0 },
-        { title: "Kelola HR dan PH", url: "/admin/kelola-admin", icon: Users, badge: 0 },
+          { title: "Kelola HR dan PH", url: "/admin/kelola-admin", icon: Users, badge: 0 },
         ]
       : []),
   ];

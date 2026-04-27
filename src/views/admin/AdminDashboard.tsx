@@ -97,30 +97,23 @@ export default function AdminDashboard() {
 
 function formatLastSync(lastSyncedAt: string | null): string {
   if (!lastSyncedAt) return "belum tersedia";
-
-  const date = new Date(lastSyncedAt);
-  const diff = Date.now() - date.getTime();
-  const secs = Math.max(0, Math.floor(diff / 1000));
-
-  if (secs < 5) return "baru saja";
-  if (secs < 60) return `${secs} detik lalu`;
-
-  const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins} menit lalu`;
-
-  return date.toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  try {
+    const date = new Date(lastSyncedAt);
+    return date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  } catch (e) {
+    return "error";
+  }
 }
 
 function formatTimeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Baru saja";
-  if (mins < 60) return `${mins} menit lalu`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} jam lalu`;
-  const days = Math.floor(hours / 24);
-  return `${days} hari lalu`;
+  const now = new Date();
+  const past = new Date(dateStr);
+  const diffMs = now.getTime() - past.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return "Baru saja";
+  if (diffMins < 60) return `${diffMins} menit lalu`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} jam lalu`;
+  return past.toLocaleDateString("id-ID");
 }
