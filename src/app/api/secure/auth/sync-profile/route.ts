@@ -97,6 +97,12 @@ export async function POST(request: Request) {
             : null,
         theme_preference: metadata.theme_preference === "dark" ? "dark" : "light",
         role: "MEMBER",
+    };
+
+    const { error: insertError } = await supabaseServer
+      .from("users")
+      .insert(profilePayload);
+
     if (insertError) {
       // Legacy conflict case: same email exists with old/non-auth id.
       const { data: legacyByEmail, error: legacyReadError } = await supabaseServer

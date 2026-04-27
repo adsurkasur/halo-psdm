@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   generateId,
   type Report,
@@ -71,21 +72,25 @@ interface DataContextType {
   getUnreadCount: (userId: string) => number;
 }
 
+const QUERY_KEYS = {
+  reports: (userId: string, role: string) => ["reports", userId, role],
+  reportHistory: (reportIds: string[]) => ["reportHistory", reportIds],
+  chatSessions: (userId: string, role: string) => ["chatSessions", userId, role],
+  chatMessages: (sessionIds: string[]) => ["chatMessages", sessionIds],
+  adminProfiles: ["adminProfiles"],
+  appointments: (userId: string, role: string) => ["appointments", userId, role],
+  notifications: (userId: string) => ["notifications", userId],
+};
+
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const API_TIMEOUT_MS = 15000;
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [pendingOps, setPendingOps] = useState(0);
   const [dataLoadIssues, setDataLoadIssues] = useState<string[]>([]);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
-  const [reports, setReports] = useState<Report[]>([]);
-  const [statusHistory, setStatusHistory] = useState<ReportStatusHistory[]>([]);
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [adminProfiles, setAdminProfiles] = useState<AdminProfile[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const inFlightRequestsRef = useRef<Map<string, Promise<unknown>>>(new Map());
   const pendingRealtimeTablesRef = useRef<Set<string>>(new Set());
   const reloadDebounceTimerRef = useRef<number | null>(null);
@@ -228,165 +233,131 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setDataLoadIssues([]);
   }, []);
 
-  const reloadReportsAndHistory = useCallback(async (): Promise<string[]> => {
-    if (!user) {
-      setReports([]);
-      setStatusHistory([]);
-      return [];
-    }
+  const reportsQuery = useQuery({
+    queryKey: QUERY_KEYS.reports(user?.id ?? "", user?.role ?? ""),
+    queryFn: async () => {
+      if (!user) return [];
+      const isPh = user.role === "PH";
+      const { data, error } = isPh
+        ? await supabase.from("reports").select("*").order("created_at", { ascending: false })
+        : await supabase.from("reports").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
 
-    const issues: string[] = [];
-    const isPh = user.role === "PH";
-    const reportsRes = isPh
-      ? await supabase.from("reports").select("*").order("created_at", { ascending: false })
-      : await supabase.from("reports").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Report[];
+    },
+    enabled: !!user,
+  });
 
-    if (reportsRes.error) {
-      setReports([]);
-      setStatusHistory([]);
-      issues.push(`Laporan: ${reportsRes.error.message}`);
-      return issues;
-    }
+  const reports = reportsQuery.data ?? [];
 
-    const mappedReports = (reportsRes.data ?? []).map((r) => r as Report);
-    setReports(mappedReports);
-
-    const reportIds = mappedReports.map((r) => r.id);
-    if (reportIds.length === 0) {
-      setStatusHistory([]);
-      markSyncedNow();
-      return issues;
-    }
-
-    const historyRes = await supabase
-      .from("report_status_history")
-      .select("*")
-      .in("report_id", reportIds)
-      .order("created_at", { ascending: true });
-
-    if (historyRes.error) {
-      setStatusHistory([]);
-      issues.push(`Riwayat status: ${historyRes.error.message}`);
-    } else {
-      setStatusHistory((historyRes.data ?? []).map((h) => h as ReportStatusHistory));
-    }
-
-    markSyncedNow();
-    return issues;
-  }, [markSyncedNow, user]);
-
-  const reloadSessionsAndMessages = useCallback(async (): Promise<string[]> => {
-    if (!user) {
-      setChatSessions([]);
-      setChatMessages([]);
-      return [];
-    }
-
-    const issues: string[] = [];
-    const isPh = user.role === "PH";
-    let mappedSessions: ChatSession[] = [];
-
-    if (isPh) {
-      const sessionsRes = await supabase.from("chat_sessions").select("*").order("created_at", { ascending: false });
-      if (sessionsRes.error) {
-        setChatSessions([]);
-        setChatMessages([]);
-        issues.push(`Sesi chat: ${sessionsRes.error.message}`);
-        return issues;
-      }
-      mappedSessions = (sessionsRes.data ?? []).map((s) => s as ChatSession);
-    } else {
-      const sessionsByUserRes = await supabase
-        .from("chat_sessions")
+  const historyQuery = useQuery({
+    queryKey: QUERY_KEYS.reportHistory(reports.map((r) => r.id)),
+    queryFn: async () => {
+      const reportIds = reports.map((r) => r.id);
+      if (reportIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("report_status_history")
         .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .in("report_id", reportIds)
+        .order("created_at", { ascending: true });
 
-      if (sessionsByUserRes.error) {
-        setChatSessions([]);
-        setChatMessages([]);
-        issues.push(`Sesi chat: ${sessionsByUserRes.error.message}`);
-        return issues;
-      }
+      if (error) throw error;
+      return (data ?? []) as ReportStatusHistory[];
+    },
+    enabled: reports.length > 0,
+  });
 
-      const reportIdsRes = await supabase.from("reports").select("id").eq("user_id", user.id);
-      if (reportIdsRes.error) {
-        issues.push(`ID laporan untuk sinkron sesi chat: ${reportIdsRes.error.message}`);
-      }
+  const statusHistory = historyQuery.data ?? [];
 
-      const reportIds = (reportIdsRes.data ?? []).map((row) => row.id as string);
-      let sessionsByReport: ChatSession[] = [];
-      if (reportIds.length > 0) {
-        const sessionsByReportRes = await supabase
-          .from("chat_sessions")
-          .select("*")
-          .in("report_id", reportIds)
-          .order("created_at", { ascending: false });
+  const sessionsQuery = useQuery({
+    queryKey: QUERY_KEYS.chatSessions(user?.id ?? "", user?.role ?? ""),
+    queryFn: async () => {
+      if (!user) return [];
+      const isPh = user.role === "PH";
+      if (isPh) {
+        const { data, error } = await supabase.from("chat_sessions").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
+        return (data ?? []) as ChatSession[];
+      } else {
+        const [sessionsByUser, reportIdsRes] = await Promise.all([
+          supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+          supabase.from("reports").select("id").eq("user_id", user.id),
+        ]);
 
-        if (sessionsByReportRes.error) {
-          issues.push(`Sesi chat berbasis laporan: ${sessionsByReportRes.error.message}`);
-        } else {
-          sessionsByReport = (sessionsByReportRes.data ?? []).map((s) => s as ChatSession);
+        if (sessionsByUser.error) throw sessionsByUser.error;
+        if (reportIdsRes.error) throw reportIdsRes.error;
+
+        const reportIds = (reportIdsRes.data ?? []).map((row) => row.id as string);
+        let sessionsByReport: ChatSession[] = [];
+        if (reportIds.length > 0) {
+          const res = await supabase
+            .from("chat_sessions")
+            .select("*")
+            .in("report_id", reportIds)
+            .order("created_at", { ascending: false });
+          if (res.error) throw res.error;
+          sessionsByReport = (res.data ?? []) as ChatSession[];
         }
+
+        const merged = [...(sessionsByUser.data ?? []), ...sessionsByReport];
+        const deduped = new Map<string, ChatSession>();
+        for (const session of merged) {
+          deduped.set(session.id, session as ChatSession);
+        }
+        return Array.from(deduped.values()).sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
       }
+    },
+    enabled: !!user,
+  });
 
-      const merged = [...(sessionsByUserRes.data ?? []), ...sessionsByReport];
-      const deduped = new Map<string, ChatSession>();
-      for (const session of merged) {
-        deduped.set(session.id, session as ChatSession);
-      }
-      mappedSessions = Array.from(deduped.values()).sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      );
-    }
+  const chatSessions = sessionsQuery.data ?? [];
 
-    setChatSessions(mappedSessions);
+  const messagesQuery = useQuery({
+    queryKey: QUERY_KEYS.chatMessages(chatSessions.map((s) => s.id)),
+    queryFn: async () => {
+      const sessionIds = chatSessions.map((s) => s.id);
+      if (sessionIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .in("session_id", sessionIds)
+        .order("created_at", { ascending: true });
 
-    const sessionIds = mappedSessions.map((s) => s.id);
-    if (sessionIds.length === 0) {
-      setChatMessages([]);
-      markSyncedNow();
-      return issues;
-    }
-
-    const messagesRes = await supabase
-      .from("chat_messages")
-      .select("*")
-      .in("session_id", sessionIds)
-      .order("created_at", { ascending: true });
-
-    if (messagesRes.error) {
-      setChatMessages([]);
-      issues.push(`Pesan chat: ${messagesRes.error.message}`);
-    } else {
-      setChatMessages((messagesRes.data ?? []).map((m) => ({
+      if (error) throw error;
+      return (data ?? []).map((m) => ({
         ...(m as ChatMessage),
         type: ((m as { type?: ChatMessageType }).type ?? "TEXT") as ChatMessageType,
-      })));
-    }
+      }));
+    },
+    enabled: chatSessions.length > 0,
+  });
 
-    markSyncedNow();
-    return issues;
-  }, [markSyncedNow, user]);
+  const chatMessages = messagesQuery.data ?? [];
 
-  const reloadAppointments = useCallback(async (): Promise<string[]> => {
-    if (!user) {
-      setAppointments([]);
-      return [];
-    }
+  const adminProfilesQuery = useQuery({
+    queryKey: QUERY_KEYS.adminProfiles,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("admin_profiles").select("*");
+      if (error) throw error;
+      return mapAdminProfiles(data ?? []);
+    },
+  });
 
-    const isPh = user.role === "PH";
-    const res = isPh
-      ? await supabase.from("appointments").select("*").order("created_at", { ascending: false })
-      : await supabase.from("appointments").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+  const adminProfiles = adminProfilesQuery.data ?? [];
 
-    if (res.error) {
-      setAppointments([]);
-      return [`Janji temu: ${res.error.message}`];
-    }
+  const appointmentsQuery = useQuery({
+    queryKey: QUERY_KEYS.appointments(user?.id ?? "", user?.role ?? ""),
+    queryFn: async () => {
+      if (!user) return [];
+      const isPh = user.role === "PH";
+      const { data, error } = isPh
+        ? await supabase.from("appointments").select("*").order("created_at", { ascending: false })
+        : await supabase.from("appointments").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
 
-    setAppointments(
-      (res.data ?? []).map((a) => {
+      if (error) throw error;
+      return (data ?? []).map((a) => {
         const raw = a as Partial<Appointment>;
         return {
           id: raw.id ?? "",
@@ -398,173 +369,55 @@ export function DataProvider({ children }: { children: ReactNode }) {
           handled_at: raw.handled_at ?? null,
           created_at: raw.created_at ?? new Date().toISOString(),
         } as Appointment;
-      }),
-    );
-    markSyncedNow();
-    return [];
-  }, [markSyncedNow, user]);
-
-  const reloadAdminProfiles = useCallback(async (): Promise<string[]> => {
-    const res = await supabase.from("admin_profiles").select("*");
-    if (res.error) {
-      setAdminProfiles([]);
-      return [`Direktori admin: ${res.error.message}`];
-    }
-
-    setAdminProfiles(mapAdminProfiles(res.data ?? []));
-    markSyncedNow();
-    return [];
-  }, [mapAdminProfiles, markSyncedNow]);
-
-  const reloadNotifications = useCallback(async (): Promise<string[]> => {
-    if (!user) {
-      setNotifications([]);
-      return [];
-    }
-
-    const res = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (res.error) {
-      setNotifications([]);
-      return [`Notifikasi: ${res.error.message}`];
-    }
-
-    setNotifications(mapNotifications(res.data ?? []));
-    markSyncedNow();
-    return [];
-  }, [mapNotifications, markSyncedNow, user]);
-
-  const runReloadsAndCollectIssues = useCallback(async (reloaders: Array<() => Promise<string[]>>) => {
-    const grouped = await Promise.all(reloaders.map((reloader) => reloader()));
-    const issues = grouped.flat();
-    if (issues.length > 0 && user) {
-      console.warn("[DATA_LOAD_PARTIAL_WARN]", { userId: user.id, issues });
-    }
-    setDataLoadIssues(issues);
-  }, [user]);
-
-  const refreshByTables = useCallback(async (tables: Set<string>, options?: { trackBusy?: boolean }) => {
-    if (!user) {
-      clearAllData();
-      return;
-    }
-
-    const reloaders = new Set<() => Promise<string[]>>();
-    for (const table of tables) {
-      if (table === "reports" || table === "report_status_history") {
-        reloaders.add(reloadReportsAndHistory);
-      } else if (table === "chat_sessions" || table === "chat_messages") {
-        reloaders.add(reloadSessionsAndMessages);
-      } else if (table === "appointments") {
-        reloaders.add(reloadAppointments);
-      } else if (table === "notifications") {
-        reloaders.add(reloadNotifications);
-      } else if (table === "admin_profiles") {
-        reloaders.add(reloadAdminProfiles);
-      }
-    }
-
-    const chosenReloaders = reloaders.size > 0
-      ? Array.from(reloaders)
-      : [
-          reloadReportsAndHistory,
-          reloadSessionsAndMessages,
-          reloadAdminProfiles,
-          reloadAppointments,
-          reloadNotifications,
-        ];
-
-    const trackBusy = options?.trackBusy ?? true;
-    if (trackBusy) {
-      await withBusy(async () => {
-        await runReloadsAndCollectIssues(chosenReloaders);
       });
-      return;
-    }
+    },
+    enabled: !!user,
+  });
 
-    await runReloadsAndCollectIssues(chosenReloaders);
-  }, [
-    clearAllData,
-    reloadAdminProfiles,
-    reloadAppointments,
-    reloadNotifications,
-    reloadReportsAndHistory,
-    reloadSessionsAndMessages,
-    runReloadsAndCollectIssues,
-    user,
-    withBusy,
-  ]);
+  const appointments = appointmentsQuery.data ?? [];
 
-  const refreshByTablesBackground = useCallback(async (tables: Set<string>) => {
-    if (backgroundRefreshInFlightRef.current) {
-      return;
-    }
+  const notificationsQuery = useQuery({
+    queryKey: QUERY_KEYS.notifications(user?.id ?? ""),
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-    backgroundRefreshInFlightRef.current = true;
-    try {
-      await refreshByTables(tables, { trackBusy: false });
-    } finally {
-      backgroundRefreshInFlightRef.current = false;
-    }
-  }, [refreshByTables]);
+      if (error) throw error;
+      return mapNotifications(data ?? []);
+    },
+    enabled: !!user,
+  });
 
-  const loadAllData = useCallback(async () => {
-    if (!user) {
-      clearAllData();
-      return;
-    }
-
-    await withBusy(async () => {
-      await runReloadsAndCollectIssues([
-        reloadReportsAndHistory,
-        reloadSessionsAndMessages,
-        reloadAdminProfiles,
-        reloadAppointments,
-        reloadNotifications,
-      ]);
-    });
-  }, [
-    clearAllData,
-    reloadAdminProfiles,
-    reloadAppointments,
-    reloadNotifications,
-    reloadReportsAndHistory,
-    reloadSessionsAndMessages,
-    runReloadsAndCollectIssues,
-    user,
-    withBusy,
-  ]);
+  const notifications = notificationsQuery.data ?? [];
 
   const reloadData = useCallback(async () => {
-    await loadAllData();
-  }, [loadAllData]);
-
-  useEffect(() => {
-    void loadAllData();
-  }, [loadAllData]);
+    await queryClient.invalidateQueries();
+  }, [queryClient]);
 
   useEffect(() => {
     if (!user) return;
-    if (typeof supabase.channel !== "function" || typeof supabase.removeChannel !== "function") {
-      return;
-    }
-    const pendingRealtimeTables = pendingRealtimeTablesRef.current;
 
-    const scheduleReload = (table: string) => {
-      pendingRealtimeTables.add(table);
-      if (reloadDebounceTimerRef.current) {
-        window.clearTimeout(reloadDebounceTimerRef.current);
+    const channel = supabase.channel(`live-data-${user.id}-${user.role}`);
+    
+    const invalidate = (table: string) => {
+      if (table === "reports" || table === "report_status_history") {
+        void queryClient.invalidateQueries({ queryKey: ["reports"] });
+        void queryClient.invalidateQueries({ queryKey: ["reportHistory"] });
+      } else if (table === "chat_sessions") {
+        void queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
+      } else if (table === "chat_messages") {
+        void queryClient.invalidateQueries({ queryKey: ["chatMessages"] });
+      } else if (table === "appointments") {
+        void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      } else if (table === "notifications") {
+        void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      } else if (table === "admin_profiles") {
+        void queryClient.invalidateQueries({ queryKey: ["adminProfiles"] });
       }
-
-      reloadDebounceTimerRef.current = window.setTimeout(() => {
-        const tablesToRefresh = new Set(pendingRealtimeTables);
-        pendingRealtimeTables.clear();
-        void refreshByTablesBackground(tablesToRefresh);
-      }, 350);
     };
 
     const watchedTables = [
@@ -577,97 +430,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       "admin_profiles",
     ];
 
-    const channel = supabase.channel(`live-data-${user.id}-${user.role}`);
     for (const table of watchedTables) {
       channel.on(
         "postgres_changes",
         { event: "*", schema: "public", table },
-        () => scheduleReload(table)
+        () => invalidate(table)
       );
     }
 
-    void channel.subscribe((status) => {
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-        void refreshByTablesBackground(new Set(["chat_sessions", "chat_messages", "reports", "report_status_history"]));
-      }
-    });
+    void channel.subscribe();
 
     return () => {
-      if (reloadDebounceTimerRef.current) {
-        window.clearTimeout(reloadDebounceTimerRef.current);
-        reloadDebounceTimerRef.current = null;
-      }
-      pendingRealtimeTables.clear();
       void supabase.removeChannel(channel);
     };
-  }, [refreshByTablesBackground, user]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const shouldSyncNow = () => document.visibilityState === "visible";
-    const isChatRoute = (path: string) => path.includes("/chat") || path.includes("/admin/chat");
-    const isReportRoute = (path: string) => path.includes("/laporan") || path.includes("/admin");
-
-    const markActivity = () => {
-      lastUserActivityAtRef.current = Date.now();
-    };
-
-    const activityEvents: Array<keyof WindowEventMap> = [
-      "mousemove",
-      "keydown",
-      "pointerdown",
-      "touchstart",
-      "scroll",
-    ];
-
-    for (const eventName of activityEvents) {
-      window.addEventListener(eventName, markActivity, { passive: true });
-    }
-
-    let lastChatSyncAt = 0;
-    let lastReportSyncAt = 0;
-    let lastNotificationSyncAt = 0;
-
-    const syncTick = window.setInterval(() => {
-      if (!shouldSyncNow()) return;
-
-      const now = Date.now();
-      const isIdle = now - lastUserActivityAtRef.current > 30000;
-      const path = window.location.pathname;
-
-      if (isChatRoute(path)) {
-        const chatIntervalMs = isIdle ? 4500 : 1200;
-        if (now - lastChatSyncAt >= chatIntervalMs) {
-          lastChatSyncAt = now;
-          void refreshByTablesBackground(new Set(["chat_sessions", "chat_messages", "notifications"]));
-        }
-        return;
-      }
-
-      if (isReportRoute(path)) {
-        const reportIntervalMs = isIdle ? 18000 : 10000;
-        if (now - lastReportSyncAt >= reportIntervalMs) {
-          lastReportSyncAt = now;
-          void refreshByTablesBackground(new Set(["reports", "report_status_history", "appointments", "admin_profiles", "notifications"]));
-        }
-        return;
-      }
-
-      const notificationIntervalMs = isIdle ? 45000 : 20000;
-      if (now - lastNotificationSyncAt >= notificationIntervalMs) {
-        lastNotificationSyncAt = now;
-        void refreshByTablesBackground(new Set(["notifications"]));
-      }
-    }, 1000);
-
-    return () => {
-      window.clearInterval(syncTick);
-      for (const eventName of activityEvents) {
-        window.removeEventListener(eventName, markActivity);
-      }
-    };
-  }, [refreshByTablesBackground, user]);
+  }, [queryClient, user]);
 
   const addNotification = useCallback(
     async (data: { user_id: string; type: NotificationType; title: string; message: string; link?: string }) => {
@@ -695,13 +471,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         created_at: notif.created_at,
       });
 
-      if (error) {
-        return;
-      }
+      if (error) return;
 
-      setNotifications((prev) => [notif, ...prev]);
+      queryClient.setQueryData(QUERY_KEYS.notifications(notif.user_id), (prev: Notification[] | undefined) => 
+        prev ? [notif, ...prev] : [notif]
+      );
     },
-    []
+    [queryClient]
   );
 
   const addReport = useCallback(
@@ -730,12 +506,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }),
       });
 
-      setReports((prev) => [response.report, ...prev]);
-      setStatusHistory((prev) => [...prev, response.historyEntry]);
+      queryClient.setQueryData(QUERY_KEYS.reports(user?.id ?? "", user?.role ?? ""), (prev: Report[] | undefined) => 
+        prev ? [response.report, ...prev] : [response.report]
+      );
+      
+      queryClient.setQueryData(QUERY_KEYS.reportHistory([response.report.id]), (prev: ReportStatusHistory[] | undefined) => 
+        prev ? [...prev, response.historyEntry] : [response.historyEntry]
+      );
 
       return response.report;
     },
-    [callSecureApi]
+    [callSecureApi, queryClient, user?.id, user?.role]
   );
 
   const updateReportStatus = useCallback(
@@ -747,17 +528,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ newStatus, note }),
       });
 
-      setReports((prev) =>
-        prev.map((r) =>
-          r.id === reportId
-            ? { ...r, status: newStatus, updated_at: new Date().toISOString() }
-            : r
-        )
+      queryClient.setQueryData(QUERY_KEYS.reports(user?.id ?? "", user?.role ?? ""), (prev: Report[] | undefined) => 
+        prev?.map((r) => r.id === reportId ? { ...r, status: newStatus, updated_at: new Date().toISOString() } : r)
       );
 
-      setStatusHistory((prev) => [...prev, response.historyEntry]);
+      queryClient.invalidateQueries({ queryKey: ["reportHistory"] });
+      return response;
     },
-    [callSecureApi]
+    [callSecureApi, queryClient, user?.id, user?.role]
   );
 
   const updateReportUrgency = useCallback(
@@ -769,15 +547,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ newUrgency }),
       });
 
-      setReports((prev) =>
-        prev.map((r) =>
-          r.id === reportId
-            ? { ...r, urgency: newUrgency, updated_at: new Date().toISOString() }
-            : r
-        )
+      queryClient.setQueryData(QUERY_KEYS.reports(user?.id ?? "", user?.role ?? ""), (prev: Report[] | undefined) => 
+        prev?.map((r) => r.id === reportId ? { ...r, urgency: newUrgency, updated_at: new Date().toISOString() } : r)
       );
     },
-    [callSecureApi]
+    [callSecureApi, queryClient, user?.id, user?.role]
   );
 
   const updateReportNotes = useCallback(async (reportId: string, notes: string) => {
@@ -786,10 +560,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .update({ admin_notes: notes, updated_at: new Date().toISOString() })
       .eq("id", reportId);
 
-    setReports((prev) =>
-      prev.map((r) => (r.id === reportId ? { ...r, admin_notes: notes } : r))
+    queryClient.setQueryData(QUERY_KEYS.reports(user?.id ?? "", user?.role ?? ""), (prev: Report[] | undefined) => 
+      prev?.map((r) => r.id === reportId ? { ...r, admin_notes: notes } : r)
     );
-  }, []);
+  }, [queryClient, user?.id, user?.role]);
 
   const createChatSession = useCallback(
     async (userId: string, reportId: string | null = null) => {
@@ -798,10 +572,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ userId, reportId }),
       });
 
-      setChatSessions((prev) => [response.session, ...prev]);
+      queryClient.setQueryData(QUERY_KEYS.chatSessions(user?.id ?? "", user?.role ?? ""), (prev: ChatSession[] | undefined) => 
+        prev ? [response.session, ...prev] : [response.session]
+      );
       return response.session;
     },
-    [callSecureApi]
+    [callSecureApi, queryClient, user?.id, user?.role]
   );
 
   const assignAdminToSession = useCallback(async (sessionId: string, adminId: string) => {
@@ -810,10 +586,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .update({ assigned_admin_id: adminId })
       .eq("id", sessionId);
 
-    setChatSessions((prev) =>
-      prev.map((s) => (s.id === sessionId ? { ...s, assigned_admin_id: adminId } : s))
+    queryClient.setQueryData(QUERY_KEYS.chatSessions(user?.id ?? "", user?.role ?? ""), (prev: ChatSession[] | undefined) => 
+      prev?.map((s) => s.id === sessionId ? { ...s, assigned_admin_id: adminId } : s)
     );
-  }, []);
+  }, [queryClient, user?.id, user?.role]);
 
   const closeChatSession = useCallback(
     async (sessionId: string) => {
@@ -822,15 +598,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({}),
       });
 
-      setChatSessions((prev) =>
-        prev.map((s) =>
-          s.id === sessionId
-            ? { ...s, status: "CLOSED" as const, closed_at: response.closed_at }
-            : s
-        )
+      queryClient.setQueryData(QUERY_KEYS.chatSessions(user?.id ?? "", user?.role ?? ""), (prev: ChatSession[] | undefined) => 
+        prev?.map((s) => s.id === sessionId ? { ...s, status: "CLOSED" as const, closed_at: response.closed_at } : s)
       );
     },
-    [callSecureApi]
+    [callSecureApi, queryClient, user?.id, user?.role]
   );
 
   const addChatMessage = useCallback(
@@ -855,11 +627,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }),
       });
 
-      setChatMessages((prev) => [...prev, response.message]);
-
+      queryClient.invalidateQueries({ queryKey: ["chatMessages"] });
       return response.message;
     },
-    [callSecureApi]
+    [callSecureApi, queryClient]
   );
 
   const markMessagesRead = useCallback(async (sessionId: string, readerId: string) => {
@@ -872,14 +643,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .neq("sender_id", readerId)
       .eq("is_read", false);
 
-    setChatMessages((prev) =>
-      prev.map((m) =>
-        m.session_id === sessionId && m.sender_id !== readerId && !m.is_read
-          ? { ...m, is_read: true, read_at: now }
-          : m
-      )
-    );
-  }, []);
+    queryClient.invalidateQueries({ queryKey: ["chatMessages"] });
+  }, [queryClient]);
 
   const updateAvailability = useCallback(async (adminUserId: string, status: AvailabilityStatus) => {
     await supabase
@@ -887,10 +652,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .update({ availability_status: status })
       .or(`id.eq.${adminUserId},user_id.eq.${adminUserId}`);
 
-    setAdminProfiles((prev) =>
-      prev.map((p) => (p.user_id === adminUserId ? { ...p, availability_status: status } : p))
+    queryClient.setQueryData(QUERY_KEYS.adminProfiles, (prev: AdminProfile[] | undefined) => 
+      prev?.map((p) => p.user_id === adminUserId ? { ...p, availability_status: status } : p)
     );
-  }, []);
+  }, [queryClient]);
 
   const addAdminProfile = useCallback(async (profile: AdminProfile) => {
     await supabase.from("admin_profiles").upsert({
@@ -902,17 +667,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       avatar_url: profile.avatar_url,
     });
 
-    setAdminProfiles((prev) => {
-      const existingIndex = prev.findIndex((item) => item.user_id === profile.user_id);
-      if (existingIndex === -1) {
-        return [...prev, profile];
-      }
-
-      const next = [...prev];
-      next[existingIndex] = profile;
-      return next;
-    });
-  }, []);
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminProfiles });
+  }, [queryClient]);
 
   const removeAdminProfile = useCallback(async (userId: string) => {
     await supabase
@@ -920,8 +676,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .delete()
       .or(`id.eq.${userId},user_id.eq.${userId}`);
 
-    setAdminProfiles((prev) => prev.filter((p) => p.user_id !== userId));
-  }, []);
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminProfiles });
+  }, [queryClient]);
 
   const addAppointment = useCallback(
     async (userId: string, targetAdminId: string) => {
@@ -932,11 +688,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ targetAdminId }),
       });
 
-      setAppointments((prev) => [...prev, response.appointment]);
+      queryClient.setQueryData(QUERY_KEYS.appointments(user?.id ?? "", user?.role ?? ""), (prev: Appointment[] | undefined) => 
+        prev ? [response.appointment, ...prev] : [response.appointment]
+      );
 
       return response.appointment;
     },
-    [callSecureApi]
+    [callSecureApi, queryClient, user?.id, user?.role]
   );
 
   const updateAppointmentStatus = useCallback(
@@ -946,13 +704,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ appointmentId, status, statusNote }),
       });
 
-      setAppointments((prev) =>
-        prev.map((appointment) =>
-          appointment.id === appointmentId ? response.appointment : appointment,
-        ),
+      queryClient.setQueryData(QUERY_KEYS.appointments(user?.id ?? "", user?.role ?? ""), (prev: Appointment[] | undefined) => 
+        prev?.map((a) => a.id === appointmentId ? response.appointment : a)
       );
     },
-    [callSecureApi],
+    [callSecureApi, queryClient, user?.id, user?.role],
   );
 
   const markNotificationRead = useCallback(async (notificationId: string) => {
@@ -961,10 +717,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .update({ is_read: true })
       .eq("id", notificationId);
 
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
+    queryClient.setQueryData(QUERY_KEYS.notifications(user?.id ?? ""), (prev: Notification[] | undefined) => 
+      prev?.map((n) => n.id === notificationId ? { ...n, is_read: true } : n)
     );
-  }, []);
+  }, [queryClient, user?.id]);
 
   const markAllNotificationsRead = useCallback(async (userId: string) => {
     await supabase
@@ -972,15 +728,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .update({ is_read: true })
       .eq("user_id", userId);
 
-    setNotifications((prev) =>
-      prev.map((n) => (n.user_id === userId ? { ...n, is_read: true } : n))
+    queryClient.setQueryData(QUERY_KEYS.notifications(userId), (prev: Notification[] | undefined) => 
+      prev?.map((n) => ({ ...n, is_read: true }))
     );
-  }, []);
+  }, [queryClient]);
 
   const getUnreadCount = useCallback(
-    (userId: string) => notifications.filter((n) => n.user_id === userId && !n.is_read).length,
-    [notifications]
+    (userId: string) => (notificationsQuery.data ?? []).filter((n) => n.user_id === userId && !n.is_read).length,
+    [notificationsQuery.data]
   );
+
 
   return (
     <DataContext.Provider
