@@ -23,7 +23,7 @@ export default function ChatRoom() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, allUsers } = useAuth();
-  const { chatSessions, chatMessages, adminProfiles, addChatMessage, markMessagesRead } = useData();
+  const { chatSessions, chatMessages, adminProfiles, addChatMessage, markMessagesRead, getEffectiveStatus } = useData();
 
   const [input, setInput] = useState("");
   const [mediaPreview, setMediaPreview] = useState<{ url: string; name: string; type: ChatMessageType; file: File } | null>(null);
@@ -216,19 +216,22 @@ export default function ChatRoom() {
             </h3>
             <div className="flex items-center gap-1.5">
               {otherProfile ? (
-                <>
-                  <span
-                    data-testid="sender-chat-input"
-                    className={`h-2 w-2 rounded-full ${
-                      otherProfile.availability_status === "ONLINE" ? "bg-green-500 animate-pulse-glow" :
-                      otherProfile.availability_status === "AWAY" ? "bg-yellow-500" : "bg-gray-400"
-                    }`}
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    {AVAILABILITY_LABELS[otherProfile.availability_status]}
-                    data-testid="sender-chat-send"
-                  </span>
-                </>
+                (() => {
+                  const effectiveStatus = getEffectiveStatus(otherProfile);
+                  return (
+                    <>
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          effectiveStatus === "ONLINE" ? "bg-green-500 animate-pulse-glow" :
+                          effectiveStatus === "AWAY" ? "bg-yellow-500" : "bg-gray-400"
+                        }`}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {AVAILABILITY_LABELS[effectiveStatus]}
+                      </span>
+                    </>
+                  );
+                })()
               ) : (
                 <span className="text-xs text-muted-foreground">
                   {isClosed ? "Sesi ditutup" : "Menunggu..."}

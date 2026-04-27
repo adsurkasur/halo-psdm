@@ -52,6 +52,8 @@ interface DataContextType {
 
   adminProfiles: AdminProfile[];
   updateAvailability: (adminUserId: string, status: AvailabilityStatus) => Promise<void>;
+  updateLastSeen: (adminUserId: string) => Promise<void>;
+  getEffectiveStatus: (profile: AdminProfile) => AvailabilityStatus;
   addAdminProfile: (profile: AdminProfile) => Promise<void>;
   removeAdminProfile: (userId: string) => Promise<void>;
 
@@ -114,6 +116,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         availability_status: raw.availability_status,
         wa_number: raw.wa_number ?? "",
         avatar_url: raw.avatar_url,
+        last_seen_at: raw.last_seen_at ?? new Date().toISOString(),
         updated_at: raw.updated_at ?? new Date().toISOString(),
       } satisfies AdminProfile;
     });
@@ -639,6 +642,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
   }, [queryClient]);
 
+  const updateLastSeen = useCallback(async (adminUserId: string) => {
+    await supabase
+      .from("admin_profiles")
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq("user_id", adminUserId);
+
+    queryClient.setQueryData(QUERY_KEYS.adminProfiles, (prev: AdminProfile[] | undefined) => 
+      prev?.map((p) => p.user_id === adminUserId ? { ...p, last_seen_at: new Date().toISOString() } : p)
+    );
+  }, [queryClient]);
+
+  const getEffectiveStatus = useCallback((profile: AdminProfile): AvailabilityStatus => {
+    const isStale = new Date().getTime() - new Date(profile.last_seen_at).getTime() > 5 * 60 * 1000;
+    return isStale ? "OFFLINE" : profile.availability_status;
+  }, []);
+
   const addAdminProfile = useCallback(async (profile: AdminProfile) => {
     await supabase.from("admin_profiles").upsert({
       user_id: profile.user_id,
@@ -719,6 +738,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [notificationsQuery.data]
   );
 
+  useEffect(() => {
+    if (!user || (user.role !== "HR" && user.role !== "PH")) return;
+
+    // Initial heartbeat
+    void updateLastSeen(user.id);
+
+    // Set up interval for subsequent heartbeats
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void updateLastSeen(user.id);
+      }
+    }, 60000); // 1 minute
+
+    return () => clearInterval(interval);
+  }, [user, updateLastSeen]);
 
   return (
     <DataContext.Provider
@@ -729,9 +763,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         reloadData,
         reports, statusHistory, addReport, updateReportStatus, updateReportUrgency, updateReportNotes,
         chatSessions, chatMessages, createChatSession, assignAdminToSession, closeChatSession, addChatMessage, markMessagesRead,
-        adminProfiles, updateAvailability, addAdminProfile, removeAdminProfile,
+        adminProfiles, updateAvailability, addAdminProfile, removeAdminProfile, getEffectiveStatus,
         appointments, addAppointment, updateAppointmentStatus,
         notifications, addNotification, markNotificationRead, markAllNotificationsRead, getUnreadCount,
+        updateLastSeen,
       }}
     >
       {children}

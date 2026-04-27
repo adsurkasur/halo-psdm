@@ -119,6 +119,7 @@ export interface AdminProfile {
   availability_status: AvailabilityStatus;
   wa_number: string;
   avatar_url: string;
+  last_seen_at: string;
   updated_at: string;
 }
 

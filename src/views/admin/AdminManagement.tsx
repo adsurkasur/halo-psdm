@@ -284,7 +284,7 @@ export default function AdminManagement() {
                       )}
                     </TableCell>
                     <TableCell className="text-sm font-mono">
-                      +{normalizePhoneTo62(profile.wa_number)}
+                      {normalizePhoneTo62(profile.wa_number)}
                     </TableCell>
                     <TableCell className="text-sm flex items-center gap-1">
                       {profile.availability_status === "ONLINE" ? "🟢" : profile.availability_status === "AWAY" ? "🟡" : "⚫"}

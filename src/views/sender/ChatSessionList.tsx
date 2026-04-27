@@ -13,7 +13,7 @@ import { getChatMessagePreview } from "@/lib/supabase-storage";
 export default function ChatSessionList() {
   const navigate = useNavigate();
   const { user, allUsers } = useAuth();
-  const { chatSessions, chatMessages, adminProfiles, reports, createChatSession } = useData();
+  const { chatSessions, chatMessages, adminProfiles, reports, createChatSession, getEffectiveStatus } = useData();
   const { toast } = useToast();
 
   if (!user) return null;
@@ -40,7 +40,7 @@ export default function ChatSessionList() {
   };
 
   // Admin availability
-  const onlineAdmins = adminProfiles.filter((a) => a.availability_status === "ONLINE");
+  const onlineAdmins = adminProfiles.filter((a) => getEffectiveStatus(a) === "ONLINE");
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -134,13 +134,18 @@ export default function ChatSessionList() {
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       {adminProfile && session.status === "OPEN" && (
-                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <span className={`h-1.5 w-1.5 rounded-full ${
-                            adminProfile.availability_status === "ONLINE" ? "bg-green-500" :
-                            adminProfile.availability_status === "AWAY" ? "bg-yellow-500" : "bg-gray-400"
-                          }`} />
-                          {AVAILABILITY_LABELS[adminProfile.availability_status]}
-                        </span>
+                        (() => {
+                          const effectiveStatus = getEffectiveStatus(adminProfile);
+                          return (
+                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <span className={`h-1.5 w-1.5 rounded-full ${
+                                effectiveStatus === "ONLINE" ? "bg-green-500" :
+                                effectiveStatus === "AWAY" ? "bg-yellow-500" : "bg-gray-400"
+                              }`} />
+                              {AVAILABILITY_LABELS[effectiveStatus]}
+                            </span>
+                          );
+                        })()
                       )}
                       {lastMsg && (
                         <span className="text-[10px] text-muted-foreground">
