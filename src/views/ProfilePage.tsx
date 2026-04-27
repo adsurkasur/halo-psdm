@@ -26,6 +26,7 @@ import {
   type BiroBidang,
   type Jabatan,
 } from "@/data/domain";
+import { Separator } from "@/components/ui/separator";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -341,19 +342,41 @@ export default function ProfilePage() {
         </div>
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 animate-float" />
       </div>
-      <Card>
-        <CardContent className="space-y-4">
-          <div>
-            <Label>Foto Profil</Label>
-            <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-4 rounded-lg border bg-muted/20 p-3">
-              <UserAvatarWithPreview
-                name={user.name}
-                avatarUrl={avatarPreviewUrl ?? user.avatar_url}
-                sizeClassName="h-20 w-20"
-                fallbackClassName="bg-primary text-primary-foreground text-lg"
-                modalTitle="Foto Profil"
-              />
-              <div className="space-y-2 w-full">
+      <Card className="shadow-xl shadow-primary/5 border-primary/10">
+        <CardContent className="p-6 md:p-8 space-y-10">
+          {/* Section: Avatar */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-1 bg-primary rounded-full" />
+              <h2 className="text-lg font-bold">Foto Profil</h2>
+            </div>
+            
+            <div className="flex flex-col md:flex-row items-center gap-8 p-6 rounded-2xl border bg-muted/20 border-primary/5 relative group transition-all duration-300 hover:bg-muted/30">
+              <div className="relative">
+                <UserAvatarWithPreview
+                  name={user.name}
+                  avatarUrl={avatarPreviewUrl ?? user.avatar_url}
+                  sizeClassName="h-32 w-32 md:h-40 md:w-40 ring-4 ring-background shadow-2xl"
+                  fallbackClassName="bg-primary text-primary-foreground text-4xl font-bold"
+                  modalTitle="Pratinjau Foto Profil"
+                />
+                <label 
+                  htmlFor="profile-avatar-input"
+                  className="absolute bottom-2 right-2 p-2 bg-primary text-primary-foreground rounded-full cursor-pointer shadow-lg transition-transform hover:scale-110 active:scale-95"
+                >
+                  <Camera className="h-5 w-5" />
+                </label>
+              </div>
+
+              <div className="flex-1 space-y-4 w-full">
+                <div className="space-y-1">
+                  <p className="font-semibold text-base">Perbarui Foto</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed max-w-md">
+                    Gunakan foto terbaik Anda. Format PNG, JPG atau WEBP (Maks. 5MB). 
+                    Sistem akan melakukan crop dan resize otomatis untuk avatar.
+                  </p>
+                </div>
+                
                 <Input
                   id="profile-avatar-input"
                   type="file"
@@ -361,99 +384,161 @@ export default function ProfilePage() {
                   onChange={(e) => void handleAvatarFileSelect(e.target.files?.[0] ?? null)}
                   className="sr-only"
                 />
-                <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-                  <Label
-                    htmlFor="profile-avatar-input"
-                    className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    Choose file
-                  </Label>
-                  <p className="flex-1 truncate rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1 flex items-center px-4 py-2 bg-background rounded-xl border text-sm text-muted-foreground truncate italic">
                     {avatarFile?.name ?? "Belum ada file dipilih"}
-                  </p>
+                  </div>
                   <Button
                     type="button"
-                    variant="outline"
-                    className="w-full sm:w-auto gap-2 whitespace-nowrap"
+                    className="gap-2 px-6 rounded-xl shadow-md transition-all hover:shadow-lg active:scale-[0.98]"
                     onClick={handleUploadAvatar}
-                    disabled={uploadingAvatar}
+                    disabled={uploadingAvatar || !avatarFile}
                   >
-                    {uploadingAvatar ? <Upload className="h-4 w-4 animate-pulse" /> : <Camera className="h-4 w-4" />}
-                    {uploadingAvatar ? "Mengunggah..." : "Perbarui Foto Profil"}
+                    {uploadingAvatar ? <Upload className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    {uploadingAvatar ? "Mengunggah..." : "Unggah & Simpan"}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Format PNG/JPG/WEBP, maksimal 5MB. Crop dan resize otomatis ke ukuran avatar.</p>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div>
-            <Label>Nama</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          <Separator className="opacity-50" />
+
+          {/* Section: Basic Identity */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-1 bg-primary rounded-full" />
+              <h2 className="text-lg font-bold">Identitas Dasar</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="profile-name" className="text-sm font-semibold ml-1">Nama Lengkap</Label>
+                <Input 
+                  id="profile-name"
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                  className="rounded-xl border-primary/10 focus:border-primary focus:ring-primary/20"
+                  placeholder="Masukkan nama lengkap"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-email" className="text-sm font-semibold ml-1">Alamat Email</Label>
+                <Input 
+                  id="profile-email"
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  className="rounded-xl border-primary/10 focus:border-primary focus:ring-primary/20"
+                  placeholder="email@contoh.com"
+                />
+                <p className="text-[10px] text-muted-foreground px-1">
+                  💡 Memerlukan konfirmasi ulang pada email baru dan lama.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-whatsapp" className="text-sm font-semibold ml-1">Nomor WhatsApp</Label>
+                <Input
+                  id="profile-whatsapp"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                  placeholder="6281234567890"
+                  className="rounded-xl border-primary/10 focus:border-primary focus:ring-primary/20"
+                />
+                <p className="text-[10px] text-muted-foreground px-1">
+                  Format: kode negara (misal 62) + nomor tanpa 0 depan.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <Separator className="opacity-50" />
+
+          {/* Section: Organization */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-1 bg-primary rounded-full" />
+              <h2 className="text-lg font-bold">Organisasi</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold ml-1">Biro / Bidang</Label>
+                <Select value={biro} onValueChange={(v) => setBiro(v as BiroBidang)}>
+                  <SelectTrigger className="rounded-xl border-primary/10">
+                    <SelectValue placeholder="Pilih biro" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {Object.entries(BIRO_LABELS).map(([key, label]) => (
+                      <SelectItem key={key} value={key} className="rounded-lg">
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold ml-1">Jabatan</Label>
+                <Select value={jabatan} onValueChange={(v) => setJabatan(v as Jabatan)}>
+                  <SelectTrigger className="rounded-xl border-primary/10">
+                    <SelectValue placeholder="Pilih jabatan" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {Object.entries(JABATAN_LABELS).map(([key, label]) => (
+                      <SelectItem key={key} value={key} className="rounded-lg">
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </section>
+
+          <Separator className="opacity-50" />
+
+          {/* Section: Security */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-1 bg-primary rounded-full" />
+              <h2 className="text-lg font-bold">Keamanan Akun</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="profile-pass" className="text-sm font-semibold ml-1">Password Baru</Label>
+                <Input
+                  id="profile-pass"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="rounded-xl border-primary/10"
+                  placeholder="Kosongkan jika tidak ingin diubah"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-confirm" className="text-sm font-semibold ml-1">Konfirmasi Password</Label>
+                <Input
+                  id="profile-confirm"
+                  type="password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  className="rounded-xl border-primary/10"
+                  placeholder="Ulangi password baru"
+                />
+              </div>
+            </div>
+          </section>
+
+          <div className="pt-4">
+            <Button 
+              onClick={handleSave} 
+              disabled={saving}
+              className="w-full md:w-auto px-12 h-12 text-base font-bold rounded-2xl shadow-xl shadow-primary/20 transition-all hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
+            >
+              {saving ? "Menyimpan..." : "Simpan Semua Perubahan"}
+            </Button>
           </div>
-          <div>
-            <Label>Email</Label>
-            <Input value={email} onChange={(e) => setEmail(e.target.value)} />
-            <p className="text-xs text-muted-foreground mt-1">Perubahan email akan meminta konfirmasi ulang di email lama dan email baru.</p>
-          </div>
-          <div>
-            <Label>Biro/Bidang</Label>
-            <Select value={biro} onValueChange={(v) => setBiro(v as BiroBidang)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Pilih biro" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(BIRO_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Jabatan</Label>
-            <Select value={jabatan} onValueChange={(v) => setJabatan(v as Jabatan)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Pilih jabatan" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(JABATAN_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Nomor WhatsApp</Label>
-            <Input
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              placeholder="6281234567890"
-            />
-            <p className="text-[10px] text-muted-foreground mt-1">Gunakan format angka dengan kode negara (contoh: 6281234567890)</p>
-          </div>
-          <div>
-            <Label>Password Baru</Label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>Konfirmasi Password</Label>
-            <Input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
-          </div>
-          <Button onClick={handleSave} disabled={saving}>
-            Simpan
-          </Button>
         </CardContent>
       </Card>
 
