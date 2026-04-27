@@ -7,7 +7,6 @@ on:
     branches: [main, master, develop]
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
   NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -75,19 +74,27 @@ jobs:
       - name: Build Next.js
         run: bun run build
 
-      - name: Verify build output
+      - name: Verify and Package Build
         run: |
-          if [ ! -f ".next/BUILD_ID" ]; then
-            echo "::error::Next.js build output (BUILD_ID) not found. Build may have failed silently."
+          echo "Checking workspace content..."
+          ls -la
+          if [ ! -d ".next" ]; then
+            echo "::error::.next directory not found! Check build logs."
             exit 1
           fi
-          ls -R .next | head -n 20
+          if [ ! -f ".next/BUILD_ID" ]; then
+            echo "::error::BUILD_ID not found in .next! Build may be incomplete."
+            exit 1
+          fi
+          echo "Packaging build into tarball..."
+          tar -cf next-build.tar .next
+          ls -lh next-build.tar
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nextjs-build
-          path: .next
+          name: nextjs-build-tar
+          path: next-build.tar
           retention-days: 1
 
   # ──────────────────────────────────────────────
@@ -122,11 +129,21 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      - name: Download build artifact
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: nextjs-build
-          path: .next
+          name: nextjs-build-tar
+          path: .
+
+      - name: Extract build artifacts
+        run: |
+          if [ ! -f "next-build.tar" ]; then
+            echo "::error::next-build.tar not found after download!"
+            ls -la
+            exit 1
+          fi
+          tar -xf next-build.tar
+          ls -d .next
 
       - name: Install Playwright Browsers
         run: bunx playwright install --with-deps chromium
