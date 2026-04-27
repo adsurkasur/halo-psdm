@@ -58,11 +58,17 @@ export default function AdminManagement() {
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <h1 className="text-xl font-bold">Kelola HR dan PH</h1>
-      <p className="text-sm text-muted-foreground">
-        Kelola role dan ketersediaan penerima janji temu PSDM (HR/PH). Hanya PH yang dapat mengakses halaman ini.
-      </p>
+    <div className="space-y-6 page-enter">
+      {/* Hero Header Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground shadow-lg shadow-primary/10">
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold">Kelola HR dan PH</h1>
+          <p className="mt-1 text-primary-foreground/80 text-sm font-medium">
+            Atur role dan ketersediaan tim PSDM untuk layanan janji temu.
+          </p>
+        </div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 animate-float" />
+      </div>
 
       {user?.role === "PH" && (
         <Card>

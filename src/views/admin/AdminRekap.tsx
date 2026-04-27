@@ -83,13 +83,25 @@ export default function AdminRekap() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Rekap & Analitik</h1>
-        <Button className="gap-2" onClick={handleExport}>
-          <Download className="h-4 w-4" />
-          Unduh CSV
-        </Button>
+    <div className="space-y-6 page-enter">
+      {/* Hero Header Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground shadow-lg shadow-primary/10">
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Rekap & Analitik</h1>
+            <p className="mt-1 text-primary-foreground/80 text-sm font-medium">
+              Ringkasan performa dan data statistik Halo PSDM.
+            </p>
+          </div>
+          <Button 
+            className="gap-2 bg-white text-primary hover:bg-white/90 border-0 shadow-lg" 
+            onClick={handleExport}
+          >
+            <Download className="h-4 w-4" />
+            Unduh CSV
+          </Button>
+        </div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 animate-float" />
       </div>
 
       {/* Summary Stats */}

@@ -43,13 +43,25 @@ export default function ChatSessionList() {
   const onlineAdmins = adminProfiles.filter((a) => getEffectiveStatus(a) === "ONLINE");
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Ruang Curhat</h1>
-        <Button className="gap-2" onClick={handleNewChat}>
-          <Plus className="h-4 w-4" />
-          Mulai Chat Baru
-        </Button>
+    <div className="space-y-6 page-enter">
+      {/* Hero Header Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground shadow-lg shadow-primary/10">
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Ruang Curhat</h1>
+            <p className="mt-1 text-primary-foreground/80 text-sm font-medium">
+              Sampaikan aspirasi atau masalah Anda secara langsung.
+            </p>
+          </div>
+          <Button 
+            className="gap-2 bg-white text-primary hover:bg-white/90 border-0 shadow-lg" 
+            onClick={handleNewChat}
+          >
+            <Plus className="h-4 w-4" />
+            Mulai Chat Baru
+          </Button>
+        </div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 animate-float" />
       </div>
 
       {/* Admin availability indicator */}

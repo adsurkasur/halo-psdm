@@ -90,9 +90,9 @@ export default function AppointmentDirectory() {
   const visibleProfiles = adminProfiles.filter((p) => p.user_id !== user?.id);
 
   return (
-    <div className="w-full px-4 md:px-10 lg:px-16 py-8 space-y-8 page-enter">
+    <div className="space-y-6 page-enter">
       {/* Hero Header Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-12 text-primary-foreground shadow-xl shadow-primary/20">
+      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground shadow-lg shadow-primary/10 transition-all duration-500 hover:shadow-xl hover:shadow-primary/20">
         <div className="relative z-10 max-w-2xl">
           <Badge variant="secondary" className="mb-4 bg-white/20 text-white border-white/30 backdrop-blur-sm">
             <Calendar className="mr-1 h-3 w-3" />

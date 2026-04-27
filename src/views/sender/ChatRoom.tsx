@@ -198,7 +198,7 @@ export default function ChatRoom() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto page-enter h-[calc(100vh-8rem)]">
+    <div className="page-enter h-[calc(100vh-8rem)]">
       <Card className="flex flex-col h-full animate-scale-in">
         {/* Header */}
         <CardHeader className="border-b py-3 px-4 flex flex-row items-center gap-3 space-y-0">

@@ -18,13 +18,25 @@ export default function SenderReportList() {
   const myReports = reports.filter((r) => r.user_id === user.id);
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Laporan Saya</h1>
-        <Button className="gap-2" onClick={() => navigate("/laporan/buat")}>
-          <Plus className="h-4 w-4" />
-          Buat Laporan
-        </Button>
+    <div className="space-y-6 page-enter">
+      {/* Hero Header Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground shadow-lg shadow-primary/10">
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Laporan Saya</h1>
+            <p className="mt-1 text-primary-foreground/80 text-sm font-medium">
+              Daftar aspirasi dan aduan yang telah Anda kirimkan.
+            </p>
+          </div>
+          <Button 
+            className="gap-2 bg-white text-primary hover:bg-white/90 border-0 shadow-lg" 
+            onClick={() => navigate("/laporan/buat")}
+          >
+            <Plus className="h-4 w-4" />
+            Buat Laporan
+          </Button>
+        </div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 animate-float" />
       </div>
 
       <Card>

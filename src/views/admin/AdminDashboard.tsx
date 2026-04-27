@@ -29,14 +29,29 @@ export default function AdminDashboard() {
     .slice(0, 8);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="text-xl font-bold">Dasbor PH</h1>
-        {user.role === "PH" && (
-          <p className="text-xs text-muted-foreground">
-            {isBusy ? "Sedang sinkron..." : `Sinkron terakhir ${formatLastSync(lastSyncedAt)}`}
-          </p>
-        )}
+    <div className="space-y-6 page-enter">
+      {/* Hero Header Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground shadow-lg shadow-primary/10 transition-all duration-500 hover:shadow-xl hover:shadow-primary/20">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Dasbor PH</h1>
+            <p className="mt-1 text-primary-foreground/80 text-sm font-medium">
+              Selamat datang kembali, {user.name}. Mari kelola aspirasi hari ini.
+            </p>
+          </div>
+          {user.role === "PH" && (
+            <div className="flex flex-col items-start md:items-end bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
+              <p className="text-[10px] uppercase tracking-wider opacity-70 font-bold mb-1">Status Sinkronisasi</p>
+              <p className="text-xs font-semibold whitespace-nowrap">
+                {isBusy ? "⚡ Sedang sinkron..." : `✅ ${formatLastSync(lastSyncedAt)}`}
+              </p>
+            </div>
+          )}
+        </div>
+        
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 animate-float" />
+        <div className="absolute bottom-0 left-1/3 w-20 h-20 bg-white/5 rounded-full translate-y-10" />
       </div>
 
       {/* Stats */}

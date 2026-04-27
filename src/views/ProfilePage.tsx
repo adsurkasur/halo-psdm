@@ -330,8 +330,17 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <h1 className="text-xl font-bold">Pengaturan Profil</h1>
+    <div className="space-y-6 page-enter">
+      {/* Hero Header Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground shadow-lg shadow-primary/10">
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold">Pengaturan Akun</h1>
+          <p className="mt-1 text-primary-foreground/80 text-sm font-medium">
+            Kelola informasi profil dan kredensial akses Anda.
+          </p>
+        </div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 animate-float" />
+      </div>
       <Card>
         <CardContent className="space-y-4">
           <div>

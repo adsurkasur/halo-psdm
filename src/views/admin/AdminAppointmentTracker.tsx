@@ -63,9 +63,20 @@ export default function AdminAppointmentTracker() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 page-enter">
+      {/* Hero Header Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground shadow-lg shadow-primary/10">
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold">Tracking Janji Temu</h1>
+          <p className="mt-1 text-primary-foreground/80 text-sm font-medium">
+            Kelola jadwal dan status pertemuan dengan anggota.
+          </p>
+        </div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 animate-float" />
+      </div>
+
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">Tracking Janji Temu</h1>
+        <div /> {/* Spacer */}
         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as AppointmentStatus | "ALL")}>
           <SelectTrigger data-testid="appointment-status-filter" className="w-[180px]">
             <SelectValue placeholder="Filter status" />

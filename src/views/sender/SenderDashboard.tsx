@@ -24,15 +24,17 @@ export default function SenderDashboard() {
 
   return (
     <div className="space-y-6 page-enter">
-      {/* Welcome */}
-      <Card className="bg-primary text-primary-foreground border-0 animate-scale-in overflow-hidden relative">
-        <CardContent className="py-6 relative z-10">
-          <h1 className="text-2xl font-bold">Halo, {user.name}! 👋</h1>
-          <p className="mt-1 opacity-90">Ada yang bisa kami bantu hari ini?</p>
-        </CardContent>
+      {/* Welcome Hero Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground shadow-lg shadow-primary/10 transition-all duration-500 hover:shadow-xl hover:shadow-primary/20">
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold animate-slide-up">Halo, {user.name}! 👋</h1>
+          <p className="mt-1 text-primary-foreground/80 text-sm font-medium animate-slide-up" style={{ animationDelay: "100ms" }}>
+            Ada yang bisa kami bantu hari ini? Sampaikan aspirasi Anda di sini.
+          </p>
+        </div>
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 animate-float" />
-        <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-6 -translate-x-4" />
-      </Card>
+        <div className="absolute bottom-0 left-1/4 w-20 h-20 bg-white/5 rounded-full translate-y-10" />
+      </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">

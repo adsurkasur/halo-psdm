@@ -223,7 +223,7 @@ export default function AdminChatQueue() {
   if (!user) return null;
 
   return (
-    <div className="animate-fade-in h-[calc(100vh-8rem)]">
+    <div className="page-enter h-[calc(100vh-8rem)]">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
         {/* Left: Chat List */}
         <Card className="lg:col-span-1 flex flex-col">

@@ -52,7 +52,7 @@ export default function SenderReportDetail() {
   };
 
   return (
-    <div data-testid="sender-report-detail" className="space-y-4 page-enter max-w-3xl mx-auto">
+    <div data-testid="sender-report-detail" className="space-y-6 page-enter">
       <Button variant="ghost" size="sm" onClick={() => navigate("/laporan")} className="gap-1 transition-transform duration-200 hover:scale-105">
         <ArrowLeft className="h-4 w-4" /> Kembali
       </Button>

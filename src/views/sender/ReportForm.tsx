@@ -182,7 +182,7 @@ export default function ReportForm({
   };
 
   return (
-    <div className="max-w-2xl mx-auto page-enter">
+    <div className="space-y-6 page-enter">
       <Card className="animate-scale-in">
         <CardHeader>
           <CardTitle>Buat Laporan / Pengaduan</CardTitle>

@@ -111,7 +111,7 @@ export default function ReportDetail() {
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="space-y-6 page-enter">
       {hiddenUrgencyInput}
       <Button variant="ghost" size="sm" onClick={() => navigate("/admin/laporan")} className="gap-1">
         <ArrowLeft className="h-4 w-4" /> Kembali
