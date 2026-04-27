@@ -116,7 +116,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         availability_status: raw.availability_status,
         wa_number: raw.wa_number ?? "",
         avatar_url: raw.avatar_url,
-        last_seen_at: raw.last_seen_at ?? new Date().toISOString(),
+        last_seen_at: raw.last_seen_at ?? new Date(0).toISOString(),
         updated_at: raw.updated_at ?? new Date().toISOString(),
       } satisfies AdminProfile;
     });
@@ -741,8 +741,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user || (user.role !== "HR" && user.role !== "PH")) return;
 
-    // Initial heartbeat
-    void updateLastSeen(user.id);
+    // Initial heartbeat & ensure they are ONLINE if they just logged in/opened app
+    const initHeartbeat = async () => {
+      await updateLastSeen(user.id);
+      
+      // Auto-set to ONLINE if they were OFFLINE to make it feel responsive
+      const myProfile = adminProfiles.find(p => p.user_id === user.id);
+      if (myProfile && myProfile.availability_status === "OFFLINE") {
+        await updateAvailability(user.id, "ONLINE");
+      }
+    };
+
+    void initHeartbeat();
 
     // Set up interval for subsequent heartbeats
     const interval = setInterval(() => {
@@ -752,7 +762,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }, 60000); // 1 minute
 
     return () => clearInterval(interval);
-  }, [user, updateLastSeen]);
+  }, [user, updateLastSeen, updateAvailability, adminProfiles]);
 
   return (
     <DataContext.Provider

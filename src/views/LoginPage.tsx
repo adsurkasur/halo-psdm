@@ -235,9 +235,9 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-700 p-4">
-      <div className="w-full max-w-md animate-scale-in">
+      <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="text-center mb-8 animate-float">
+        <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary text-primary-foreground text-2xl font-bold shadow-lg shadow-primary/30">
             HP
           </div>

@@ -16,8 +16,8 @@ import { JABATAN_LABELS } from "@/data/domain";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
 
 export function AppHeader() {
-  const { user, logout, updateProfile } = useAuth();
-  const { notifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } = useData();
+  const { user, logout } = useAuth();
+  const { updateAvailability, notifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } = useData();
   const navigate = useNavigate();
   const { resolvedTheme, theme, setTheme } = useTheme();
 
@@ -28,7 +28,14 @@ export function AppHeader() {
     .filter((n) => n.user_id === user.id)
     .slice(0, 20);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (user.role === "HR" || user.role === "PH") {
+      try {
+        await updateAvailability(user.id, "OFFLINE");
+      } catch (err) {
+        console.error("Failed to set offline status on logout:", err);
+      }
+    }
     logout();
     navigate("/login");
   };
