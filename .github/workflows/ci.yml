@@ -7,6 +7,7 @@ on:
     branches: [main, master, develop]
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
   NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -73,6 +74,14 @@ jobs:
 
       - name: Build Next.js
         run: bun run build
+
+      - name: Verify build output
+        run: |
+          if [ ! -f ".next/BUILD_ID" ]; then
+            echo "::error::Next.js build output (BUILD_ID) not found. Build may have failed silently."
+            exit 1
+          fi
+          ls -R .next | head -n 20
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
