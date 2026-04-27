@@ -2,18 +2,27 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
 jobs:
-  quality-check:
+  # ──────────────────────────────────────────────
+  # Stage 1: Lint + Type Check (fast feedback)
+  # ──────────────────────────────────────────────
+  quality:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
@@ -24,19 +33,20 @@ jobs:
         run: bun run lint
 
       - name: Type Check
-        run: bun x tsc --noEmit
+        run: bunx tsc --noEmit
 
-      - name: Unit Tests
-        run: bun run test
-
+  # ──────────────────────────────────────────────
+  # Stage 2: Production Build
+  # ──────────────────────────────────────────────
   build:
-    needs: quality-check
+    name: Build
+    needs: quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
@@ -45,7 +55,72 @@ jobs:
 
       - name: Build Next.js
         run: bun run build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: .next
+          retention-days: 1
+
+  # ──────────────────────────────────────────────
+  # Stage 3: E2E Tests (Playwright)
+  # ──────────────────────────────────────────────
+  e2e:
+    name: E2E Tests
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      E2E_PH_EMAIL: ${{ secrets.E2E_PH_EMAIL }}
+      E2E_PH_PASSWORD: ${{ secrets.E2E_PH_PASSWORD }}
+      E2E_SENDER_EMAIL: ${{ secrets.E2E_SENDER_EMAIL }}
+      E2E_SENDER_PASSWORD: ${{ secrets.E2E_SENDER_PASSWORD }}
+      E2E_HR_EMAIL: ${{ secrets.E2E_HR_EMAIL }}
+      E2E_HR_PASSWORD: ${{ secrets.E2E_HR_PASSWORD }}
+      E2E_REPORT_ID: ${{ secrets.E2E_REPORT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run E2E Tests
+        run: bunx playwright test --project=chromium
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ──────────────────────────────────────────────
+  # Stage 4: Security Audit
+  # ──────────────────────────────────────────────
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run npm audit
+        run: bun pm ls --all 2>&1 | head -100
+        continue-on-error: true

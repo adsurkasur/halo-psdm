@@ -16,6 +16,7 @@ export async function PATCH(
 
   const { reportId } = await params;
   const body = (await request.json()) as { newStatus: string; note?: string };
+  const now = new Date().toISOString();
 
   const { data: report } = await supabaseServer
     .from("reports")

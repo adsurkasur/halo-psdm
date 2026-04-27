@@ -66,10 +66,6 @@ export async function POST(request: Request) {
           typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
             ? metadata.avatar_url
             : existing.avatar_url,
-        avatar_url:
-          typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
-            ? metadata.avatar_url
-            : existing.avatar_url,
         theme_preference:
           metadata.theme_preference === "dark" || metadata.theme_preference === "light"
             ? metadata.theme_preference
@@ -91,12 +87,12 @@ export async function POST(request: Request) {
       email: authUser.email ?? "",
       biro: pickBiro(metadata.biro),
       jabatan: pickJabatan(metadata.jabatan),
-        avatar_url:
-          typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
-            ? metadata.avatar_url
-            : null,
-        theme_preference: metadata.theme_preference === "dark" ? "dark" : "light",
-        role: "MEMBER",
+      avatar_url:
+        typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
+          ? metadata.avatar_url
+          : null,
+      theme_preference: metadata.theme_preference === "dark" ? "dark" : "light",
+      role: "MEMBER",
     };
 
     const { error: insertError } = await supabaseServer

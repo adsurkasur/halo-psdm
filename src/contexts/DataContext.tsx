@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   generateId,
   type Report,
@@ -89,14 +89,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [pendingOps, setPendingOps] = useState(0);
-  const [dataLoadIssues, setDataLoadIssues] = useState<string[]>([]);
-  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const inFlightRequestsRef = useRef<Map<string, Promise<unknown>>>(new Map());
-  const pendingRealtimeTablesRef = useRef<Set<string>>(new Set());
-  const reloadDebounceTimerRef = useRef<number | null>(null);
-  const backgroundRefreshInFlightRef = useRef(false);
-  const lastUserActivityAtRef = useRef(Date.now());
   const isBusy = pendingOps > 0;
+  const dataLoadIssues: string[] = [];
+  const lastSyncedAt: string | null = null;
 
   const mapAdminProfiles = useCallback((rows: unknown[]) => {
     return rows.map((p) => {
@@ -108,6 +104,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         availability_status: AvailabilityStatus;
         wa_number?: string;
         avatar_url: string;
+        updated_at?: string;
       };
 
       return {
@@ -117,6 +114,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         availability_status: raw.availability_status,
         wa_number: raw.wa_number ?? "",
         avatar_url: raw.avatar_url,
+        updated_at: raw.updated_at ?? new Date().toISOString(),
       } satisfies AdminProfile;
     });
   }, []);
@@ -146,10 +144,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         created_at: raw.created_at,
       };
     });
-  }, []);
-
-  const markSyncedNow = useCallback(() => {
-    setLastSyncedAt(new Date().toISOString());
   }, []);
 
   const withBusy = useCallback(async <T,>(executor: () => Promise<T>): Promise<T> => {
@@ -221,17 +215,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     [withBusy]
   );
-
-  const clearAllData = useCallback(() => {
-    setReports([]);
-    setStatusHistory([]);
-    setChatSessions([]);
-    setChatMessages([]);
-    setAdminProfiles([]);
-    setAppointments([]);
-    setNotifications([]);
-    setDataLoadIssues([]);
-  }, []);
 
   const reportsQuery = useQuery({
     queryKey: QUERY_KEYS.reports(user?.id ?? "", user?.role ?? ""),
@@ -532,8 +515,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         prev?.map((r) => r.id === reportId ? { ...r, status: newStatus, updated_at: new Date().toISOString() } : r)
       );
 
-      queryClient.invalidateQueries({ queryKey: ["reportHistory"] });
-      return response;
+      void queryClient.invalidateQueries({ queryKey: ["reportHistory"] });
     },
     [callSecureApi, queryClient, user?.id, user?.role]
   );

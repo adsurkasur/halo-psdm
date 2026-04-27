@@ -50,6 +50,7 @@ export default function AdminManagement() {
       availability_status: adminProfiles.find((p) => p.user_id === target.id)?.availability_status ?? "OFFLINE",
       wa_number: normalizedPhone,
       avatar_url: target.avatar_url ?? "",
+      updated_at: new Date().toISOString(),
     });
     return true;
   };
