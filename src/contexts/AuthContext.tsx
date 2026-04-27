@@ -128,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: existingProfile, error: existingProfileError } = await supabase
       .from("users")
-      .select("id, name, email, biro, jabatan, avatar_url, theme_preference, is_active, created_at, updated_at")
+      .select("id, name, email, biro, jabatan, avatar_url, is_active, created_at, updated_at")
       .eq("id", authUser.id)
       .maybeSingle();
 
@@ -142,10 +142,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: authUser.email ?? (existingProfile as UsersRow).email,
         biro: metadataBiro ?? (existingProfile as UsersRow).biro,
         jabatan: metadataJabatan ?? (existingProfile as UsersRow).jabatan,
-        theme_preference:
-          metadata.theme_preference === "dark" || metadata.theme_preference === "light"
-            ? metadata.theme_preference
-            : (existingProfile as UsersRow).theme_preference ?? "light",
       };
 
       const { error } = await supabase
@@ -166,7 +162,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       biro: metadataBiro ?? "INFOKOM",
       jabatan: metadataJabatan ?? "ANGGOTA_MUDA",
       role: "MEMBER",
-      theme_preference: metadata.theme_preference === "dark" ? "dark" : "light",
       is_active: true,
       created_at: createdAt,
     });
@@ -182,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const readProfile = async () =>
       supabase
       .from("users")
-      .select("id, name, biro, jabatan, role, email, avatar_url, theme_preference, is_active, created_at, updated_at")
+      .select("id, name, biro, jabatan, role, email, avatar_url, is_active, created_at, updated_at")
       .eq("id", userId)
       .maybeSingle();
 
@@ -222,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const refreshPromise = (async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("id, name, biro, jabatan, role, email, avatar_url, theme_preference, is_active, created_at, updated_at")
+        .select("id, name, biro, jabatan, role, email, avatar_url, is_active, created_at, updated_at")
         .order("created_at", { ascending: true });
 
       if (error) {
@@ -345,7 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (ensured.success) {
         const { data, error } = await supabase
           .from("users")
-          .select("id, name, biro, jabatan, role, email, avatar_url, theme_preference, is_active, created_at")
+          .select("id, name, biro, jabatan, role, email, avatar_url, is_active, created_at, updated_at")
           .eq("id", authUserData.user.id)
           .maybeSingle();
 
@@ -358,14 +353,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(mapRowToUser(profile));
           return { success: true, profile };
         }
-      }
-
-      if (!ensured.success) {
-        console.warn("[SYNC_PROFILE_LOCAL_FALLBACK_WARN]", {
-          diagnosticCode: "CLIENT_LOCAL_ENSURE_FAILED",
-          stage: "local-ensure",
-          error: ensured.error,
-        });
       }
 
       if (attempt < 2) {
@@ -457,7 +444,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!synced.profile) {
         const { data: fallbackProfile } = await supabase
           .from("users")
-          .select("id, name, biro, jabatan, role, email, avatar_url, theme_preference, is_active, created_at, updated_at")
+          .select("id, name, biro, jabatan, role, email, avatar_url, is_active, created_at, updated_at")
           .eq("id", authData.user.id)
           .maybeSingle();
 
@@ -571,7 +558,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (typeof updates.biro !== "undefined") updatePayload.biro = updates.biro;
       if (typeof updates.jabatan !== "undefined") updatePayload.jabatan = updates.jabatan;
       if (typeof updates.avatar_url !== "undefined") updatePayload.avatar_url = updates.avatar_url;
-      if (typeof updates.theme_preference !== "undefined") updatePayload.theme_preference = updates.theme_preference;
 
       let emailChangeMessage: string | undefined;
 

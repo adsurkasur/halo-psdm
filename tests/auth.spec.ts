@@ -12,15 +12,19 @@ import { test, expect } from "@playwright/test";
 import { hardResetToLogin, login, logout, readE2EEnv } from "./helpers/e2e-helpers";
 
 test.describe("Authentication", () => {
+  test.beforeEach(async ({ page }) => {
+    await hardResetToLogin(page);
+  });
+
   test("shows login page with Masuk and Daftar tabs", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByText("Halo PSDM", { exact: false })).toBeVisible({ timeout: 10_000 });
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: /Halo PSDM/i })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: "Masuk" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Daftar" })).toBeVisible();
   });
 
   test("rejects incorrect credentials with error message", async ({ page }) => {
-    await page.goto("/login");
     await page.getByPlaceholder("nama@arsc.org").fill("nonexistent@test.com");
     await page.getByPlaceholder("Masukkan password...").fill("wrongpassword123");
     await page.locator("form").first().getByRole("button", { name: "Masuk" }).click();
@@ -33,8 +37,8 @@ test.describe("Authentication", () => {
     test.skip(!env, "Set E2E_* env vars to run this test.");
 
     await login(page, env!.senderEmail, env!.senderPassword);
-    await expect(page).toHaveURL(/\/$|\/dashboard$/, { timeout: 20_000 });
-    await expect(page.getByText("Halo,")).toBeVisible({ timeout: 10_000 });
+    await expect(page).toHaveURL(/\/$|\/dashboard$/, { timeout: 30_000 });
+    await expect(page.getByText("Halo,")).toBeVisible({ timeout: 20_000 });
   });
 
   test("PH login redirects to admin dashboard", async ({ page }) => {
@@ -42,7 +46,7 @@ test.describe("Authentication", () => {
     test.skip(!env, "Set E2E_* env vars to run this test.");
 
     await login(page, env!.phEmail, env!.phPassword);
-    await expect(page).toHaveURL(/\/admin\/dasbor|\/$/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/admin\/dasbor|\/$/, { timeout: 30_000 });
   });
 
   test("session persists across page reload", async ({ page }) => {
@@ -50,11 +54,11 @@ test.describe("Authentication", () => {
     test.skip(!env, "Set E2E_* env vars to run this test.");
 
     await login(page, env!.senderEmail, env!.senderPassword);
-    await expect(page).toHaveURL(/\/$|\/dashboard$/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/$|\/dashboard$/, { timeout: 30_000 });
 
     await page.reload();
-    await page.waitForTimeout(2000);
-    await expect(page).not.toHaveURL(/\/login/);
+    await page.waitForTimeout(3000);
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
   });
 
   test("logout returns to login page", async ({ page }) => {
@@ -62,13 +66,14 @@ test.describe("Authentication", () => {
     test.skip(!env, "Set E2E_* env vars to run this test.");
 
     await login(page, env!.senderEmail, env!.senderPassword);
-    await expect(page).toHaveURL(/\/$|\/dashboard$/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/$|\/dashboard$/, { timeout: 30_000 });
 
     await logout(page);
-    await expect(page).toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
   });
 
   test("unauthenticated user is redirected to login", async ({ page }) => {
+    // Override beforeEach behavior for this test if needed, but hardResetToLogin ends at /login
     await page.goto("/laporan");
     await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
   });

@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
   const { data: existing, error: existingError } = await supabaseServer
     .from("users")
-    .select("id, name, email, biro, jabatan, avatar_url, theme_preference")
+    .select("id, name, email, biro, jabatan, role, avatar_url, is_active, created_at, updated_at")
     .eq("id", authUser.id)
     .maybeSingle();
 
@@ -66,10 +66,6 @@ export async function POST(request: Request) {
           typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
             ? metadata.avatar_url
             : existing.avatar_url,
-        theme_preference:
-          metadata.theme_preference === "dark" || metadata.theme_preference === "light"
-            ? metadata.theme_preference
-            : existing.theme_preference ?? "light",
       })
       .eq("id", authUser.id);
 
@@ -91,7 +87,6 @@ export async function POST(request: Request) {
         typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
           ? metadata.avatar_url
           : null,
-      theme_preference: metadata.theme_preference === "dark" ? "dark" : "light",
       role: "MEMBER",
     };
 
@@ -153,7 +148,7 @@ export async function POST(request: Request) {
 
   const { data: profile, error: profileError } = await supabaseServer
     .from("users")
-    .select("id, name, biro, jabatan, role, email, avatar_url, theme_preference, is_active, created_at")
+    .select("id, name, biro, jabatan, role, email, avatar_url, is_active, created_at, updated_at")
     .eq("id", authUser.id)
     .maybeSingle();
 

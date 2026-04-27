@@ -68,12 +68,18 @@ export async function logout(page: Page) {
 }
 
 export async function hardResetToLogin(page: Page) {
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-  });
+  try {
+    // Navigate to a known page first to establish origin
+    await page.goto("/login", { waitUntil: "load" }).catch(() => {});
+    await page.evaluate(() => {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {}
+    });
+  } catch (e) {}
   await page.context().clearCookies();
-  await page.goto("/login");
+  await page.goto("/login", { waitUntil: "load" });
 }
 
 export async function resolveSenderOwnedReportId(page: Page, env: E2EEnv): Promise<string | null> {
