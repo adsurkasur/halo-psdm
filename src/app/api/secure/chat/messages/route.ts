@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/supabase/secure-route";
 import { supabaseServer } from "@/lib/supabase/server";
 
+
+
 export async function POST(request: Request) {
   const auth = await requireAuthContext(request);
   if ("error" in auth) return auth.error;

@@ -57,7 +57,7 @@ export default function AppointmentDirectory() {
     if (!isValidPhone62(waNumber)) {
       toast({
         title: "Nomor WhatsApp penerima belum valid",
-        description: "Penerima belum mengatur nomor dengan kode negara (contoh: +628... atau +1...).",
+        description: "Penerima belum mengatur nomor dengan kode negara (contoh: 628... atau 1...).",
         variant: "destructive",
       });
       return;

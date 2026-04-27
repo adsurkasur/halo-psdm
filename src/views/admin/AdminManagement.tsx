@@ -37,7 +37,7 @@ export default function AdminManagement() {
     if (!isValidPhone62(normalizedPhone)) {
       toast({
         title: "Nomor HP belum valid",
-        description: "Isi nomor HP profil dengan kode negara (contoh: +628... atau +1...) terlebih dahulu.",
+        description: "Isi nomor HP profil dengan kode negara (contoh: 628... atau 1...) terlebih dahulu.",
         variant: "destructive",
       });
       return false;
@@ -87,7 +87,7 @@ export default function AdminManagement() {
                     id: user.id,
                     name: user.name,
                     jabatan: user.jabatan,
-                    wa_number: existingProfile?.wa_number,
+                    wa_number: existingProfile?.wa_number ?? user.whatsapp,
                     avatar_url: user.avatar_url,
                   });
 
@@ -171,7 +171,7 @@ export default function AdminManagement() {
                     id: user.id,
                     name: user.name,
                     jabatan: user.jabatan,
-                    wa_number: undefined,
+                    wa_number: user.whatsapp,
                     avatar_url: user.avatar_url,
                   });
                   setNewAdminId("");

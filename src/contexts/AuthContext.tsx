@@ -581,29 +581,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Only run DB update if there are fields to update
       if (Object.keys(updatePayload).length > 0) {
-        try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const token = sessionData.session?.access_token;
-          
-          const res = await fetch("/api/secure/profile/update", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify(updatePayload),
-          });
-
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            console.error("Profile update error from API:", errData);
-            return { success: false, error: errData.error || "Gagal memperbarui profil." };
+        const { error } = await supabase
+          .from("users")
+          .update(updatePayload)
+          .eq("id", user.id);
+ 
+        if (error) {
+          // If the update fails and whatsapp is included, retry without it
+          // (the whatsapp column may not exist yet in the database)
+          if (updatePayload.whatsapp !== undefined) {
+            const fallbackPayload = { ...updatePayload };
+            delete fallbackPayload.whatsapp;
+            if (Object.keys(fallbackPayload).length > 0) {
+              const { error: fallbackError } = await supabase
+                .from("users")
+                .update(fallbackPayload)
+                .eq("id", user.id);
+              if (fallbackError) {
+                console.error("Profile update error (fallback):", fallbackError.message, fallbackError.details, fallbackError.hint);
+                return { success: false, error: `Gagal memperbarui profil: ${fallbackError.message || JSON.stringify(fallbackError)}` };
+              }
+            }
+          } else {
+            console.error("Profile update error:", error.message, error.details);
+            return { success: false, error: `Gagal memperbarui profil: ${error.message || JSON.stringify(error)}` };
           }
-        } catch (err: any) {
-          console.error("Profile update fetch error:", err);
-          return { success: false, error: "Gagal terhubung ke server." };
         }
       }
 
