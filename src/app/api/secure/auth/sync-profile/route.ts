@@ -39,11 +39,29 @@ export async function POST(request: Request) {
       : null;
   const fallbackName = authUser.email?.split("@")[0] ?? "User";
 
-  const { data: existing, error: existingError } = await supabaseServer
+  let existing: Record<string, unknown> | null = null;
+  let existingError: { message: string } | null = null;
+
+  // Try with whatsapp column first, fallback without it
+  const selectResult = await supabaseServer
     .from("users")
     .select("id, name, email, biro, jabatan, role, avatar_url, whatsapp, is_active, created_at, updated_at")
     .eq("id", authUser.id)
     .maybeSingle();
+
+  if (selectResult.error) {
+    // Retry without whatsapp column (it may not exist yet)
+    const fallbackResult = await supabaseServer
+      .from("users")
+      .select("id, name, email, biro, jabatan, role, avatar_url, is_active, created_at, updated_at")
+      .eq("id", authUser.id)
+      .maybeSingle();
+    existing = fallbackResult.data;
+    existingError = fallbackResult.error;
+  } else {
+    existing = selectResult.data;
+    existingError = selectResult.error;
+  }
 
   if (existingError) {
     return errorResponse(400, "SYNC_SELECT_EXISTING_FAILED", "select-existing", existingError.message, {
@@ -55,23 +73,35 @@ export async function POST(request: Request) {
   let syncPath: "existing" | "insert-new" | "legacy-relink" = "existing";
 
   if (existing) {
-    const { error: updateError } = await supabaseServer
+    const updateData: Record<string, unknown> = {
+      name: metadataName ?? existing.name,
+      email: authUser.email ?? existing.email,
+      biro: VALID_BIRO.includes(metadata.biro as BiroBidang) ? metadata.biro : existing.biro,
+      jabatan: VALID_JABATAN.includes(metadata.jabatan as Jabatan) ? metadata.jabatan : existing.jabatan,
+      avatar_url:
+        typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
+          ? metadata.avatar_url
+          : existing.avatar_url,
+      whatsapp:
+        typeof metadata.whatsapp === "string" && metadata.whatsapp.trim().length > 0
+          ? metadata.whatsapp
+          : existing.whatsapp ?? null,
+    };
+
+    let { error: updateError } = await supabaseServer
       .from("users")
-      .update({
-        name: metadataName ?? existing.name,
-        email: authUser.email ?? existing.email,
-        biro: VALID_BIRO.includes(metadata.biro as BiroBidang) ? metadata.biro : existing.biro,
-        jabatan: VALID_JABATAN.includes(metadata.jabatan as Jabatan) ? metadata.jabatan : existing.jabatan,
-        avatar_url:
-          typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
-            ? metadata.avatar_url
-            : existing.avatar_url,
-        whatsapp:
-          typeof metadata.whatsapp === "string" && metadata.whatsapp.trim().length > 0
-            ? metadata.whatsapp
-            : existing.whatsapp,
-      })
+      .update(updateData)
       .eq("id", authUser.id);
+
+    if (updateError) {
+      // Retry without whatsapp field
+      delete updateData.whatsapp;
+      const retryResult = await supabaseServer
+        .from("users")
+        .update(updateData)
+        .eq("id", authUser.id);
+      updateError = retryResult.error;
+    }
 
     if (updateError) {
       return errorResponse(400, "SYNC_UPDATE_EXISTING_FAILED", "update-existing", updateError.message, {
@@ -79,6 +109,7 @@ export async function POST(request: Request) {
         authEmail: authUser.email,
       });
     }
+
   } else {
     syncPath = "insert-new";
     const profilePayload = {
@@ -155,11 +186,28 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data: profile, error: profileError } = await supabaseServer
+  let profile: Record<string, unknown> | null = null;
+  let profileError: { message: string } | null = null;
+
+  const readbackResult = await supabaseServer
     .from("users")
     .select("id, name, biro, jabatan, role, email, avatar_url, whatsapp, is_active, created_at, updated_at")
     .eq("id", authUser.id)
     .maybeSingle();
+
+  if (readbackResult.error) {
+    // Retry without whatsapp
+    const fallbackReadback = await supabaseServer
+      .from("users")
+      .select("id, name, biro, jabatan, role, email, avatar_url, is_active, created_at, updated_at")
+      .eq("id", authUser.id)
+      .maybeSingle();
+    profile = fallbackReadback.data;
+    profileError = fallbackReadback.error;
+  } else {
+    profile = readbackResult.data;
+    profileError = readbackResult.error;
+  }
 
   if (profileError || !profile) {
     return errorResponse(

@@ -123,6 +123,13 @@ export default function LoginPage() {
       return;
     }
 
+    let formattedWhatsapp = whatsapp.trim();
+    if (formattedWhatsapp.startsWith("0")) {
+      formattedWhatsapp = "62" + formattedWhatsapp.slice(1);
+    } else if (formattedWhatsapp.startsWith("+")) {
+      formattedWhatsapp = formattedWhatsapp.slice(1);
+    }
+
     setLoading(true);
     setTimeout(async () => {
       const result = await register({
@@ -131,7 +138,7 @@ export default function LoginPage() {
         password,
         biro,
         jabatan,
-        whatsapp: whatsapp.trim(),
+        whatsapp: formattedWhatsapp,
       });
       setLoading(false);
       if (!result.success) {
@@ -439,11 +446,11 @@ export default function LoginPage() {
                   <Input
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(e.target.value)}
-                    placeholder="081234567890"
+                    placeholder="6281234567890"
                     className="mt-1 transition-all duration-200 focus:shadow-md"
                     required
                   />
-                  <p className="text-[10px] text-muted-foreground mt-1">Gunakan format angka saja (contoh: 081234567890)</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Gunakan format angka dengan kode negara (contoh: 6281234567890)</p>
                 </div>
                 <div>
                   <Label>Biro / Bidang</Label>

@@ -27,7 +27,7 @@ test.describe("Admin Report Management", () => {
 
   test("report management page shows table of reports", async ({ page }) => {
     await page.goto("/admin/laporan");
-    await expect(page.getByText("Kelola Laporan").or(page.getByText("Laporan"))).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: /Kelola Laporan/ })).toBeVisible({ timeout: 10_000 });
 
     // Table should be visible
     const table = page.locator("table").first();
@@ -58,11 +58,11 @@ test.describe("Admin Report Management", () => {
 
   test("admin can access rekap page", async ({ page }) => {
     await page.goto("/admin/rekap");
-    await expect(page.getByText("Rekap").or(page.getByText("Statistik"))).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: /Rekap/ })).toBeVisible({ timeout: 10_000 });
   });
 
   test("admin can access user management", async ({ page }) => {
     await page.goto("/admin/kelola-admin");
-    await expect(page.getByText("Kelola HR dan PH")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: /Kelola HR/ })).toBeVisible({ timeout: 10_000 });
   });
 });

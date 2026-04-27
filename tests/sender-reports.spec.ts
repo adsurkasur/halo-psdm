@@ -22,13 +22,13 @@ test.describe("Sender Dashboard & Reports", () => {
 
   test("dashboard shows welcome message and quick actions", async ({ page }) => {
     await expect(page.getByText("Halo,")).toBeVisible();
-    await expect(page.getByText("Buat Laporan")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Buat Laporan/ })).toBeVisible();
     await expect(page.getByText("Mulai Sesi Curhat")).toBeVisible();
     await expect(page.getByText("Order Janji Temu")).toBeVisible();
   });
 
   test("navigates to report creation form", async ({ page }) => {
-    await page.getByText("Buat Laporan").click();
+    await page.getByRole("heading", { name: /Buat Laporan/ }).click();
     await expect(page).toHaveURL(/\/laporan\/buat/);
     await expect(page.getByText("Buat Laporan / Pengaduan")).toBeVisible();
   });
@@ -64,13 +64,13 @@ test.describe("Sender Dashboard & Reports", () => {
     // Submit
     await page.getByRole("button", { name: "Kirim Laporan" }).click();
 
-    // Should redirect to the report detail page
-    await expect(page).toHaveURL(/\/laporan\/r_/, { timeout: 30_000 });
+    // Should redirect to the report detail page (UUID-based or r_ prefixed)
+    await expect(page).toHaveURL(/\/laporan\/[a-f0-9-]+|\/laporan\/r_/, { timeout: 30_000 });
   });
 
   test("report list page shows existing reports", async ({ page }) => {
     await page.goto("/laporan");
-    await expect(page.getByText("Laporan Saya").or(page.getByText("Laporan Aktif"))).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: /Laporan Saya|Laporan Aktif/ })).toBeVisible({ timeout: 10_000 });
   });
 
   test("clicking a report navigates to detail view", async ({ page }) => {

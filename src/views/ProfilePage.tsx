@@ -289,6 +289,12 @@ export default function ProfilePage() {
       return;
     }
 
+    let formattedWhatsapp = whatsapp.trim();
+    if (formattedWhatsapp.startsWith("0")) {
+      formattedWhatsapp = "62" + formattedWhatsapp.slice(1);
+    } else if (formattedWhatsapp.startsWith("+")) {
+      formattedWhatsapp = formattedWhatsapp.slice(1);
+    }
 
     setSaving(true);
     try {
@@ -297,7 +303,7 @@ export default function ProfilePage() {
         email,
         biro: biro as BiroBidang,
         jabatan: jabatan as Jabatan,
-        whatsapp: whatsapp.trim(),
+        whatsapp: formattedWhatsapp,
         ...(password ? { password } : {}),
       });
 
@@ -416,9 +422,9 @@ export default function ProfilePage() {
             <Input
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
-              placeholder="081234567890"
+              placeholder="6281234567890"
             />
-            <p className="text-[10px] text-muted-foreground mt-1">Gunakan format angka saja (contoh: 081234567890)</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Gunakan format angka dengan kode negara (contoh: 6281234567890)</p>
           </div>
           <div>
             <Label>Password Baru</Label>

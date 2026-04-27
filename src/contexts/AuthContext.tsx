@@ -583,14 +583,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Only run DB update if there are fields to update
       if (Object.keys(updatePayload).length > 0) {
-        const { error } = await supabase
-          .from("users")
-          .update(updatePayload)
-          .eq("id", user.id);
- 
-        if (error) {
-          console.error("Profile update error:", error);
-          return { success: false, error: "Gagal memperbarui profil di database." };
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
+          
+          const res = await fetch("/api/secure/profile/update", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(updatePayload),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            console.error("Profile update error from API:", errData);
+            return { success: false, error: errData.error || "Gagal memperbarui profil." };
+          }
+        } catch (err: any) {
+          console.error("Profile update fetch error:", err);
+          return { success: false, error: "Gagal terhubung ke server." };
         }
       }
 

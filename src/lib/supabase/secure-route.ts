@@ -67,7 +67,7 @@ export async function requireAuthUser(request: Request): Promise<{ error: NextRe
   const token = getBearerToken(request);
   if (!token) {
     return {
-      error: NextResponse.json({ error: "Missing bearer token." }, { status: 401 }),
+      error: NextResponse.json({ error: "Sesi login tidak valid atau kadaluarsa (token tidak ditemukan)." }, { status: 401 }),
     };
   }
 
