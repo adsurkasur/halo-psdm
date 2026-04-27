@@ -106,6 +106,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         availability_status: AvailabilityStatus;
         wa_number?: string;
         avatar_url: string;
+        last_seen_at?: string;
         updated_at?: string;
       };
 
@@ -665,6 +666,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       jabatan_display: profile.jabatan_display,
       availability_status: profile.availability_status,
       wa_number: profile.wa_number,
+      last_seen_at: profile.last_seen_at,
     });
 
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminProfiles });

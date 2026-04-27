@@ -43,13 +43,15 @@ export default function AdminManagement() {
       return false;
     }
 
+    const existingProfile = adminProfiles.find((p) => p.user_id === target.id);
     await addAdminProfile({
       user_id: target.id,
       display_name: target.name,
       jabatan_display: JABATAN_LABELS[target.jabatan],
-      availability_status: adminProfiles.find((p) => p.user_id === target.id)?.availability_status ?? "OFFLINE",
+      availability_status: existingProfile?.availability_status ?? "OFFLINE",
       wa_number: normalizedPhone,
       avatar_url: target.avatar_url ?? "",
+      last_seen_at: existingProfile?.last_seen_at ?? new Date(0).toISOString(),
       updated_at: new Date().toISOString(),
     });
     return true;
