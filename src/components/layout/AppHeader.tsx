@@ -10,7 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { JABATAN_LABELS } from "@/data/domain";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
@@ -56,7 +56,9 @@ export function AppHeader() {
     <header className="h-14 border-b bg-card flex items-center justify-between px-4 sticky top-0 z-30">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="mr-1" />
-        <span className="font-bold text-lg tracking-tight text-primary">Halo PSDM</span>
+        <Link to="/" className="font-bold text-lg tracking-tight text-primary hover:opacity-80 transition-opacity">
+          Halo PSDM
+        </Link>
       </div>
 
       <div className="flex items-center gap-3">

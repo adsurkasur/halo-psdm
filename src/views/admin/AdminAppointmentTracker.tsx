@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { CalendarCheck2, CheckCircle2, XCircle, Clock3 } from "lucide-react";
+import { CalendarCheck2, CheckCircle2, XCircle, Clock3, User, Mail, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { APPOINTMENT_STATUS_LABELS, type AppointmentStatus } from "@/data/domain";
@@ -75,58 +76,47 @@ export default function AdminAppointmentTracker() {
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 animate-float" />
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div /> {/* Spacer */}
-        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as AppointmentStatus | "ALL")}>
-          <SelectTrigger data-testid="appointment-status-filter" className="w-[180px]">
-            <SelectValue placeholder="Filter status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Semua Status</SelectItem>
-            <SelectItem value="OPEN">Aktif</SelectItem>
-            <SelectItem value="DONE">Selesai</SelectItem>
-            <SelectItem value="DISMISSED">Ditolak</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <Tabs
+          value={statusFilter}
+          onValueChange={(value) => setStatusFilter(value as AppointmentStatus | "ALL")}
+          className="w-full sm:w-auto"
+        >
+          <TabsList className="grid w-full grid-cols-4 sm:w-auto">
+            <TabsTrigger value="ALL" className="text-xs px-4">Semua</TabsTrigger>
+            <TabsTrigger value="OPEN" className="text-xs px-4">Aktif</TabsTrigger>
+            <TabsTrigger value="DONE" className="text-xs px-4">Selesai</TabsTrigger>
+            <TabsTrigger value="DISMISSED" className="text-xs px-4">Ditolak</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full border border-border/50">
+          <Clock3 className="h-3.5 w-3.5" />
+          <span>Update otomatis aktif</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="py-4 flex items-center gap-3">
-            <CalendarCheck2 className="h-5 w-5 text-primary" />
-            <div>
-              <p className="text-xl font-bold">{summary.all}</p>
-              <p className="text-xs text-muted-foreground">Total</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4 flex items-center gap-3">
-            <Clock3 className="h-5 w-5 text-yellow-600" />
-            <div>
-              <p className="text-xl font-bold">{summary.open}</p>
-              <p className="text-xs text-muted-foreground">Aktif</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4 flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-            <div>
-              <p className="text-xl font-bold">{summary.done}</p>
-              <p className="text-xs text-muted-foreground">Selesai</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4 flex items-center gap-3">
-            <XCircle className="h-5 w-5 text-rose-600" />
-            <div>
-              <p className="text-xl font-bold">{summary.dismissed}</p>
-              <p className="text-xs text-muted-foreground">Ditolak</p>
-            </div>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Total Pengajuan", value: summary.all, icon: CalendarCheck2, color: "text-primary", bg: "bg-primary/10" },
+          { label: "Menunggu Tindak Lanjut", value: summary.open, icon: Clock3, color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Selesai Diproses", value: summary.done, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Ditolak / Dibatalkan", value: summary.dismissed, icon: XCircle, color: "text-rose-600", bg: "bg-rose-50" },
+        ].map((stat, i) => (
+          <Card key={i} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-0">
+              <div className="flex items-center p-4 gap-4">
+                <div className={`p-2.5 rounded-xl ${stat.bg}`}>
+                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold tracking-tight">{stat.value}</p>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+                </div>
+              </div>
+              <div className={`h-1 w-full ${stat.color.replace('text', 'bg').replace('-600', '-500')} opacity-20`} />
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Card>
@@ -156,23 +146,46 @@ export default function AdminAppointmentTracker() {
                   return (
                     <TableRow key={appointment.id} data-testid={`appointment-row-${appointment.id}`}>
                       <TableCell>
-                        <p className="text-sm font-medium">{sender?.name ?? "-"}</p>
-                        <p className="text-xs text-muted-foreground">{sender?.email ?? ""}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center text-primary">
+                            <User className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold">{sender?.name ?? "-"}</p>
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                              <Mail className="h-2.5 w-2.5" />
+                              {sender?.email ?? ""}
+                            </div>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <p className="text-sm font-medium">{target?.name ?? "-"}</p>
-                        <p className="text-xs text-muted-foreground">{target?.email ?? ""}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground">
+                            <User className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold">{target?.name ?? "-"}</p>
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                              <Mail className="h-2.5 w-2.5" />
+                              {target?.email ?? ""}
+                            </div>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <span
-                          className={`inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
                             appointment.status === "OPEN"
-                              ? "bg-yellow-100 text-yellow-800"
+                              ? "bg-amber-100 text-amber-700 border border-amber-200"
                               : appointment.status === "DONE"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-rose-100 text-rose-800"
+                                ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                : "bg-rose-100 text-rose-700 border border-rose-200"
                           }`}
                         >
+                          <span className={`h-1.5 w-1.5 rounded-full ${
+                            appointment.status === "OPEN" ? "bg-amber-500" : appointment.status === "DONE" ? "bg-emerald-500" : "bg-rose-500"
+                          }`} />
                           {APPOINTMENT_STATUS_LABELS[appointment.status]}
                         </span>
                       </TableCell>
@@ -186,9 +199,9 @@ export default function AdminAppointmentTracker() {
                       </TableCell>
                       <TableCell>
                         {isOpen ? (
-                          <div className="space-y-2">
-                            <div>
-                              <Label className="text-[11px]">Catatan (opsional)</Label>
+                          <div className="space-y-3 py-2">
+                            <div className="relative">
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Catatan Tindak Lanjut</Label>
                               <Textarea
                                 data-testid={`appointment-note-${appointment.id}`}
                                 value={statusNote[appointment.id] ?? ""}
@@ -198,36 +211,43 @@ export default function AdminAppointmentTracker() {
                                     [appointment.id]: event.target.value,
                                   }))
                                 }
-                                className="mt-1 min-h-[56px] text-xs"
-                                placeholder="Tambahkan catatan tindak lanjut..."
+                                className="mt-1 min-h-[70px] text-xs resize-none bg-muted/30 focus-visible:ring-primary/30"
+                                placeholder="Misal: Sudah dihubungi via WhatsApp..."
                               />
                             </div>
                             <div className="flex gap-2">
                               <Button
                                 data-testid={`appointment-done-${appointment.id}`}
                                 size="sm"
-                                className="h-8"
+                                className="h-8 px-4 font-semibold shadow-sm"
                                 disabled={isLoading}
                                 onClick={() => void handleUpdate(appointment.id, "DONE")}
                               >
-                                Done
+                                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                                Selesaikan
                               </Button>
                               <Button
                                 data-testid={`appointment-dismiss-${appointment.id}`}
                                 size="sm"
                                 variant="outline"
-                                className="h-8 border-rose-500 text-rose-600"
+                                className="h-8 px-4 font-semibold border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                                 disabled={isLoading}
                                 onClick={() => void handleUpdate(appointment.id, "DISMISSED")}
                               >
-                                Dismiss
+                                <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                                Tolak
                               </Button>
                             </div>
                           </div>
                         ) : (
-                          <p className="text-xs text-muted-foreground">
-                            {appointment.status_note?.trim() || "Tidak ada catatan"}
-                          </p>
+                          <div className="flex items-start gap-2 py-2">
+                            <div className="mt-0.5 p-1 rounded bg-muted">
+                              <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                            <p className="text-xs text-muted-foreground italic leading-relaxed">
+                              {appointment.status_note?.trim() || "Tidak ada catatan tindak lanjut"}
+                            </p>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
