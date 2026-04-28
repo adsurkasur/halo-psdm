@@ -33,17 +33,23 @@ export default function AdminManagement() {
     wa_number?: string | null;
     avatar_url?: string | null;
   }) => {
-    const normalizedPhone = normalizePhoneTo62(target.wa_number ?? "");
+    const existingProfile = adminProfiles.find((p) => p.user_id === target.id);
+    
+    // Prefer existing profile phone if the one passed is empty/null
+    const rawPhone = target.wa_number || existingProfile?.wa_number || "";
+    const normalizedPhone = normalizePhoneTo62(rawPhone);
+
     if (!isValidPhone62(normalizedPhone)) {
-      toast({
-        title: "Nomor HP belum valid",
-        description: "Admin ini perlu mengatur nomor HP yang valid di profil agar fitur janji temu berfungsi.",
-        variant: "destructive",
-      });
-      // Do not return false, proceed to add profile anyway so they show up in management
+      // Only show toast for NEW promotions to avoid annoyance when switching HR/PH roles
+      if (!existingProfile) {
+        toast({
+          title: "Nomor HP belum valid",
+          description: "Admin ini perlu mengatur nomor HP yang valid di profil agar fitur janji temu berfungsi.",
+          variant: "destructive",
+        });
+      }
     }
 
-    const existingProfile = adminProfiles.find((p) => p.user_id === target.id);
     await addAdminProfile({
       user_id: target.id,
       display_name: target.name,
