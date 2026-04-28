@@ -35,19 +35,17 @@ export default function AdminManagement() {
   }) => {
     const existingProfile = adminProfiles.find((p) => p.user_id === target.id);
     
-    // Prefer existing profile phone if the one passed is empty/null
+    // Logic fix: Prefer existing profile phone if the one passed is empty/null.
+    // This ensures that switching roles doesn't overwrite a valid directory phone with an empty profile phone.
     const rawPhone = target.wa_number || existingProfile?.wa_number || "";
     const normalizedPhone = normalizePhoneTo62(rawPhone);
 
     if (!isValidPhone62(normalizedPhone)) {
-      // Only show toast for NEW promotions to avoid annoyance when switching HR/PH roles
-      if (!existingProfile) {
-        toast({
-          title: "Nomor HP belum valid",
-          description: "Admin ini perlu mengatur nomor HP yang valid di profil agar fitur janji temu berfungsi.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Nomor HP belum valid",
+        description: "Admin ini perlu mengatur nomor HP yang valid di profil agar fitur janji temu berfungsi.",
+        variant: "destructive",
+      });
     }
 
     await addAdminProfile({
