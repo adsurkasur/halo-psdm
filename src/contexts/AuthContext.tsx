@@ -538,7 +538,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq("id", userId);
 
       if (error) {
-        return { success: false, error: "Gagal mengubah role pengguna." };
+        console.error("Change role error:", error);
+        return { success: false, error: error.message || "Gagal mengubah role pengguna." };
       }
 
       setUsers((prev) =>

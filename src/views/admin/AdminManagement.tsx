@@ -37,10 +37,10 @@ export default function AdminManagement() {
     if (!isValidPhone62(normalizedPhone)) {
       toast({
         title: "Nomor HP belum valid",
-        description: "Isi nomor HP profil dengan kode negara (contoh: 628... atau 1...) terlebih dahulu.",
+        description: "Admin ini perlu mengatur nomor HP yang valid di profil agar fitur janji temu berfungsi.",
         variant: "destructive",
       });
-      return false;
+      // Do not return false, proceed to add profile anyway so they show up in management
     }
 
     const existingProfile = adminProfiles.find((p) => p.user_id === target.id);
@@ -174,7 +174,16 @@ export default function AdminManagement() {
               onClick={async () => {
                 const user = allUsers.find((u) => u.id === newAdminId);
                 if (user) {
-                  await changeUserRole(user.id, newElevatedRole);
+                  const result = await changeUserRole(user.id, newElevatedRole);
+                  if (!result.success) {
+                    toast({
+                      title: "Gagal mengangkat admin",
+                      description: result.error,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
                   await ensureDirectoryProfile({
                     id: user.id,
                     name: user.name,
@@ -184,6 +193,10 @@ export default function AdminManagement() {
                   });
                   setNewAdminId("");
                   setAddSearch("");
+                  toast({
+                    title: "Berhasil mengangkat admin",
+                    description: `${user.name} sekarang adalah ${newElevatedRole}.`,
+                  });
                 }
               }}
             >
@@ -264,7 +277,16 @@ export default function AdminManagement() {
                           value={adminUser.role}
                           onValueChange={async (v) => {
                             const newRole = v as UserRole;
-                            await changeUserRole(adminUser.id, newRole);
+                            const result = await changeUserRole(adminUser.id, newRole);
+                            if (!result.success) {
+                              toast({
+                                title: "Gagal mengubah role",
+                                description: result.error,
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+
                             if (newRole === "MEMBER") {
                               await removeAdminProfile(adminUser.id);
                             } else {
@@ -272,10 +294,14 @@ export default function AdminManagement() {
                                 id: adminUser.id,
                                 name: adminUser.name,
                                 jabatan: adminUser.jabatan,
-                                wa_number: undefined,
+                                wa_number: adminUser.whatsapp,
                                 avatar_url: adminUser.avatar_url,
                               });
                             }
+                            toast({
+                              title: "Role diperbarui",
+                              description: `${adminUser.name} sekarang adalah ${newRole}.`,
+                            });
                           }}
                         >
                           <SelectTrigger className="w-[120px] h-8 text-xs">

@@ -331,7 +331,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="space-y-6 page-enter">
+    <div className="min-h-full flex flex-col space-y-6 page-enter pb-10">
       {/* Hero Header Section */}
       <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground shadow-lg shadow-primary/10">
         <div className="relative z-10">
