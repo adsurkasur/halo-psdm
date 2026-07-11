@@ -74,18 +74,22 @@ export async function POST(request: Request) {
 
   if (existing) {
     const updateData: Record<string, unknown> = {
-      name: metadataName ?? existing.name,
+      name: (typeof existing.name === "string" && existing.name.trim().length > 0 ? existing.name : metadataName) || "User",
       email: authUser.email ?? existing.email,
-      biro: VALID_BIRO.includes(metadata.biro as BiroBidang) ? metadata.biro : existing.biro,
-      jabatan: VALID_JABATAN.includes(metadata.jabatan as Jabatan) ? metadata.jabatan : existing.jabatan,
+      biro: existing.biro || (VALID_BIRO.includes(metadata.biro as BiroBidang) ? metadata.biro : "INFOKOM"),
+      jabatan: existing.jabatan || (VALID_JABATAN.includes(metadata.jabatan as Jabatan) ? metadata.jabatan : "ANGGOTA_MUDA"),
       avatar_url:
-        typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
+        typeof existing.avatar_url === "string" && existing.avatar_url.trim().length > 0
+          ? existing.avatar_url
+          : typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
           ? metadata.avatar_url
-          : existing.avatar_url,
+          : null,
       whatsapp:
-        typeof metadata.whatsapp === "string" && metadata.whatsapp.trim().length > 0
+        typeof existing.whatsapp === "string" && existing.whatsapp.trim().length > 0
+          ? existing.whatsapp
+          : typeof metadata.whatsapp === "string" && metadata.whatsapp.trim().length > 0
           ? metadata.whatsapp
-          : existing.whatsapp ?? null,
+          : null,
     };
 
     let { error: updateError } = await supabaseServer
@@ -222,6 +226,34 @@ export async function POST(request: Request) {
       }
     );
   }
+
+  // Ensure Supabase Auth native phone and user_metadata stay synchronized with database profile
+  const finalPhone = profile.whatsapp ?? metadata.whatsapp ?? null;
+  void supabaseServer.auth.admin
+    .updateUserById(authUser.id, {
+      ...(typeof finalPhone === "string" && finalPhone.trim().length > 0 ? { phone: finalPhone.trim() } : {}),
+      user_metadata: {
+        ...metadata,
+        name: profile.name ?? metadataName ?? "User",
+        biro: profile.biro ?? metadata.biro ?? "INFOKOM",
+        jabatan: profile.jabatan ?? metadata.jabatan ?? "ANGGOTA_MUDA",
+        avatar_url: profile.avatar_url ?? metadata.avatar_url ?? null,
+        whatsapp: finalPhone,
+      },
+    })
+    .catch((err) => {
+      console.warn("[SYNC_AUTH_ADMIN_WARN] Could not update native phone (likely duplicate), syncing user_metadata only:", err);
+      void supabaseServer.auth.admin.updateUserById(authUser.id, {
+        user_metadata: {
+          ...metadata,
+          name: profile.name ?? metadataName ?? "User",
+          biro: profile.biro ?? metadata.biro ?? "INFOKOM",
+          jabatan: profile.jabatan ?? metadata.jabatan ?? "ANGGOTA_MUDA",
+          avatar_url: profile.avatar_url ?? metadata.avatar_url ?? null,
+          whatsapp: finalPhone,
+        },
+      });
+    });
 
   return NextResponse.json({ profile, diagnosticCode: "SYNC_OK", stage: "readback", syncPath });
 }

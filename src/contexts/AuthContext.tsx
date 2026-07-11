@@ -141,11 +141,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error: updateError } = await supabase
         .from("users")
         .update({
-          name: metadataName ?? (existingProfile as UsersRow).name,
-          biro: metadataBiro ?? (existingProfile as UsersRow).biro,
-          jabatan: metadataJabatan ?? (existingProfile as UsersRow).jabatan,
-          avatar_url: (metadata.avatar_url as string) ?? (existingProfile as UsersRow).avatar_url,
-          whatsapp: (metadata.whatsapp as string) ?? (existingProfile as UsersRow).whatsapp,
+          name: (existingProfile as UsersRow).name || metadataName || defaultName,
+          biro: (existingProfile as UsersRow).biro || metadataBiro || "INFOKOM",
+          jabatan: (existingProfile as UsersRow).jabatan || metadataJabatan || "ANGGOTA_MUDA",
+          avatar_url: (existingProfile as UsersRow).avatar_url ?? (metadata.avatar_url as string ?? null),
+          whatsapp: (existingProfile as UsersRow).whatsapp || (metadata.whatsapp as string || null),
           email: authUser.email ?? (existingProfile as UsersRow).email,
         })
         .eq("id", authUser.id);
@@ -490,6 +490,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: data.email,
         password: data.password,
         options: {
+          emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/login` : undefined,
           data: {
             name: data.name,
             biro: data.biro,
@@ -567,17 +568,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let emailChangeMessage: string | undefined;
 
-      if (typeof updates.email !== "undefined" || typeof updates.password !== "undefined") {
+      if (typeof updates.email !== "undefined" || typeof updates.password !== "undefined" || Object.keys(updatePayload).length > 0) {
         const { error: authUpdateError } = await supabase.auth.updateUser({
-          email: updates.email,
-          password: updates.password,
+          ...(typeof updates.email !== "undefined" ? { email: updates.email } : {}),
+          ...(typeof updates.password !== "undefined" && updates.password ? { password: updates.password } : {}),
+          ...(Object.keys(updatePayload).length > 0 ? { data: updatePayload } : {}),
         });
 
-        if (authUpdateError) {
+        if (authUpdateError && (typeof updates.email !== "undefined" || typeof updates.password !== "undefined")) {
           return { success: false, error: authUpdateError.message };
         }
 
-        if (typeof updates.email !== "undefined" && updates.email !== user.email) {
+        if (typeof updates.email !== "undefined" && updates.email !== user.email && !authUpdateError) {
           emailChangeMessage = "Permintaan ganti email dikirim. Cek email lama dan email baru untuk konfirmasi perubahan.";
         }
       }
@@ -608,6 +610,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error("Profile update error:", error.message, error.details);
             return { success: false, error: `Gagal memperbarui profil: ${error.message || JSON.stringify(error)}` };
           }
+        }
+
+        if (typeof updates.whatsapp !== "undefined") {
+          void supabase
+            .from("admin_profiles")
+            .update({ wa_number: updates.whatsapp })
+            .eq("user_id", user.id);
         }
       }
 

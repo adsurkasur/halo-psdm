@@ -36,7 +36,7 @@ function AppLoadingScreen() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setShowLongWaitHint(true);
-    }, 3500);
+    }, 15000);
 
     return () => {
       window.clearTimeout(timer);
