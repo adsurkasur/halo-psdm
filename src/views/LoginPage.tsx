@@ -124,6 +124,13 @@ export default function LoginPage() {
       return;
     }
 
+    if (password.length < 6) {
+      setError("Password minimal 6 karakter.");
+      setShaking(true);
+      setTimeout(() => setShaking(false), 600);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Konfirmasi password tidak sama.");
       setShaking(true);
@@ -184,7 +191,11 @@ export default function LoginPage() {
     setForgotPasswordLoading(false);
 
     if (resetError) {
-      setError(resetError.message);
+      let msg = resetError.message;
+      if (msg.includes("User not found")) msg = "Akun dengan email tersebut tidak ditemukan.";
+      else if (msg.includes("rate limit") || msg.includes("too many requests")) msg = "Terlalu banyak permintaan reset. Silakan coba lagi beberapa saat lagi.";
+      else if (msg.includes("Invalid email")) msg = "Format email tidak valid.";
+      setError(msg);
       return;
     }
 

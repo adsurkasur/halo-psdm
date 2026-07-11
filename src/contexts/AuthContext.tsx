@@ -501,7 +501,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (authError || !authData.user) {
-        return { success: false, error: authError?.message ?? "Registrasi gagal. Silakan coba lagi." };
+        let msg = authError?.message ?? "Registrasi gagal. Silakan coba lagi.";
+        if (msg.includes("Password should be at least")) msg = "Password minimal 6 karakter.";
+        else if (msg.includes("already registered") || msg.includes("already exists")) msg = "Email ini sudah terdaftar. Silakan gunakan email lain atau login.";
+        else if (msg.includes("Invalid email") || msg.includes("Unable to validate email")) msg = "Alamat email tidak valid.";
+        else if (msg.includes("rate limit") || msg.includes("too many requests")) msg = "Terlalu banyak percobaan. Silakan tunggu beberapa saat lagi.";
+        return { success: false, error: msg };
       }
 
       if (!authData.session) {
