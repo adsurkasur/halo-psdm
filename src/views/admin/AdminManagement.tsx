@@ -43,7 +43,7 @@ export default function AdminManagement() {
     if (!isValidPhone62(normalizedPhone)) {
       toast({
         title: "Nomor HP belum valid",
-        description: "Admin ini perlu mengatur nomor HP yang valid di profil agar fitur janji temu berfungsi.",
+        description: "Anggota tim HR/PH ini perlu mengatur nomor HP yang valid di profil agar fitur janji temu berfungsi.",
         variant: "destructive",
       });
     }
@@ -181,7 +181,7 @@ export default function AdminManagement() {
                   const result = await changeUserRole(user.id, newElevatedRole);
                   if (!result.success) {
                     toast({
-                      title: "Gagal mengangkat admin",
+                      title: "Gagal mengubah role",
                       description: result.error,
                       variant: "destructive",
                     });
@@ -198,7 +198,7 @@ export default function AdminManagement() {
                   setNewAdminId("");
                   setAddSearch("");
                   toast({
-                    title: "Berhasil mengangkat admin",
+                    title: "Berhasil mengubah role",
                     description: `${user.name} sekarang adalah ${newElevatedRole}.`,
                   });
                 }
@@ -312,7 +312,7 @@ export default function AdminManagement() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="MEMBER">Sender</SelectItem>
+                            <SelectItem value="MEMBER">Member</SelectItem>
                             <SelectItem value="HR">HR</SelectItem>
                             <SelectItem value="PH">
                               PH

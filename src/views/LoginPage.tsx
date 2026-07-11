@@ -67,7 +67,7 @@ export default function LoginPage() {
       setError(result.error ?? "Profil belum bisa disinkronkan.");
       setSyncFeedback({
         type: "error",
-        message: "Sinkronisasi gagal. Kamu bisa coba lagi, atau hubungi admin jika berulang.",
+        message: "Sinkronisasi gagal. Kamu bisa coba lagi, atau hubungi tim PH jika berulang.",
       });
       return;
     }
@@ -286,7 +286,7 @@ export default function LoginPage() {
                 <ul className="list-disc pl-5 space-y-1">
                   <li>Tunggu 1-2 menit lalu klik Masuk lagi.</li>
                   <li>Pastikan kamu login dengan email yang sama seperti saat verifikasi.</li>
-                  <li>Kalau masih gagal, hubungi admin untuk sinkronisasi profil akun.</li>
+                  <li>Kalau masih gagal, hubungi tim PH untuk sinkronisasi profil akun.</li>
                 </ul>
                 <Button
                   type="button"

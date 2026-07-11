@@ -493,6 +493,15 @@ const supabaseMock = {
       },
     };
   },
+  channel() {
+    const mockChan = {
+      on: () => mockChan,
+      subscribe: () => Promise.resolve(),
+      unsubscribe: () => Promise.resolve(),
+    };
+    return mockChan;
+  },
+  removeChannel: () => Promise.resolve(),
 };
 
 vi.mock("@/lib/supabase/client", () => ({

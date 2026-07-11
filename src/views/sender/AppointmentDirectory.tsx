@@ -102,7 +102,7 @@ export default function AppointmentDirectory() {
             Janji Temu HR & PH
           </h1>
           <p className="text-primary-foreground/90 text-lg leading-relaxed mb-6">
-            Pilih admin yang tersedia untuk berkonsultasi secara langsung melalui WhatsApp. 
+            Pilih tim HR & PH yang tersedia untuk berkonsultasi secara langsung melalui WhatsApp. 
             Kami siap membantu menjawab pertanyaan Anda dengan cepat.
           </p>
           <div className="flex flex-wrap gap-4">
@@ -127,10 +127,10 @@ export default function AppointmentDirectory() {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <User className="h-5 w-5 text-primary" />
-            Daftar Admin Tersedia
+            Daftar HR & PH Tersedia
           </h2>
           <span className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full">
-            {visibleProfiles.length} Admin Terdaftar
+            {visibleProfiles.length} HR & PH Terdaftar
           </span>
         </div>
 
@@ -141,8 +141,8 @@ export default function AppointmentDirectory() {
                 <User className="h-6 w-6 text-muted-foreground" />
               </div>
               <div className="space-y-1">
-                <p className="font-semibold">Belum Ada Admin</p>
-                <p className="text-sm text-muted-foreground">Tidak ada admin lain yang terdaftar saat ini.</p>
+                <p className="font-semibold">Belum Ada HR & PH</p>
+                <p className="text-sm text-muted-foreground">Tidak ada HR/PH lain yang terdaftar saat ini.</p>
               </div>
             </CardContent>
           </Card>

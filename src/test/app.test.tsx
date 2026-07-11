@@ -1,9 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { DataProvider } from "@/contexts/DataContext";
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+};
 import { ThemeProvider } from "next-themes";
 import { AppRoutes } from "@/App";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -168,7 +174,7 @@ describe("app behavior", () => {
     // change some values
     fireEvent.change(nameInput, { target: { value: "Test User" } });
     fireEvent.change(phoneInput, { target: { value: "628123456789" } });
-    fireEvent.click(screen.getByText(/Simpan/i));
+    fireEvent.click(screen.getByText(/Simpan Semua Perubahan/i));
 
     // toast should appear
     expect(await screen.findByText(/Profil diperbarui/i)).toBeInTheDocument();

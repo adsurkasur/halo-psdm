@@ -41,7 +41,7 @@ export function AppHeader() {
   };
 
   const roleBadge = user.role === "MEMBER"
-    ? { label: "Sender", cls: "bg-blue-100 text-blue-700" }
+    ? { label: "Member", cls: "bg-blue-100 text-blue-700" }
     : user.role === "HR"
     ? { label: "HR", cls: "bg-orange-100 text-orange-700" }
     : { label: "PH", cls: "bg-purple-100 text-purple-700" };

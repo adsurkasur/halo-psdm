@@ -45,7 +45,7 @@ export default function ChatRoom() {
     : null;
   const otherUser = otherUserId ? allUsers.find((u) => u.id === otherUserId) : null;
   const otherProfile = otherUserId ? adminProfiles.find((p) => p.user_id === otherUserId) : null;
-  const otherDisplayName = otherProfile?.display_name ?? otherUser?.name ?? "Menunggu admin...";
+  const otherDisplayName = otherProfile?.display_name ?? otherUser?.name ?? "Menunggu respon PH...";
 
   useEffect(() => {
     if (user && sessionId) {

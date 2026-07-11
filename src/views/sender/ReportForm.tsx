@@ -206,7 +206,7 @@ export default function ReportForm({
             </div>
 
             <p className="text-xs text-muted-foreground bg-accent/50 p-2.5 rounded-lg">
-              ℹ️ Identitas Anda akan tercatat dalam laporan ini. Semua laporan bersifat <strong>confidential</strong> dan hanya bisa diakses oleh admin PSDM.
+              ℹ️ Identitas Anda akan tercatat dalam laporan ini. Semua laporan bersifat <strong>confidential</strong> dan hanya bisa diakses oleh Pengurus Harian (PH) PSDM.
             </p>
 
             {/* Category */}

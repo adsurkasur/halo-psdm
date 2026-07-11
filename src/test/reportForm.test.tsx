@@ -10,6 +10,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { ThemeProvider } from "next-themes";
@@ -31,19 +32,22 @@ function AutoLogin({ children }: { children: React.ReactNode }) {
 
 describe("ReportForm validation", () => {
   const setup = (props: { initialCategory?: ReportCategory | ""; initialChronology?: string } = {}) => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
-      <ThemeProvider attribute="class" defaultTheme="system">
-        <AuthProvider>
-          <DataProvider>
-            <MemoryRouter initialEntries={["/laporan/buat"]}>
-              <AutoLogin>
-                <Toaster />
-                <ReportForm {...props} />
-              </AutoLogin>
-            </MemoryRouter>
-          </DataProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider attribute="class" defaultTheme="system">
+          <AuthProvider>
+            <DataProvider>
+              <MemoryRouter initialEntries={["/laporan/buat"]}>
+                <AutoLogin>
+                  <Toaster />
+                  <ReportForm {...props} />
+                </AutoLogin>
+              </MemoryRouter>
+            </DataProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     );
   };
 

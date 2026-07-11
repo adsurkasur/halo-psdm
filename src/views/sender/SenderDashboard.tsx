@@ -10,7 +10,7 @@ import { CATEGORY_LABELS } from "@/data/domain";
 const quickActions = [
   { title: "Buat Laporan / Pengaduan", desc: "Laporkan masalah yang Anda alami", icon: FileText, url: "/laporan/buat", color: "bg-primary" },
   { title: "Mulai Sesi Curhat", desc: "Ceritakan keluh kesah Anda", icon: MessageCircle, url: "/chat", color: "bg-status-done" },
-  { title: "Order Janji Temu", desc: "Jadwalkan pertemuan dengan admin", icon: Calendar, url: "/janji-temu", color: "bg-status-process" },
+  { title: "Order Janji Temu", desc: "Jadwalkan pertemuan dengan HR & PH", icon: Calendar, url: "/janji-temu", color: "bg-status-process" },
 ];
 
 export default function SenderDashboard() {

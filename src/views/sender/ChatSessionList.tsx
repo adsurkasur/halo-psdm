@@ -75,8 +75,8 @@ export default function ChatSessionList() {
             />
             <span className="text-muted-foreground">
               {onlineAdmins.length > 0
-                ? `${onlineAdmins.length} admin sedang online`
-                : "Semua admin sedang offline — pesan tetap tersimpan"}
+                ? `${onlineAdmins.length} PH sedang online`
+                : "Semua PH sedang offline — pesan tetap tersimpan"}
             </span>
           </div>
         </CardContent>
@@ -105,7 +105,7 @@ export default function ChatSessionList() {
             const adminProfile = session.assigned_admin_id
               ? adminProfiles.find((p) => p.user_id === session.assigned_admin_id)
               : null;
-            const adminName = adminProfile?.display_name ?? admin?.name ?? "Menunggu admin...";
+            const adminName = adminProfile?.display_name ?? admin?.name ?? "Menunggu respon PH...";
 
             return (
               <Card
@@ -122,7 +122,7 @@ export default function ChatSessionList() {
                       avatarUrl={adminProfile?.avatar_url ?? admin?.avatar_url ?? null}
                       sizeClassName="h-10 w-10"
                       fallbackClassName="bg-primary text-primary-foreground text-xs"
-                      modalTitle="Foto Profil Admin"
+                      modalTitle="Foto Profil PH"
                     />
                   </div>
                   <div className="flex-1 min-w-0">
