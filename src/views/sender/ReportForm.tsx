@@ -188,7 +188,7 @@ export default function ReportForm({
           <CardTitle>Buat Laporan / Pengaduan</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             {/* Identity — always shown, read-only */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-muted rounded-lg animate-slide-up">
               <div>

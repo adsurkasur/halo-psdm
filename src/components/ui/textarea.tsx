@@ -12,6 +12,28 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(({ classNa
         className,
       )}
       ref={ref}
+      onInvalid={(e) => {
+        if (props.onInvalid) {
+          props.onInvalid(e);
+        } else {
+          const el = e.currentTarget;
+          if (el.validity.valueMissing) {
+            el.setCustomValidity("Harap isi kolom ini terlebih dahulu.");
+          } else if (el.validity.tooShort) {
+            el.setCustomValidity(`Harap masukkan minimal ${el.minLength} karakter.`);
+          } else if (el.validity.tooLong) {
+            el.setCustomValidity(`Harap masukkan maksimal ${el.maxLength} karakter.`);
+          } else {
+            el.setCustomValidity("Input tidak valid.");
+          }
+        }
+      }}
+      onInput={(e) => {
+        if (props.onInput) {
+          props.onInput(e);
+        }
+        e.currentTarget.setCustomValidity("");
+      }}
       {...props}
     />
   );

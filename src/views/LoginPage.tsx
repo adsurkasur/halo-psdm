@@ -90,6 +90,14 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setInfo("");
+
+    if (!email.trim() || !password.trim()) {
+      setError("Email dan password wajib diisi.");
+      setShaking(true);
+      setTimeout(() => setShaking(false), 600);
+      return;
+    }
+
     setLoading(true);
     setTimeout(async () => {
       const result = await login(email, password);
@@ -318,7 +326,7 @@ export default function LoginPage() {
             )}
 
             {mode === "login" && !isRecoveryMode ? (
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4" noValidate>
                 <div>
                   <Label>Email</Label>
                   <Input
@@ -362,7 +370,7 @@ export default function LoginPage() {
                 </Button>
               </form>
             ) : mode === "login" && isRecoveryMode ? (
-              <form onSubmit={handleRecoveryReset} className="space-y-4 animate-fade-in">
+              <form onSubmit={handleRecoveryReset} className="space-y-4 animate-fade-in" noValidate>
                 <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
                   Mode pemulihan password aktif. Masukkan password baru untuk akun kamu.
                 </div>
@@ -395,7 +403,7 @@ export default function LoginPage() {
                 </Button>
               </form>
             ) : (
-              <form onSubmit={handleRegister} className="space-y-4 animate-fade-in">
+              <form onSubmit={handleRegister} className="space-y-4 animate-fade-in" noValidate>
                 <div>
                   <Label>Nama Lengkap</Label>
                   <Input

@@ -12,6 +12,38 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className,
         )}
         ref={ref}
+        onInvalid={(e) => {
+          if (props.onInvalid) {
+            props.onInvalid(e);
+          } else {
+            const el = e.currentTarget;
+            if (el.validity.valueMissing) {
+              el.setCustomValidity("Harap isi kolom ini terlebih dahulu.");
+            } else if (el.validity.typeMismatch) {
+              if (type === "email") {
+                el.setCustomValidity("Harap masukkan alamat email yang valid (contoh: nama@arsc.org).");
+              } else if (type === "url") {
+                el.setCustomValidity("Harap masukkan tautan/URL yang valid.");
+              } else {
+                el.setCustomValidity("Harap masukkan format yang sesuai.");
+              }
+            } else if (el.validity.tooShort) {
+              el.setCustomValidity(`Harap masukkan minimal ${el.minLength} karakter.`);
+            } else if (el.validity.tooLong) {
+              el.setCustomValidity(`Harap masukkan maksimal ${el.maxLength} karakter.`);
+            } else if (el.validity.patternMismatch) {
+              el.setCustomValidity("Format input tidak sesuai pola yang diminta.");
+            } else {
+              el.setCustomValidity("Input tidak valid.");
+            }
+          }
+        }}
+        onInput={(e) => {
+          if (props.onInput) {
+            props.onInput(e);
+          }
+          e.currentTarget.setCustomValidity("");
+        }}
         {...props}
       />
     );
