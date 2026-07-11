@@ -8,6 +8,7 @@ type AppUser = {
   name: string;
   role: UserRole;
   email: string;
+  whatsapp?: string | null;
 };
 
 type AuthContext = {
@@ -35,7 +36,7 @@ export async function requireAuthContext(request: Request): Promise<{ error: Nex
 
   const { data: appUser, error: appUserError } = await supabaseServer
     .from("users")
-    .select("id, name, role, email")
+    .select("id, name, role, email, whatsapp")
     .eq("id", authUser.id)
     .maybeSingle();
 

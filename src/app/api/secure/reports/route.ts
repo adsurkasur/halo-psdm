@@ -25,6 +25,9 @@ export async function POST(request: Request) {
     id: reportId,
     case_id: generateCaseId(),
     user_id: auth.context.appUser.id,
+    reporter_name: auth.context.appUser.name,
+    reporter_email: auth.context.appUser.email,
+    reporter_whatsapp: auth.context.appUser.whatsapp ?? null,
     category: body.category,
     urgency: body.urgency,
     kronologi: body.kronologi,
@@ -33,7 +36,7 @@ export async function POST(request: Request) {
     attachment_path: body.attachment_path ?? null,
     attachment_mime: body.attachment_mime ?? null,
     attachment_size: body.attachment_size ?? null,
-    status: "RECEIVED",
+    status: "RECEIVED" as const,
     admin_notes: "",
     created_at: now,
   };

@@ -64,7 +64,10 @@ export interface User {
 export interface Report {
   id: string;
   case_id: string;
-  user_id: string;
+  user_id: string | null;
+  reporter_name?: string | null;
+  reporter_email?: string | null;
+  reporter_whatsapp?: string | null;
   category: ReportCategory;
   urgency: Urgency;
   kronologi: string;
@@ -84,7 +87,7 @@ export interface ReportStatusHistory {
   report_id: string;
   old_status: ReportStatus | null;
   new_status: ReportStatus;
-  changed_by: string;
+  changed_by: string | null;
   note: string;
   created_at: string;
 }
@@ -92,7 +95,7 @@ export interface ReportStatusHistory {
 export interface ChatSession {
   id: string;
   report_id: string | null;
-  user_id: string;
+  user_id: string | null;
   assigned_admin_id: string | null;
   status: ChatSessionStatus;
   created_at: string;
@@ -102,7 +105,7 @@ export interface ChatSession {
 export interface ChatMessage {
   id: string;
   session_id: string;
-  sender_id: string;
+  sender_id: string | null;
   content: string;
   type: ChatMessageType;
   media_url?: string;
@@ -125,8 +128,8 @@ export interface AdminProfile {
 
 export interface Appointment {
   id: string;
-  user_id: string;
-  target_admin_id: string;
+  user_id: string | null;
+  target_admin_id: string | null;
   status: AppointmentStatus;
   status_note?: string | null;
   handled_by?: string | null;

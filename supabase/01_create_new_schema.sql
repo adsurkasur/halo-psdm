@@ -63,28 +63,53 @@ CREATE TRIGGER admin_profiles_updated_at
 -- HALO PSDM: reports
 -- ============================================================
 CREATE TABLE public.reports (
-  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  case_id         text        NOT NULL UNIQUE, -- display ID, e.g. "RPT-2025-001"
-  user_id         uuid        NOT NULL REFERENCES users(id),
-  category        text        NOT NULL,
-  urgency         text        NOT NULL DEFAULT 'NORMAL',
+  id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  case_id           text        NOT NULL UNIQUE, -- display ID, e.g. "RPT-2025-001"
+  user_id           uuid        REFERENCES users(id) ON DELETE SET NULL,
+  reporter_name     text,
+  reporter_email    text,
+  reporter_whatsapp text,
+  category          text        NOT NULL,
+  urgency           text        NOT NULL DEFAULT 'NORMAL',
   -- urgency values: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
-  kronologi       text        NOT NULL,
-  status          text        NOT NULL DEFAULT 'RECEIVED',
+  kronologi         text        NOT NULL,
+  status            text        NOT NULL DEFAULT 'RECEIVED',
   -- status values: 'RECEIVED' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
-  admin_notes     text        NOT NULL DEFAULT '',
-  attachment_url  text,
-  attachment_name text,
-  attachment_path text,
-  attachment_mime text,
-  attachment_size bigint,
-  created_at      timestamptz NOT NULL DEFAULT now(),
-  updated_at      timestamptz NOT NULL DEFAULT now()
+  admin_notes       text        NOT NULL DEFAULT '',
+  attachment_url    text,
+  attachment_name   text,
+  attachment_path   text,
+  attachment_mime   text,
+  attachment_size   bigint,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TRIGGER reports_updated_at
   BEFORE UPDATE ON reports
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Function & Trigger: Identity Snapshotting for Reports
+CREATE OR REPLACE FUNCTION public.sync_reporter_identity_snapshot()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF NEW.reporter_name IS NULL OR NEW.reporter_name = '' THEN
+    SELECT name, email, whatsapp 
+    INTO NEW.reporter_name, NEW.reporter_email, NEW.reporter_whatsapp
+    FROM public.users
+    WHERE id = NEW.user_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trigger_sync_reporter_identity
+  BEFORE INSERT OR UPDATE ON reports
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_reporter_identity_snapshot();
 
 
 -- ============================================================
@@ -95,7 +120,7 @@ CREATE TABLE public.report_status_history (
   report_id   uuid        NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
   old_status  text,
   new_status  text        NOT NULL,
-  changed_by  uuid        NOT NULL REFERENCES users(id),
+  changed_by  uuid        REFERENCES users(id) ON DELETE SET NULL,
   note        text        NOT NULL DEFAULT '',
   created_at  timestamptz NOT NULL DEFAULT now()
 );
@@ -106,8 +131,8 @@ CREATE TABLE public.report_status_history (
 -- ============================================================
 CREATE TABLE public.chat_sessions (
   id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  report_id         uuid        REFERENCES reports(id) ON DELETE SET NULL,
-  user_id           uuid        NOT NULL REFERENCES users(id),
+  report_id         uuid        REFERENCES reports(id) ON DELETE CASCADE,
+  user_id           uuid        REFERENCES users(id) ON DELETE SET NULL,
   assigned_admin_id uuid        REFERENCES users(id) ON DELETE SET NULL,
   status            text        NOT NULL DEFAULT 'OPEN',
   -- status values: 'OPEN' | 'CLOSED'
@@ -122,7 +147,7 @@ CREATE TABLE public.chat_sessions (
 CREATE TABLE public.chat_messages (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id  uuid        NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
-  sender_id   uuid        NOT NULL REFERENCES users(id),
+  sender_id   uuid        REFERENCES users(id) ON DELETE SET NULL,
   content     text        NOT NULL DEFAULT '',
   type        text        NOT NULL DEFAULT 'TEXT',
   -- type values: 'TEXT' | 'IMAGE' | 'FILE'
@@ -139,8 +164,8 @@ CREATE TABLE public.chat_messages (
 -- ============================================================
 CREATE TABLE public.appointments (
   id                    uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id               uuid        NOT NULL REFERENCES users(id),
-  target_admin_id       uuid        NOT NULL REFERENCES users(id),
+  user_id               uuid        REFERENCES users(id) ON DELETE SET NULL,
+  target_admin_id       uuid        REFERENCES users(id) ON DELETE SET NULL,
   status                text        NOT NULL DEFAULT 'OPEN',
   -- status values: 'OPEN' | 'HANDLED' | 'CANCELLED'
   status_note           text,

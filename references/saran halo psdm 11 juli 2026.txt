@@ -1,0 +1,9 @@
+- video support
+- antrean chat ketika tampil selected fontnya putih di atas krem, visibility sulit tampak
+- beberapa akun ada yang sulit dapat email konfirmasi
+- ada celah sistem laporan tidak ada limit (tidak apa-apa)
+
+- entry manual dari ph dan hr jika ada janji temu di luar aplikasi
+- tombol verifikasi janji temu di sistem
+- delete akun problem
+- notifikasi: lewat pop up kayak gapura dan email

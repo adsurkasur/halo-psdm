@@ -63,7 +63,11 @@ export default function ReportDetail() {
     .filter((h) => h.report_id === report.id)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-  const sender = allUsers.find((u) => u.id === report.user_id);
+  const sender = report.user_id ? allUsers.find((u) => u.id === report.user_id) : undefined;
+  const displayName = report.reporter_name || sender?.name || "Identitas tidak ditemukan";
+  const displayEmail = report.reporter_email || sender?.email || "";
+  const displayWa = report.reporter_whatsapp || sender?.whatsapp || "";
+  const isDeletedAccount = !report.user_id || (!sender && Boolean(report.reporter_name));
   const linkedChat = chatSessions.find(
     (cs) => cs.report_id === report.id && cs.status === "OPEN"
   );
@@ -134,18 +138,43 @@ export default function ReportDetail() {
                   <div className="mt-0.5 space-y-1">
                     <div className="flex items-center gap-2">
                       <UserAvatarWithPreview
-                        name={sender.name}
+                        name={displayName}
                         avatarUrl={sender.avatar_url}
                         sizeClassName="h-8 w-8"
                         fallbackClassName="bg-primary text-primary-foreground text-[10px]"
                         modalTitle="Foto Profil Pengirim"
                       />
-                      <p className="font-medium">{sender.name}</p>
+                      <p className="font-medium">{displayName}</p>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
                       {BIRO_LABELS[sender.biro]} · {JABATAN_LABELS[sender.jabatan]}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">{sender.email}</p>
+                    <p className="text-[11px] text-muted-foreground">{displayEmail}</p>
+                    {displayWa && (
+                      <p className="text-[11px] text-muted-foreground">WA: {displayWa}</p>
+                    )}
+                  </div>
+                ) : isDeletedAccount ? (
+                  <div className="mt-0.5 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <UserAvatarWithPreview
+                        name={displayName}
+                        avatarUrl={null}
+                        sizeClassName="h-8 w-8"
+                        fallbackClassName="bg-muted text-muted-foreground text-[10px]"
+                        modalTitle="Foto Profil Pengirim"
+                      />
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-medium">{displayName}</p>
+                          <span className="inline-flex items-center rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+                            [Akun Pelapor Telah Dihapus]
+                          </span>
+                        </div>
+                        {displayEmail && <p className="text-[11px] text-muted-foreground">{displayEmail}</p>}
+                        {displayWa && <p className="text-[11px] text-muted-foreground">WA: {displayWa}</p>}
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <p className="font-medium">Identitas pengirim tidak ditemukan.</p>
@@ -275,7 +304,9 @@ export default function ReportDetail() {
                 {history.map((h, i) => {
                   const changer = h.changed_by === "system"
                     ? "Sistem"
-                    : allUsers.find((u) => u.id === h.changed_by)?.name ?? "PH";
+                    : h.changed_by
+                      ? allUsers.find((u) => u.id === h.changed_by)?.name ?? "PH"
+                      : "PH (Akun Dihapus)";
                   return (
                     <div key={h.id} className="flex gap-3">
                       <div className="flex flex-col items-center">

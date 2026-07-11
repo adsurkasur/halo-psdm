@@ -138,8 +138,8 @@ export default function AdminAppointmentTracker() {
               </TableHeader>
               <TableBody>
                 {sortedAppointments.map((appointment) => {
-                  const sender = allUsers.find((u) => u.id === appointment.user_id);
-                  const target = allUsers.find((u) => u.id === appointment.target_admin_id);
+                  const sender = appointment.user_id ? allUsers.find((u) => u.id === appointment.user_id) : undefined;
+                  const target = appointment.target_admin_id ? allUsers.find((u) => u.id === appointment.target_admin_id) : undefined;
                   const isOpen = appointment.status === "OPEN";
                   const isLoading = updatingId === appointment.id;
 
@@ -151,10 +151,17 @@ export default function AdminAppointmentTracker() {
                             <User className="h-4 w-4" />
                           </div>
                           <div>
-                            <p className="text-sm font-semibold">{sender?.name ?? "-"}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-sm font-semibold">{sender?.name ?? (!appointment.user_id ? "Pengaju (Dihapus)" : "-")}</p>
+                              {!appointment.user_id && (
+                                <span className="inline-flex items-center rounded bg-destructive/10 px-1.5 py-0.5 text-[9px] font-medium text-destructive">
+                                  Dihapus
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
                               <Mail className="h-2.5 w-2.5" />
-                              {sender?.email ?? ""}
+                              {sender?.email ?? (!appointment.user_id ? "Akun telah dihapus" : "")}
                             </div>
                           </div>
                         </div>

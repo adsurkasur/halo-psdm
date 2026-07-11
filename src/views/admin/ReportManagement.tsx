@@ -88,18 +88,37 @@ export default function ReportManagement() {
               </TableHeader>
               <TableBody>
                 {filtered.map((r) => {
-                  const sender = allUsers.find((u) => u.id === r.user_id);
+                  const sender = r.user_id ? allUsers.find((u) => u.id === r.user_id) : undefined;
+                  const displayName = r.reporter_name || sender?.name || "Identitas tidak ditemukan";
+                  const displayEmail = r.reporter_email || sender?.email || "";
+                  const displayWa = r.reporter_whatsapp || sender?.whatsapp || "";
+                  const isDeletedAccount = !r.user_id || (!sender && Boolean(r.reporter_name));
+
                   return (
                     <TableRow key={r.id} className="transition-colors duration-200">
                       <TableCell className="font-mono text-xs">{r.case_id}</TableCell>
                       <TableCell className="text-sm">
                         {sender ? (
-                          <div>
-                            <p className="font-medium">{sender.name}</p>
-                            <p className="text-xs text-muted-foreground">{sender.email}</p>
+                          <div className="space-y-0.5">
+                            <p className="font-medium">{displayName}</p>
+                            <p className="text-xs text-muted-foreground">{displayEmail}</p>
                             <p className="text-[11px] text-muted-foreground">
                               {BIRO_LABELS[sender.biro]} · {JABATAN_LABELS[sender.jabatan]}
                             </p>
+                            {displayWa && (
+                              <p className="text-[11px] text-muted-foreground">WA: {displayWa}</p>
+                            )}
+                          </div>
+                        ) : isDeletedAccount ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-medium">{displayName}</p>
+                              <span className="inline-flex items-center rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+                                [Akun Pelapor Telah Dihapus]
+                              </span>
+                            </div>
+                            {displayEmail && <p className="text-xs text-muted-foreground">{displayEmail}</p>}
+                            {displayWa && <p className="text-[11px] text-muted-foreground">WA: {displayWa}</p>}
                           </div>
                         ) : (
                           <div>

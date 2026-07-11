@@ -219,7 +219,9 @@ export default function SenderReportDetail() {
             {history.map((h, i) => {
               const changer = h.changed_by === "system"
                 ? "Sistem"
-                : allUsers.find((u) => u.id === h.changed_by)?.name ?? "PH";
+                : h.changed_by
+                  ? allUsers.find((u) => u.id === h.changed_by)?.name ?? "PH"
+                  : "PH (Akun Dihapus)";
               return (
                 <div key={h.id} className="flex gap-3">
                   <div className="flex flex-col items-center">

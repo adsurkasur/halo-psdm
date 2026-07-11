@@ -66,6 +66,25 @@ export async function POST(request: Request) {
   await cleanupUserStorage("report-attachments", auth.context.authUser.id);
   await cleanupUserStorage("chat-media", auth.context.authUser.id);
 
+  // Snapshot identity onto existing reports before user is deleted
+  const { data: userProfile } = await supabaseServer
+    .from("users")
+    .select("name, email, whatsapp")
+    .eq("id", auth.context.authUser.id)
+    .single();
+
+  if (userProfile) {
+    await supabaseServer
+      .from("reports")
+      .update({
+        reporter_name: userProfile.name,
+        reporter_email: userProfile.email,
+        reporter_whatsapp: userProfile.whatsapp ?? null,
+      })
+      .eq("user_id", auth.context.authUser.id)
+      .or("reporter_name.is.null,reporter_name.eq.");
+  }
+
   await supabaseServer.from("admin_profiles").delete().or(`id.eq.${auth.context.authUser.id},user_id.eq.${auth.context.authUser.id}`);
   await supabaseServer.from("users").delete().eq("id", auth.context.authUser.id);
 
