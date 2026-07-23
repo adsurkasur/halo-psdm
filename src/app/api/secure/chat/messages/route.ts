@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       payload: {
         title: isSender ? "Pesan Baru" : "Balasan Chat",
         message: `${auth.context.appUser.name}: ${preview || "Pesan baru"}${message.type === "TEXT" && body.content.length > 60 ? "..." : ""}`,
-        link: isSender ? "/admin/chat" : `/chat/${body.sessionId}`,
+        link: isSender ? `/admin/chat?session=${body.sessionId}` : `/chat/${body.sessionId}`,
       },
       is_read: false,
       created_at: now,

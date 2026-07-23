@@ -1,7 +1,19 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, MessageCircle, Paperclip } from "lucide-react";
+import { ArrowLeft, Download, MessageCircle, Paperclip, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { UrgencyBadge, StatusBadge } from "@/components/shared/StatusBadges";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
@@ -14,8 +26,10 @@ export default function SenderReportDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, allUsers } = useAuth();
-  const { reports, statusHistory, chatSessions, createChatSession } = useData();
+  const { reports, statusHistory, chatSessions, createChatSession, deleteReport } = useData();
   const { toast } = useToast();
+
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!user) return null;
 
@@ -30,6 +44,26 @@ export default function SenderReportDetail() {
       </div>
     );
   }
+
+  const handleDeleteReport = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteReport(report.id);
+      toast({
+        title: "Laporan Terhapus",
+        description: "Laporan berhasil dihapus.",
+      });
+      navigate("/laporan");
+    } catch (error) {
+      toast({
+        title: "Gagal menghapus laporan",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const history = statusHistory
     .filter((h) => h.report_id === report.id)
@@ -62,7 +96,31 @@ export default function SenderReportDetail() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Detail Laporan — {report.case_id}</CardTitle>
-            <StatusBadge status={report.status} />
+            <div className="flex items-center gap-2">
+              <StatusBadge status={report.status} />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 border-destructive/30 gap-1.5 h-8">
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Hapus</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Hapus Laporan ini?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tindakan ini tidak dapat dibatalkan. Seluruh data laporan beserta riwayat dan berkas lampiran akan terhapus secara permanen.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteReport} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      {isDeleting ? "Menghapus..." : "Ya, Hapus Laporan"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

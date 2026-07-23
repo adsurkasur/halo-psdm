@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Paperclip, X } from "lucide-react";
+import { Paperclip, X, Trash2, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,46 @@ export default function ReportForm({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentCompressionInfo, setAttachmentCompressionInfo] = useState<{ original: number; compressed: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+
+  const DRAFT_KEY = user ? `halo_psdm_report_draft_${user.id}` : "";
+
+  // Load draft on mount
+  useEffect(() => {
+    if (!DRAFT_KEY || initialCategory || initialChronology) return;
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.category) setCategory(parsed.category);
+        if (parsed.urgency) setUrgency(parsed.urgency);
+        if (parsed.chronology) setChronology(parsed.chronology);
+        setHasDraft(true);
+      } catch {
+        // ignore
+      }
+    }
+  }, [DRAFT_KEY, initialCategory, initialChronology]);
+
+  // Save draft on change
+  useEffect(() => {
+    if (!DRAFT_KEY) return;
+    if (category || chronology.trim() || urgency !== "RENDAH") {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ category, urgency, chronology }));
+      setHasDraft(true);
+    }
+  }, [DRAFT_KEY, category, urgency, chronology]);
+
+  const clearDraft = () => {
+    if (DRAFT_KEY) {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+    setHasDraft(false);
+    setCategory("");
+    setUrgency("RENDAH");
+    setChronology("");
+    setAttachment(null);
+  };
 
   if (!user) return null;
 
@@ -163,6 +203,11 @@ export default function ReportForm({
         description: `Laporan berhasil dikirim dengan ID: ${report.case_id}`,
       });
 
+      if (DRAFT_KEY) {
+        localStorage.removeItem(DRAFT_KEY);
+      }
+      setHasDraft(false);
+
       setTimeout(() => navigate(`/laporan/${report.id}`), 800);
     } catch (error) {
       toast({
@@ -184,8 +229,23 @@ export default function ReportForm({
   return (
     <div className="space-y-6 page-enter">
       <Card className="animate-scale-in">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Buat Laporan / Pengaduan</CardTitle>
+          {hasDraft && (
+            <div className="flex items-center gap-2 text-xs bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3 py-1 rounded-full">
+              <CheckCircle className="h-3.5 w-3.5 text-amber-500" />
+              <span>Draf tersimpan otomatis</span>
+              <button
+                type="button"
+                onClick={clearDraft}
+                className="ml-1 text-rose-600 hover:text-rose-700 dark:text-rose-400 font-medium hover:underline flex items-center gap-0.5"
+                title="Hapus Draf"
+              >
+                <Trash2 className="h-3 w-3" />
+                Hapus
+              </button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>

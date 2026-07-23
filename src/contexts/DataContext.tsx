@@ -19,6 +19,7 @@ import {
 } from "@/data/domain";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface DataContextType {
   isBusy: boolean;
@@ -41,12 +42,14 @@ interface DataContextType {
   updateReportStatus: (reportId: string, newStatus: ReportStatus, adminId: string, note?: string) => Promise<void>;
   updateReportUrgency: (reportId: string, newUrgency: Urgency, adminId: string) => Promise<void>;
   updateReportNotes: (reportId: string, notes: string) => Promise<void>;
+  deleteReport: (reportId: string) => Promise<void>;
 
   chatSessions: ChatSession[];
   chatMessages: ChatMessage[];
   createChatSession: (userId: string, reportId?: string | null) => Promise<ChatSession>;
   assignAdminToSession: (sessionId: string, adminId: string) => Promise<void>;
   closeChatSession: (sessionId: string) => Promise<void>;
+  deleteChatSession: (sessionId: string) => Promise<void>;
   addChatMessage: (sessionId: string, senderId: string, content: string, type?: ChatMessageType, mediaUrl?: string, mediaName?: string) => Promise<ChatMessage>;
   markMessagesRead: (sessionId: string, readerId: string) => Promise<void>;
 
@@ -90,6 +93,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const API_TIMEOUT_MS = 15000;
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [pendingOps, setPendingOps] = useState(0);
   const inFlightRequestsRef = useRef<Map<string, Promise<unknown>>>(new Map());
   const isBusy = pendingOps > 0;
@@ -417,11 +421,117 @@ export function DataProvider({ children }: { children: ReactNode }) {
       "admin_profiles",
     ];
 
+    const sessionIds = chatSessions.map((s) => s.id);
+
+    const handlePostgresChange = (table: string, payload: any) => {
+      invalidate(table);
+
+      const eventType = payload.eventType;
+      const newRow = payload.new;
+
+      if (table === "chat_messages") {
+        const queryKey = QUERY_KEYS.chatMessages(sessionIds);
+        if (eventType === "INSERT") {
+          const newMsg = {
+            ...newRow,
+            type: (newRow.type ?? "TEXT") as ChatMessageType,
+          } as ChatMessage;
+          queryClient.setQueryData(queryKey, (prev: ChatMessage[] | undefined) => {
+            if (!prev) return [newMsg];
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
+        } else if (eventType === "UPDATE") {
+          const updatedMsg = {
+            ...newRow,
+            type: (newRow.type ?? "TEXT") as ChatMessageType,
+          } as ChatMessage;
+          queryClient.setQueryData(queryKey, (prev: ChatMessage[] | undefined) => {
+            if (!prev) return [];
+            return prev.map((m) => m.id === updatedMsg.id ? updatedMsg : m);
+          });
+        }
+      } else if (table === "chat_sessions") {
+        const queryKey = QUERY_KEYS.chatSessions(user.id, user.role);
+        if (eventType === "INSERT") {
+          queryClient.setQueryData(queryKey, (prev: ChatSession[] | undefined) => {
+            if (!prev) return [newRow];
+            if (prev.some((s) => s.id === newRow.id)) return prev;
+            return [newRow, ...prev];
+          });
+        } else if (eventType === "UPDATE") {
+          queryClient.setQueryData(queryKey, (prev: ChatSession[] | undefined) => {
+            if (!prev) return [];
+            return prev.map((s) => s.id === newRow.id ? newRow : s);
+          });
+        }
+      } else if (table === "appointments") {
+        const queryKey = QUERY_KEYS.appointments(user.id, user.role);
+        if (eventType === "INSERT") {
+          queryClient.setQueryData(queryKey, (prev: Appointment[] | undefined) => {
+            if (!prev) return [newRow];
+            if (prev.some((a) => a.id === newRow.id)) return prev;
+            return [newRow, ...prev];
+          });
+        } else if (eventType === "UPDATE") {
+          queryClient.setQueryData(queryKey, (prev: Appointment[] | undefined) => {
+            if (!prev) return [];
+            return prev.map((a) => a.id === newRow.id ? newRow : a);
+          });
+        }
+      } else if (table === "notifications") {
+        const queryKey = QUERY_KEYS.notifications(user.id);
+        if (eventType === "INSERT") {
+          const newNotif = mapNotifications([newRow])[0];
+          queryClient.setQueryData(queryKey, (prev: Notification[] | undefined) => {
+            if (!prev) return [newNotif];
+            if (prev.some((n) => n.id === newNotif.id)) return prev;
+            return [newNotif, ...prev];
+          });
+
+          if (newNotif.user_id === user.id) {
+            triggerNotificationPopup(newNotif.title, newNotif.message);
+          }
+        } else if (eventType === "UPDATE") {
+          const updatedNotif = mapNotifications([newRow])[0];
+          queryClient.setQueryData(queryKey, (prev: Notification[] | undefined) => {
+            if (!prev) return [];
+            return prev.map((n) => n.id === updatedNotif.id ? updatedNotif : n);
+          });
+        }
+      }
+    };
+
+    const triggerNotificationPopup = (title: string, message: string) => {
+      // 1. In-App Notification (Toast)
+      toast({
+        title: `🔔 ${title}`,
+        description: message,
+      });
+
+      // 2. HTML5 Browser Notification
+      if (typeof window !== "undefined" && "Notification" in window) {
+        if (window.Notification.permission === "granted") {
+          new window.Notification(title, {
+            body: message,
+          });
+        } else if (window.Notification.permission !== "denied") {
+          window.Notification.requestPermission().then((permission) => {
+            if (permission === "granted") {
+              new window.Notification(title, {
+                body: message,
+              });
+            }
+          });
+        }
+      }
+    };
+
     for (const table of watchedTables) {
       channel.on(
         "postgres_changes",
         { event: "*", schema: "public", table },
-        () => invalidate(table)
+        (payload) => handlePostgresChange(table, payload)
       );
     }
 
@@ -430,7 +540,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [queryClient, user]);
+  }, [queryClient, user, chatSessions, mapNotifications, toast]);
 
   const addNotification = useCallback(
     async (data: { user_id: string; type: NotificationType; title: string; message: string; link?: string }) => {
@@ -463,8 +573,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(QUERY_KEYS.notifications(notif.user_id), (prev: Notification[] | undefined) => 
         prev ? [notif, ...prev] : [notif]
       );
+
+      if (notif.user_id === user?.id) {
+        toast({
+          title: `🔔 ${notif.title}`,
+          description: notif.message,
+        });
+
+        if (typeof window !== "undefined" && "Notification" in window) {
+          if (window.Notification.permission === "granted") {
+            new window.Notification(notif.title, {
+              body: notif.message,
+            });
+          } else if (window.Notification.permission !== "denied") {
+            window.Notification.requestPermission().then((permission) => {
+              if (permission === "granted") {
+                new window.Notification(notif.title, {
+                  body: notif.message,
+                });
+              }
+            });
+          }
+        }
+      }
     },
-    [queryClient]
+    [queryClient, user?.id, toast]
   );
 
   const addReport = useCallback(
@@ -551,6 +684,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
   }, [queryClient, user?.id, user?.role]);
 
+  const deleteReport = useCallback(
+    async (reportId: string) => {
+      await callSecureApi<{ success: boolean }>(`/api/secure/reports/${reportId}`, {
+        method: "DELETE",
+      });
+
+      queryClient.setQueryData(QUERY_KEYS.reports(user?.id ?? "", user?.role ?? ""), (prev: Report[] | undefined) =>
+        prev ? prev.filter((r) => r.id !== reportId) : []
+      );
+    },
+    [callSecureApi, queryClient, user?.id, user?.role]
+  );
+
   const createChatSession = useCallback(
     async (userId: string, reportId: string | null = null) => {
       const response = await callSecureApi<{ session: ChatSession }>("/api/secure/chat/sessions", {
@@ -589,6 +735,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       );
     },
     [callSecureApi, queryClient, user?.id, user?.role]
+  );
+
+  const deleteChatSession = useCallback(
+    async (sessionId: string) => {
+      await callSecureApi<{ success: boolean }>(`/api/secure/chat/sessions/${sessionId}`, {
+        method: "DELETE",
+      });
+
+      queryClient.setQueryData(QUERY_KEYS.chatSessions(user?.id ?? "", user?.role ?? ""), (prev: ChatSession[] | undefined) =>
+        prev ? prev.filter((s) => s.id !== sessionId) : []
+      );
+
+      const sessionIds = chatSessions.map((s) => s.id).filter((id) => id !== sessionId);
+      queryClient.setQueryData(QUERY_KEYS.chatMessages(sessionIds), (prev: ChatMessage[] | undefined) =>
+        prev ? prev.filter((m) => m.session_id !== sessionId) : []
+      );
+    },
+    [callSecureApi, queryClient, user?.id, user?.role, chatSessions]
   );
 
   const addChatMessage = useCallback(
@@ -690,11 +854,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addAppointment = useCallback(
     async (userId: string, targetAdminId: string) => {
-      void userId;
-
       const response = await callSecureApi<{ appointment: Appointment }>("/api/secure/appointments", {
         method: "POST",
-        body: JSON.stringify({ targetAdminId }),
+        body: JSON.stringify({ targetAdminId, userId }),
       });
 
       queryClient.setQueryData(QUERY_KEYS.appointments(user?.id ?? "", user?.role ?? ""), (prev: Appointment[] | undefined) => 
@@ -780,8 +942,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         dataLoadIssues,
         lastSyncedAt,
         reloadData,
-        reports, statusHistory, addReport, updateReportStatus, updateReportUrgency, updateReportNotes,
-        chatSessions, chatMessages, createChatSession, assignAdminToSession, closeChatSession, addChatMessage, markMessagesRead,
+        reports, statusHistory, addReport, updateReportStatus, updateReportUrgency, updateReportNotes, deleteReport,
+        chatSessions, chatMessages, createChatSession, assignAdminToSession, closeChatSession, deleteChatSession, addChatMessage, markMessagesRead,
         adminProfiles, updateAvailability, addAdminProfile, removeAdminProfile, getEffectiveStatus,
         appointments, addAppointment, updateAppointmentStatus,
         notifications, addNotification, markNotificationRead, markAllNotificationsRead, getUnreadCount,

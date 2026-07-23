@@ -12,12 +12,15 @@ export async function POST(request: Request) {
   const auth = await requireAuthContext(request);
   if ("error" in auth) return auth.error;
 
-  const body = (await request.json()) as { targetAdminId: string };
+  const body = (await request.json()) as { targetAdminId: string; userId?: string };
   const now = new Date().toISOString();
+
+  const isPrivileged = auth.context.appUser.role === "PH" || auth.context.appUser.role === "HR";
+  const finalUserId = (isPrivileged && body.userId) ? body.userId : auth.context.appUser.id;
 
   const appointment = {
     id: crypto.randomUUID(),
-    user_id: auth.context.appUser.id,
+    user_id: finalUserId,
     target_admin_id: body.targetAdminId,
     status: "OPEN",
     status_note: null,
@@ -31,13 +34,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: inserted.error.message }, { status: 400 });
   }
 
+  // Get reporter name for notification
+  let reporterName = auth.context.appUser.name;
+  if (finalUserId !== auth.context.appUser.id) {
+    const { data: reporterProfile } = await supabaseServer
+      .from("users")
+      .select("name")
+      .eq("id", finalUserId)
+      .single();
+    if (reporterProfile) {
+      reporterName = reporterProfile.name;
+    }
+  }
+
   await supabaseServer.from("notifications").insert({
     id: crypto.randomUUID(),
     user_id: body.targetAdminId,
     type: "APPOINTMENT_REQUEST",
     payload: {
       title: "Permintaan Janji Temu",
-      message: `Permintaan janji temu baru dari ${auth.context.appUser.name}`,
+      message: `Permintaan janji temu baru dari ${reporterName}`,
     },
     is_read: false,
     created_at: now,
@@ -50,7 +66,7 @@ export async function PATCH(request: Request) {
   const auth = await requireAuthContext(request);
   if ("error" in auth) return auth.error;
 
-  if (auth.context.appUser.role !== "PH") {
+  if (auth.context.appUser.role !== "PH" && auth.context.appUser.role !== "HR") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarCheck2, CheckCircle2, XCircle, Clock3, User, Mail, MessageSquare } from "lucide-react";
+import { CalendarCheck2, CheckCircle2, XCircle, Clock3, User, Mail, MessageSquare, Plus, Loader2, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -11,18 +11,36 @@ import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { APPOINTMENT_STATUS_LABELS, type AppointmentStatus } from "@/data/domain";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function AdminAppointmentTracker() {
-  const { appointments, updateAppointmentStatus } = useData();
+  const { appointments, updateAppointmentStatus, addAppointment, adminProfiles } = useData();
   const { allUsers } = useAuth();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | "ALL">("ALL");
   const [statusNote, setStatusNote] = useState<Record<string, string>>({});
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  // States for manual entry
+  const [isManualOpen, setIsManualOpen] = useState(false);
+  const [manualUserId, setManualUserId] = useState("");
+  const [manualTargetAdminId, setManualTargetAdminId] = useState("");
+  const [manualNote, setManualNote] = useState("");
+  const [manualStatus, setManualStatus] = useState<AppointmentStatus>("OPEN");
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
   const sortedAppointments = useMemo(() => {
     const statusRank: Record<AppointmentStatus, number> = {
-      OPEN: 3,
+      OPEN: 4,
+      VERIFIED: 3,
       DONE: 2,
       DISMISSED: 1,
     };
@@ -39,6 +57,7 @@ export default function AdminAppointmentTracker() {
   const summary = {
     all: appointments.length,
     open: appointments.filter((a) => a.status === "OPEN").length,
+    verified: appointments.filter((a) => a.status === "VERIFIED").length,
     done: appointments.filter((a) => a.status === "DONE").length,
     dismissed: appointments.filter((a) => a.status === "DISMISSED").length,
   };
@@ -63,6 +82,48 @@ export default function AdminAppointmentTracker() {
     }
   };
 
+  const handleCreateManual = async () => {
+    if (!manualUserId) {
+      toast({ title: "Pilih pengaju (user) terlebih dahulu.", variant: "destructive" });
+      return;
+    }
+    if (!manualTargetAdminId) {
+      toast({ title: "Pilih penerima (admin) terlebih dahulu.", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmittingManual(true);
+    try {
+      // 1. Create appointment request
+      const appt = await addAppointment(manualUserId, manualTargetAdminId);
+      
+      // 2. If status is not OPEN or custom note is present, update status
+      if (manualStatus !== "OPEN" || manualNote.trim()) {
+        await updateAppointmentStatus(appt.id, manualStatus, manualNote);
+      }
+
+      toast({
+        title: "Janji Temu Manual Dibuat",
+        description: "Janji temu luar aplikasi berhasil dicatat.",
+      });
+
+      // Clear states & close modal
+      setManualUserId("");
+      setManualTargetAdminId("");
+      setManualNote("");
+      setManualStatus("OPEN");
+      setIsManualOpen(false);
+    } catch (error) {
+      toast({
+        title: "Gagal membuat janji temu",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  };
+
   return (
     <div className="space-y-6 page-enter">
       {/* Hero Header Section */}
@@ -77,28 +138,124 @@ export default function AdminAppointmentTracker() {
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <Tabs
-          value={statusFilter}
-          onValueChange={(value) => setStatusFilter(value as AppointmentStatus | "ALL")}
-          className="w-full sm:w-auto"
-        >
-          <TabsList className="grid w-full grid-cols-4 sm:w-auto">
-            <TabsTrigger value="ALL" className="text-xs px-4">Semua</TabsTrigger>
-            <TabsTrigger value="OPEN" className="text-xs px-4">Aktif</TabsTrigger>
-            <TabsTrigger value="DONE" className="text-xs px-4">Selesai</TabsTrigger>
-            <TabsTrigger value="DISMISSED" className="text-xs px-4">Ditolak</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap items-center gap-3">
+          <Tabs
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value as AppointmentStatus | "ALL")}
+            className="w-full sm:w-auto"
+          >
+            <TabsList className="grid w-full grid-cols-5 sm:w-auto">
+              <TabsTrigger value="ALL" className="text-xs px-2.5">Semua</TabsTrigger>
+              <TabsTrigger value="OPEN" className="text-xs px-2.5">Menunggu Verifikasi</TabsTrigger>
+              <TabsTrigger value="VERIFIED" className="text-xs px-2.5">Disetujui</TabsTrigger>
+              <TabsTrigger value="DONE" className="text-xs px-2.5">Selesai</TabsTrigger>
+              <TabsTrigger value="DISMISSED" className="text-xs px-2.5">Ditolak</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <Dialog open={isManualOpen} onOpenChange={setIsManualOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-1 text-xs h-9">
+                <Plus className="h-4 w-4" />
+                Janji Temu Manual
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Tambah Janji Temu Manual</DialogTitle>
+                <DialogDescription>
+                  Catat pertemuan yang dijadwalkan di luar aplikasi.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-2">
+                <div className="space-y-1">
+                  <Label>Pengaju (User / Anggota)</Label>
+                  <Select value={manualUserId} onValueChange={setManualUserId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih anggota..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allUsers.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name} ({u.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Penerima (Admin / HR / PH)</Label>
+                  <Select value={manualTargetAdminId} onValueChange={setManualTargetAdminId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih HR/PH..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {adminProfiles.map((ap) => (
+                        <SelectItem key={ap.user_id} value={ap.user_id}>
+                          {ap.display_name} ({ap.jabatan_display})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Status Awal</Label>
+                  <Select value={manualStatus} onValueChange={(v) => setManualStatus(v as AppointmentStatus)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OPEN">Menunggu Verifikasi</SelectItem>
+                      <SelectItem value="VERIFIED">Diverifikasi / Disetujui</SelectItem>
+                      <SelectItem value="DONE">Selesai</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Catatan Tindak Lanjut</Label>
+                  <Textarea
+                    placeholder="Masukkan catatan (misal: Pertemuan luar aplikasi via Zoom...)"
+                    value={manualNote}
+                    onChange={(e) => setManualNote(e.target.value)}
+                    className="min-h-[80px]"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsManualOpen(false)}>
+                  Batal
+                </Button>
+                <Button disabled={isSubmittingManual} onClick={handleCreateManual}>
+                  {isSubmittingManual ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Simpan Janji Temu"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full border border-border/50">
           <Clock3 className="h-3.5 w-3.5" />
           <span>Update otomatis aktif</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: "Total Pengajuan", value: summary.all, icon: CalendarCheck2, color: "text-primary", bg: "bg-primary/10" },
-          { label: "Menunggu Tindak Lanjut", value: summary.open, icon: Clock3, color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Menunggu Verifikasi", value: summary.open, icon: Clock3, color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Disetujui / Terjadwal", value: summary.verified, icon: Check, color: "text-indigo-600", bg: "bg-indigo-50" },
           { label: "Selesai Diproses", value: summary.done, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
           { label: "Ditolak / Dibatalkan", value: summary.dismissed, icon: XCircle, color: "text-rose-600", bg: "bg-rose-50" },
         ].map((stat, i) => (
@@ -140,7 +297,7 @@ export default function AdminAppointmentTracker() {
                 {sortedAppointments.map((appointment) => {
                   const sender = appointment.user_id ? allUsers.find((u) => u.id === appointment.user_id) : undefined;
                   const target = appointment.target_admin_id ? allUsers.find((u) => u.id === appointment.target_admin_id) : undefined;
-                  const isOpen = appointment.status === "OPEN";
+                  const isOpen = appointment.status === "OPEN" || appointment.status === "VERIFIED";
                   const isLoading = updatingId === appointment.id;
 
                   return (
@@ -185,13 +342,21 @@ export default function AdminAppointmentTracker() {
                           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
                             appointment.status === "OPEN"
                               ? "bg-amber-100 text-amber-700 border border-amber-200"
-                              : appointment.status === "DONE"
-                                ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                : "bg-rose-100 text-rose-700 border border-rose-200"
+                              : appointment.status === "VERIFIED"
+                                ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
+                                : appointment.status === "DONE"
+                                  ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                  : "bg-rose-100 text-rose-700 border border-rose-200"
                           }`}
                         >
                           <span className={`h-1.5 w-1.5 rounded-full ${
-                            appointment.status === "OPEN" ? "bg-amber-500" : appointment.status === "DONE" ? "bg-emerald-500" : "bg-rose-500"
+                            appointment.status === "OPEN"
+                              ? "bg-amber-500"
+                              : appointment.status === "VERIFIED"
+                                ? "bg-indigo-500"
+                                : appointment.status === "DONE"
+                                  ? "bg-emerald-500"
+                                  : "bg-rose-500"
                           }`} />
                           {APPOINTMENT_STATUS_LABELS[appointment.status]}
                         </span>
@@ -223,16 +388,29 @@ export default function AdminAppointmentTracker() {
                               />
                             </div>
                             <div className="flex gap-2">
-                              <Button
-                                data-testid={`appointment-done-${appointment.id}`}
-                                size="sm"
-                                className="h-8 px-4 font-semibold shadow-sm"
-                                disabled={isLoading}
-                                onClick={() => void handleUpdate(appointment.id, "DONE")}
-                              >
-                                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                                Selesaikan
-                              </Button>
+                              {appointment.status === "OPEN" ? (
+                                <Button
+                                  data-testid={`appointment-verify-${appointment.id}`}
+                                  size="sm"
+                                  className="h-8 px-4 font-semibold shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+                                  disabled={isLoading}
+                                  onClick={() => void handleUpdate(appointment.id, "VERIFIED")}
+                                >
+                                  <Check className="mr-1.5 h-3.5 w-3.5" />
+                                  Verifikasi
+                                </Button>
+                              ) : (
+                                <Button
+                                  data-testid={`appointment-done-${appointment.id}`}
+                                  size="sm"
+                                  className="h-8 px-4 font-semibold shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                                  disabled={isLoading}
+                                  onClick={() => void handleUpdate(appointment.id, "DONE")}
+                                >
+                                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                                  Selesaikan
+                                </Button>
+                              )}
                               <Button
                                 data-testid={`appointment-dismiss-${appointment.id}`}
                                 size="sm"

@@ -130,7 +130,8 @@ function GlobalDataIssueBanner() {
 }
 
 export function ProtectedRoutes() {
-  const { isAuthenticated, isSender, isPh, isLoading } = useAuth();
+  const { isAuthenticated, isSender, isHr, isPh, isLoading } = useAuth();
+  const isElevated = isPh || isHr;
 
   if (isLoading) {
     return <AppLoadingScreen />;
@@ -162,31 +163,31 @@ export function ProtectedRoutes() {
         {/* Admin routes */}
         <Route
           path="/admin/dasbor"
-          element={isPh ? <AdminDashboard /> : <Navigate to="/" replace />}
+          element={isElevated ? <AdminDashboard /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/laporan"
-          element={isPh ? <ReportManagement /> : <Navigate to="/" replace />}
+          element={isElevated ? <ReportManagement /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/laporan/:id"
-          element={isPh ? <ReportDetail /> : <Navigate to="/" replace />}
+          element={isElevated ? <ReportDetail /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/chat"
-          element={isPh ? <AdminChatQueue /> : <Navigate to="/" replace />}
+          element={isElevated ? <AdminChatQueue /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/rekap"
-          element={isPh ? <AdminRekap /> : <Navigate to="/" replace />}
+          element={isElevated ? <AdminRekap /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/janji-temu"
-          element={isPh ? <AdminAppointmentTracker /> : <Navigate to="/" replace />}
+          element={isElevated ? <AdminAppointmentTracker /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin/kelola-admin"
-          element={isPh ? <AdminManagement /> : <Navigate to="/" replace />}
+          element={isElevated ? <AdminManagement /> : <Navigate to="/" replace />}
         />
 
         <Route path="*" element={<NotFound />} />

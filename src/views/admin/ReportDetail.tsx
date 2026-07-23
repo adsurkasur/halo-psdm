@@ -1,8 +1,19 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, MessageCircle, Paperclip } from "lucide-react";
+import { ArrowLeft, Download, MessageCircle, Paperclip, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +41,7 @@ export default function ReportDetail() {
     updateReportUrgency,
     updateReportNotes,
     createChatSession,
+    deleteReport,
   } = useData();
 
   const report = reports.find((r) => r.id === id);
@@ -37,6 +49,28 @@ export default function ReportDetail() {
   const [newUrgency, setNewUrgency] = useState<Urgency>(report?.urgency ?? "RENDAH");
   const [notes, setNotes] = useState(report?.admin_notes ?? "");
   const [statusNote, setStatusNote] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteReport = async () => {
+    if (!report) return;
+    setIsDeleting(true);
+    try {
+      await deleteReport(report.id);
+      toast({
+        title: "Laporan Terhapus",
+        description: "Laporan berhasil dihapus.",
+      });
+      navigate("/admin/laporan");
+    } catch (error) {
+      toast({
+        title: "Gagal menghapus laporan",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // hidden input used by tests to override urgency without interacting with Radix dropdown
   const hiddenUrgencyInput = (

@@ -4,7 +4,7 @@ export type ReportStatus = "RECEIVED" | "IN_PROGRESS" | "NEEDS_CLARIFICATION" | 
 export type ReportCategory = "KONFLIK" | "BEBAN_KERJA" | "KESEJAHTERAAN" | "AKADEMIK" | "LAINNYA";
 export type Urgency = "RENDAH" | "SEDANG" | "TINGGI";
 export type AvailabilityStatus = "ONLINE" | "AWAY" | "OFFLINE";
-export type AppointmentStatus = "OPEN" | "DONE" | "DISMISSED";
+export type AppointmentStatus = "OPEN" | "VERIFIED" | "DONE" | "DISMISSED";
 export type ChatSessionStatus = "OPEN" | "CLOSED";
 export type ChatMessageType = "TEXT" | "IMAGE" | "FILE";
 export type NotificationType =
@@ -176,7 +176,8 @@ export const AVAILABILITY_LABELS: Record<AvailabilityStatus, string> = {
 };
 
 export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
-  OPEN: "Aktif",
+  OPEN: "Menunggu Verifikasi",
+  VERIFIED: "Diverifikasi / Disetujui",
   DONE: "Selesai",
   DISMISSED: "Ditolak",
 };

@@ -1,12 +1,23 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Send, ArrowLeft, Lock, Image as ImageIcon, Paperclip, X } from "lucide-react";
+import { Send, ArrowLeft, Lock, Image as ImageIcon, Paperclip, X, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { useToast } from "@/hooks/use-toast";
@@ -23,12 +34,13 @@ export default function ChatRoom() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, allUsers } = useAuth();
-  const { chatSessions, chatMessages, adminProfiles, addChatMessage, markMessagesRead, getEffectiveStatus } = useData();
+  const { chatSessions, chatMessages, adminProfiles, addChatMessage, markMessagesRead, getEffectiveStatus, deleteChatSession } = useData();
 
   const [input, setInput] = useState("");
   const [mediaPreview, setMediaPreview] = useState<{ url: string; name: string; type: ChatMessageType; file: File } | null>(null);
   const [mediaCompressionInfo, setMediaCompressionInfo] = useState<{ original: number; compressed: number } | null>(null);
   const [sendingMedia, setSendingMedia] = useState(false);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,6 +58,27 @@ export default function ChatRoom() {
   const otherUser = otherUserId ? allUsers.find((u) => u.id === otherUserId) : null;
   const otherProfile = otherUserId ? adminProfiles.find((p) => p.user_id === otherUserId) : null;
   const otherDisplayName = otherProfile?.display_name ?? otherUser?.name ?? "Menunggu respon PH...";
+
+  const handleDeleteSession = async () => {
+    if (!session) return;
+    setIsDeletingSession(true);
+    try {
+      await deleteChatSession(session.id);
+      toast({
+        title: "Sesi Chat Terhapus",
+        description: "Sesi chat beserta percakapan berhasil dihapus.",
+      });
+      navigate("/chat");
+    } catch (error) {
+      toast({
+        title: "Gagal menghapus chat",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingSession(false);
+    }
+  };
 
   useEffect(() => {
     if (user && sessionId) {
@@ -239,11 +272,35 @@ export default function ChatRoom() {
               )}
             </div>
           </div>
-          {isClosed && (
-            <Badge variant="secondary" className="text-[10px] gap-1">
-              <Lock className="h-3 w-3" /> Ditutup
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {isClosed && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                <Lock className="h-3 w-3" /> Ditutup
+              </Badge>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 border-destructive/30 gap-1.5 h-8">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Hapus Chat</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus Sesi Chat ini?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tindakan ini tidak dapat dibatalkan. Seluruh riwayat percakapan beserta file foto/video di sesi ini akan terhapus secara permanen.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteSession} disabled={isDeletingSession} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    {isDeletingSession ? "Menghapus..." : "Ya, Hapus Chat"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </CardHeader>
 
         {/* Messages */}
@@ -343,6 +400,8 @@ export default function ChatRoom() {
               <div className="mb-2 flex items-center gap-2 p-2 bg-muted rounded-lg animate-scale-in">
                 {mediaPreview.type === "IMAGE" ? (
                   <img src={mediaPreview.url} alt={mediaPreview.name} className="h-12 w-12 rounded object-cover" />
+                ) : mediaPreview.file.type.startsWith("video/") ? (
+                  <video src={mediaPreview.url} className="h-12 w-12 rounded object-cover bg-black" />
                 ) : (
                   <div className="h-12 w-12 rounded bg-background flex items-center justify-center">
                     <Paperclip className="h-5 w-5 text-muted-foreground" />
@@ -350,7 +409,9 @@ export default function ChatRoom() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{mediaPreview.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{mediaPreview.type === "IMAGE" ? "Gambar" : "File"}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {mediaPreview.type === "IMAGE" ? "Gambar" : mediaPreview.file.type.startsWith("video/") ? "Video" : "File"}
+                  </p>
                   {mediaCompressionInfo && (
                     <p className="text-[10px] text-muted-foreground">
                       Rasio kompresi: {Math.max(0, Math.round((1 - mediaCompressionInfo.compressed / mediaCompressionInfo.original) * 100))}%

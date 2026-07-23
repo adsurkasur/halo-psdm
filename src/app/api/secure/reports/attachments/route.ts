@@ -20,7 +20,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Ukuran attachment maksimal 10MB." }, { status: 400 });
   }
 
-  const fileExt = attachment.name.includes(".") ? attachment.name.split(".").pop() : "bin";
+  const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "pdf", "doc", "docx", "xls", "xlsx"]);
+  const fileExt = attachment.name.includes(".") ? attachment.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin" : "bin";
+
+  if (!ALLOWED_EXTENSIONS.has(fileExt)) {
+    return NextResponse.json({ error: "Format lampiran tidak didukung." }, { status: 400 });
+  }
+
   const objectPath = `${auth.context.authUser.id}/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
 
   const upload = await supabaseServer.storage.from(ATTACHMENT_BUCKET).upload(objectPath, attachment, {

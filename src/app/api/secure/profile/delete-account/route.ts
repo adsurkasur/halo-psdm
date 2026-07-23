@@ -85,7 +85,7 @@ export async function POST(request: Request) {
       .or("reporter_name.is.null,reporter_name.eq.");
   }
 
-  await supabaseServer.from("admin_profiles").delete().or(`id.eq.${auth.context.authUser.id},user_id.eq.${auth.context.authUser.id}`);
+  await supabaseServer.from("admin_profiles").delete().eq("user_id", auth.context.authUser.id);
   await supabaseServer.from("users").delete().eq("id", auth.context.authUser.id);
 
   const deleteAuthUser = await supabaseServer.auth.admin.deleteUser(auth.context.authUser.id);

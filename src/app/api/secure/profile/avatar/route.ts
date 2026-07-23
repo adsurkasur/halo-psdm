@@ -24,7 +24,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Ukuran avatar maksimal 5MB." }, { status: 400 });
   }
 
-  const ext = avatar.name.includes(".") ? avatar.name.split(".").pop() : "jpg";
+  const ALLOWED_AVATAR_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
+  const ext = avatar.name.includes(".") ? avatar.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg" : "jpg";
+
+  if (!ALLOWED_AVATAR_EXTENSIONS.has(ext)) {
+    return NextResponse.json({ error: "Format avatar harus berupa gambar (jpg, png, webp, gif)." }, { status: 400 });
+  }
+
   const avatarPath = `${auth.context.authUser.id}/avatar-${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
   const upload = await supabaseServer.storage

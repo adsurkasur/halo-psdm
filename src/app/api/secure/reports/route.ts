@@ -18,6 +18,21 @@ export async function POST(request: Request) {
     attachment_size?: number | null;
   };
 
+  const VALID_CATEGORIES = new Set(["KONFLIK", "BEBAN_KERJA", "KESEJAHTERAAN", "AKADEMIK", "LAINNYA"]);
+  const VALID_URGENCIES = new Set(["RENDAH", "SEDANG", "TINGGI"]);
+
+  if (!VALID_CATEGORIES.has(body.category)) {
+    return NextResponse.json({ error: "Kategori laporan tidak valid." }, { status: 400 });
+  }
+
+  if (!VALID_URGENCIES.has(body.urgency)) {
+    return NextResponse.json({ error: "Tingkat urgensi tidak valid." }, { status: 400 });
+  }
+
+  if (!body.kronologi || body.kronologi.trim().length < 20) {
+    return NextResponse.json({ error: "Kronologi laporan minimal 20 karakter." }, { status: 400 });
+  }
+
   const now = new Date().toISOString();
   const reportId = crypto.randomUUID();
 

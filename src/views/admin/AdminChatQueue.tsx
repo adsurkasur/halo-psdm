@@ -1,9 +1,21 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Lock, UserPlus, Image as ImageIcon, Paperclip, X } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Send, Lock, UserPlus, Image as ImageIcon, Paperclip, X, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
@@ -16,22 +28,27 @@ import { compressImageForUpload, isCompressibleImage } from "@/lib/upload-compre
 import { getChatMessagePreview, getTransformedPublicImageUrl, isVideoResource } from "@/lib/supabase-storage";
 import { MediaViewerDialog } from "@/components/shared/MediaViewerDialog";
 
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 const MAX_MEDIA_SIZE = 10 * 1024 * 1024;
 
 export default function AdminChatQueue() {
   const { toast } = useToast();
   const { user, allUsers } = useAuth();
+  const [searchParams] = useSearchParams();
   const {
     chatSessions,
     chatMessages,
     adminProfiles,
     assignAdminToSession,
     closeChatSession,
+    deleteChatSession,
     addChatMessage,
     markMessagesRead,
     updateAvailability,
   } = useData();
 
+  const [statusFilter, setStatusFilter] = useState<"OPEN" | "CLOSED" | "ALL">("OPEN");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [mediaPreview, setMediaPreview] = useState<{ url: string; name: string; type: "IMAGE" | "FILE"; file: File } | null>(null);
@@ -40,14 +57,22 @@ export default function AdminChatQueue() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const querySessionId = searchParams.get("session");
+
+  useEffect(() => {
+    if (querySessionId && chatSessions.some((s) => s.id === querySessionId)) {
+      setSelectedSessionId(querySessionId);
+    }
+  }, [querySessionId, chatSessions]);
+
   const myProfile = adminProfiles.find((p) => p.user_id === user.id);
   const adminStatus = myProfile?.availability_status ?? "ONLINE";
 
-  const openSessions = chatSessions
-    .filter((s) => s.status === "OPEN")
+  const filteredSessions = chatSessions
+    .filter((s) => (statusFilter === "ALL" ? true : s.status === statusFilter))
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  const selectedSession = openSessions.find((s) => s.id === selectedSessionId) ?? openSessions[0] ?? null;
+  const selectedSession = filteredSessions.find((s) => s.id === selectedSessionId) ?? filteredSessions[0] ?? null;
   const sessionMessages = selectedSession
     ? chatMessages
         .filter((m) => m.session_id === selectedSession.id)
@@ -56,10 +81,10 @@ export default function AdminChatQueue() {
 
   // Auto-select first session
   useEffect(() => {
-    if (!selectedSessionId && openSessions.length > 0) {
-      setSelectedSessionId(openSessions[0].id);
+    if (!selectedSessionId && filteredSessions.length > 0) {
+      setSelectedSessionId(filteredSessions[0].id);
     }
-  }, [openSessions, selectedSessionId]);
+  }, [filteredSessions, selectedSessionId]);
 
   // Mark messages read when selecting a session
   useEffect(() => {
@@ -96,8 +121,18 @@ export default function AdminChatQueue() {
   const handleCloseSession = async () => {
     if (!selectedSession) return;
     await closeChatSession(selectedSession.id);
-    setSelectedSessionId(null);
     toast({ title: "Sesi Ditutup", description: "Sesi chat telah berhasil ditutup." });
+  };
+
+  const handleDeleteSession = async () => {
+    if (!selectedSession) return;
+    try {
+      await deleteChatSession(selectedSession.id);
+      setSelectedSessionId(null);
+      toast({ title: "Sesi Chat Terhapus", description: "Sesi chat beserta percakapan berhasil dihapus." });
+    } catch (error) {
+      toast({ title: "Gagal menghapus chat", description: error instanceof Error ? error.message : "Terjadi kesalahan.", variant: "destructive" });
+    }
   };
 
   const sendMessage = async () => {
@@ -227,19 +262,26 @@ export default function AdminChatQueue() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
         {/* Left: Chat List */}
         <Card className="lg:col-span-1 flex flex-col">
-          <CardHeader className="py-3 px-4 border-b space-y-0">
+          <CardHeader className="py-3 px-4 border-b space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm">Antrean Chat</h3>
             </div>
+            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as "OPEN" | "CLOSED" | "ALL")} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 h-8 text-xs">
+                <TabsTrigger value="OPEN" className="text-[11px]">Aktif</TabsTrigger>
+                <TabsTrigger value="CLOSED" className="text-[11px]">Selesai</TabsTrigger>
+                <TabsTrigger value="ALL" className="text-[11px]">Semua</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </CardHeader>
           <ScrollArea className="flex-1">
             <CardContent className="p-2 space-y-1">
-              {openSessions.length === 0 ? (
+              {filteredSessions.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-8">
-                  Tidak ada sesi chat aktif.
+                  Tidak ada sesi chat {statusFilter === "OPEN" ? "aktif" : statusFilter === "CLOSED" ? "selesai" : ""}.
                 </p>
               ) : (
-                openSessions.map((session) => {
+                filteredSessions.map((session) => {
                   const sender = allUsers.find((u) => u.id === session.user_id);
                   const senderName = sender?.name ?? "Pengirim";
                   const msgs = chatMessages.filter((m) => m.session_id === session.id);
@@ -258,7 +300,7 @@ export default function AdminChatQueue() {
                       role="button"
                       tabIndex={0}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
-                        selectedSession?.id === session.id ? "bg-accent" : "hover:bg-muted"
+                        selectedSession?.id === session.id ? "bg-accent text-accent-foreground" : "hover:bg-muted text-foreground"
                       }`}
                       onClick={() => setSelectedSessionId(session.id)}
                       onKeyDown={(e) => {
@@ -282,18 +324,27 @@ export default function AdminChatQueue() {
                           <p className={`text-sm truncate ${unreadCount > 0 ? "font-bold" : "font-medium"}`}>
                             {senderName}
                           </p>
-                          <span className="text-[10px] text-muted-foreground shrink-0 ml-1">
+                          <span className={`text-[10px] shrink-0 ml-1 ${
+                            selectedSession?.id === session.id ? "text-accent-foreground/75" : "text-muted-foreground"
+                          }`}>
                             {lastMsg
                               ? new Date(lastMsg.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
                               : ""}
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className={`text-xs truncate ${
+                          selectedSession?.id === session.id ? "text-accent-foreground/75" : "text-muted-foreground"
+                        }`}>
                           {lastMsg ? getChatMessagePreview(lastMsg) : "Belum ada pesan"}
                         </p>
-                        {isUnassigned && (
-                          <Badge variant="secondary" className="text-[9px] mt-1">Belum diassign</Badge>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isUnassigned && session.status === "OPEN" && (
+                            <Badge variant="secondary" className="text-[9px] mt-1">Belum diassign</Badge>
+                          )}
+                          {session.status === "CLOSED" && (
+                            <Badge variant="outline" className="text-[9px] mt-1 text-muted-foreground">Selesai / Ditutup</Badge>
+                          )}
+                        </div>
                       </div>
                       {unreadCount > 0 && (
                         <Badge className="bg-destructive text-destructive-foreground h-5 w-5 p-0 flex items-center justify-center text-[10px] shrink-0">
@@ -336,6 +387,11 @@ export default function AdminChatQueue() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {selectedSession.status === "CLOSED" && (
+                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                      Sesi Selesai
+                    </Badge>
+                  )}
                   {!selectedSession.assigned_admin_id ? (
                     <Button
                       size="sm"
@@ -346,15 +402,38 @@ export default function AdminChatQueue() {
                       <UserPlus className="h-3.5 w-3.5" />
                       Ambil Kasus
                     </Button>
-                  ) : selectedSession.assigned_admin_id === user.id ? (
+                  ) : selectedSession.assigned_admin_id === user.id && selectedSession.status === "OPEN" ? (
                     <Button size="sm" variant="destructive" className="text-xs" onClick={handleCloseSession}>
                       Tutup Sesi
                     </Button>
-                  ) : (
+                  ) : selectedSession.assigned_admin_id !== user.id ? (
                     <Badge variant="secondary" className="text-xs">
                       Ditangani: {allUsers.find((u) => u.id === selectedSession.assigned_admin_id)?.name}
                     </Badge>
-                  )}
+                  ) : null}
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 border-destructive/30 gap-1 text-xs h-8">
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Hapus Chat</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Hapus Sesi Chat ini?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tindakan ini tidak dapat dibatalkan. Seluruh percakapan dan berkas media di sesi ini akan terhapus secara permanen.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteSession} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Ya, Hapus Chat
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </CardHeader>
 
@@ -461,6 +540,8 @@ export default function AdminChatQueue() {
                       <div className="flex items-center gap-2 p-2 bg-muted rounded-lg animate-scale-in">
                         {mediaPreview.type === "IMAGE" ? (
                           <img src={mediaPreview.url} alt={mediaPreview.name} className="h-12 w-12 rounded object-cover" />
+                        ) : mediaPreview.file.type.startsWith("video/") ? (
+                          <video src={mediaPreview.url} className="h-12 w-12 rounded object-cover bg-black" />
                         ) : (
                           <div className="h-12 w-12 rounded bg-background flex items-center justify-center">
                             <Paperclip className="h-5 w-5 text-muted-foreground" />
@@ -468,7 +549,9 @@ export default function AdminChatQueue() {
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium truncate">{mediaPreview.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{mediaPreview.type === "IMAGE" ? "Gambar" : "File"}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {mediaPreview.type === "IMAGE" ? "Gambar" : mediaPreview.file.type.startsWith("video/") ? "Video" : "File"}
+                          </p>
                           {mediaCompressionInfo && (
                             <p className="text-[10px] text-muted-foreground">
                               Rasio kompresi: {Math.max(0, Math.round((1 - mediaCompressionInfo.compressed / mediaCompressionInfo.original) * 100))}%

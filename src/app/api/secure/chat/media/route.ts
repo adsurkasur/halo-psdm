@@ -43,8 +43,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const ext = media.name.includes(".") ? media.name.split(".").pop() : "bin";
-  const mediaPath = `${auth.context.authUser.id}/${sessionId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "pdf", "doc", "docx", "xls", "xlsx"]);
+  const rawExt = media.name.includes(".") ? media.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin" : "bin";
+  
+  if (!ALLOWED_EXTENSIONS.has(rawExt)) {
+    return NextResponse.json({ error: "Format berkas tidak didukung." }, { status: 400 });
+  }
+
+  const mediaPath = `${auth.context.authUser.id}/${sessionId}/${Date.now()}-${crypto.randomUUID()}.${rawExt}`;
 
   const upload = await supabaseServer.storage.from(CHAT_MEDIA_BUCKET).upload(mediaPath, media, {
     upsert: false,
