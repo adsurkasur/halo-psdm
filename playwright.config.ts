@@ -4,15 +4,21 @@ export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
+  retries: 1,
   workers: 1,
-  reporter: process.env.CI ? 'github' : 'html',
+  reporter: process.env.CI
+    ? [
+        ['line'],
+        ['github'],
+        ['html', { open: 'never' }],
+      ]
+    : 'html',
   timeout: 60_000,
   expect: {
     timeout: 15_000,
   },
   webServer: {
-    command: 'bun run build && bun run start',
+    command: process.env.CI ? 'bun run start' : 'bun run build && bun run start',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
