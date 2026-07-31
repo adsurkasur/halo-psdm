@@ -28,12 +28,66 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const { data: linkedChats, error: linkedChatsError } = await supabaseServer
+    .from("chat_sessions")
+    .select("id, status")
+    .eq("report_id", reportId);
+
+  if (linkedChatsError) {
+    return NextResponse.json(
+      { error: `Riwayat chat gagal diperiksa: ${linkedChatsError.message}` },
+      { status: 409 },
+    );
+  }
+
+  // Chat history has independent retention and must survive report deletion,
+  // including during a rolling deploy before the SET NULL migration is active.
+  const detachedChats = await supabaseServer
+    .from("chat_sessions")
+    .update({ report_id: null })
+    .eq("report_id", reportId);
+
+  if (detachedChats.error) {
+    return NextResponse.json(
+      { error: `Riwayat chat gagal diamankan: ${detachedChats.error.message}` },
+      { status: 409 },
+    );
+  }
+
+  if (linkedChats && linkedChats.length > 0) {
+    const auditResult = await supabaseServer.from("chat_session_events").insert(
+      linkedChats.map((session) => ({
+        id: crypto.randomUUID(),
+        session_id: session.id,
+        actor_user_id: auth.context.appUser.id,
+        actor_name_snapshot: auth.context.appUser.name,
+        event_type: "REPORT_DETACHED",
+        old_status: session.status,
+        new_status: session.status,
+        metadata: { deleted_report_id: reportId },
+        created_at: new Date().toISOString(),
+      })),
+    );
+
+    if (auditResult.error) {
+      await supabaseServer
+        .from("chat_sessions")
+        .update({ report_id: reportId })
+        .in("id", linkedChats.map((session) => session.id));
+
+      return NextResponse.json(
+        { error: `Pelepasan laporan gagal diaudit: ${auditResult.error.message}` },
+        { status: 409 },
+      );
+    }
+  }
+
   // Delete attachment file from Supabase Storage if present
   if (report.attachment_path) {
     await supabaseServer.storage.from("report-attachments").remove([report.attachment_path]);
   }
 
-  // Delete report (Postgres CASCADE deletes report_status_history and chat_sessions)
+  // Delete the report only after linked chat sessions have been retained.
   const { error: deleteError } = await supabaseServer
     .from("reports")
     .delete()

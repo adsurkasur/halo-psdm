@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
   const { data: targetUser, error: targetUserError } = await supabaseServer
     .from("users")
-    .select("id")
+    .select("id, name")
     .eq("id", targetUserId)
     .maybeSingle();
 
@@ -51,7 +51,10 @@ export async function POST(request: Request) {
     id: crypto.randomUUID(),
     report_id: body.reportId ?? null,
     user_id: targetUserId,
+    user_name_snapshot: targetUser.name,
     assigned_admin_id: null,
+    assigned_admin_name_snapshot: null,
+    created_by: auth.context.appUser.id,
     status: "OPEN",
     created_at: now,
     closed_at: null,
@@ -72,6 +75,7 @@ export async function POST(request: Request) {
       const notifications = admins.map((admin) => ({
         id: crypto.randomUUID(),
         user_id: admin.id,
+        session_id: session.id,
         type: "NEW_CHAT_SESSION",
         payload: {
           title: "Sesi Chat Baru",
@@ -88,6 +92,7 @@ export async function POST(request: Request) {
     await supabaseServer.from("notifications").insert({
       id: crypto.randomUUID(),
       user_id: targetUserId,
+      session_id: session.id,
       type: "NEW_CHAT_SESSION",
       payload: {
         title: "Chat dari PSDM",

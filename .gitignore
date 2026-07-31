@@ -30,6 +30,10 @@ test-results
 .turbo
 .vercel
 
+# Local incident evidence and production exports
+user_reports/
+halo-psdm-private-backups/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

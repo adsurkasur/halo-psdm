@@ -61,7 +61,7 @@ create table if not exists public.chat_sessions (
 
 create table if not exists public.chat_messages (
   id text primary key,
-  session_id text not null references public.chat_sessions(id) on delete cascade,
+  session_id text not null references public.chat_sessions(id) on delete restrict,
   sender_id text not null references public.users(id) on delete cascade,
   content text not null default '',
   type text not null default 'TEXT' check (type in ('TEXT', 'IMAGE', 'FILE')),

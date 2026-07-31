@@ -27,12 +27,20 @@ export async function POST(request: Request) {
 
   const { data: session } = await supabaseServer
     .from("chat_sessions")
-    .select("id, user_id, assigned_admin_id")
+    .select("id, user_id, assigned_admin_id, status, hidden_at")
     .eq("id", sessionId)
     .maybeSingle();
 
   if (!session) {
     return NextResponse.json({ error: "Session tidak ditemukan." }, { status: 404 });
+  }
+
+  if (session.hidden_at) {
+    return NextResponse.json({ error: "Sesi telah disembunyikan dan tidak dapat diubah." }, { status: 409 });
+  }
+
+  if (session.status === "CLOSED") {
+    return NextResponse.json({ error: "Sesi chat telah ditutup." }, { status: 409 });
   }
 
   const isSender = auth.context.appUser.id === session.user_id;

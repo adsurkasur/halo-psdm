@@ -1,30 +1,28 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, MessageCircle, Trash2 } from "lucide-react";
+import { Plus, MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { AVAILABILITY_LABELS } from "@/data/domain";
 import { useToast } from "@/hooks/use-toast";
 import { getChatMessagePreview } from "@/lib/supabase-storage";
+import { HideChatSessionDialog } from "@/components/shared/HideChatSessionDialog";
 
 export default function ChatSessionList() {
   const navigate = useNavigate();
   const { user, allUsers } = useAuth();
-  const { chatSessions, chatMessages, adminProfiles, reports, createChatSession, getEffectiveStatus, deleteChatSession } = useData();
+  const {
+    chatSessions,
+    chatMessages,
+    adminProfiles,
+    reports,
+    createChatSession,
+    hideChatSession,
+    getEffectiveStatus,
+  } = useData();
   const { toast } = useToast();
 
   if (!user) return null;
@@ -36,23 +34,6 @@ export default function ChatSessionList() {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const hasOpenSession = mySessions.some((s) => s.status === "OPEN");
-
-  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
-    e.stopPropagation();
-    try {
-      await deleteChatSession(sessionId);
-      toast({
-        title: "Chat Terhapus",
-        description: "Sesi chat berhasil dihapus.",
-      });
-    } catch (error) {
-      toast({
-        title: "Gagal menghapus chat",
-        description: error instanceof Error ? error.message : "Terjadi kesalahan.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleNewChat = async () => {
     if (hasOpenSession) {
@@ -133,7 +114,7 @@ export default function ChatSessionList() {
             const adminProfile = session.assigned_admin_id
               ? adminProfiles.find((p) => p.user_id === session.assigned_admin_id)
               : null;
-            const adminName = adminProfile?.display_name ?? admin?.name ?? "Menunggu respon PH...";
+            const adminName = adminProfile?.display_name ?? admin?.name ?? session.assigned_admin_name_snapshot ?? "Menunggu respon PH...";
 
             return (
               <Card
@@ -167,36 +148,6 @@ export default function ChatSessionList() {
                             {unreadCount}
                           </Badge>
                         )}
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              onClick={(e) => e.stopPropagation()}
-                              title="Hapus Sesi Chat"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Hapus Sesi Chat ini?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Seluruh riwayat percakapan pada sesi ini akan terhapus secara permanen.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Batal</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={(e) => handleDeleteSession(e, session.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Ya, Hapus Chat
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
@@ -224,6 +175,12 @@ export default function ChatSessionList() {
                       )}
                     </div>
                   </div>
+                  {session.status === "CLOSED" && (
+                    <HideChatSessionDialog
+                      iconOnly
+                      onConfirm={() => hideChatSession(session.id)}
+                    />
+                  )}
                 </CardContent>
               </Card>
             );

@@ -96,7 +96,14 @@ export interface ChatSession {
   id: string;
   report_id: string | null;
   user_id: string | null;
+  user_name_snapshot?: string | null;
   assigned_admin_id: string | null;
+  assigned_admin_name_snapshot?: string | null;
+  created_by?: string | null;
+  hidden_at?: string | null;
+  hidden_by?: string | null;
+  hidden_by_name_snapshot?: string | null;
+  hidden_reason?: string | null;
   status: ChatSessionStatus;
   created_at: string;
   closed_at: string | null;
@@ -106,6 +113,7 @@ export interface ChatMessage {
   id: string;
   session_id: string;
   sender_id: string | null;
+  sender_name_snapshot?: string | null;
   content: string;
   type: ChatMessageType;
   media_url?: string;
@@ -140,11 +148,13 @@ export interface Appointment {
 export interface Notification {
   id: string;
   user_id: string;
+  session_id?: string | null;
   type: NotificationType;
   title: string;
   message: string;
   link?: string;
   is_read: boolean;
+  archived_at?: string | null;
   created_at: string;
 }
 

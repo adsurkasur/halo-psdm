@@ -285,6 +285,11 @@ class QueryBuilder {
     return this;
   }
 
+  is(key: string, value: unknown) {
+    this.filters.push((row) => row[key] === value || (value === null && typeof row[key] === "undefined"));
+    return this;
+  }
+
   in(key: string, values: unknown[]) {
     this.filters.push((row) => values.includes(row[key]));
     return this;

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   generateId,
@@ -49,7 +49,7 @@ interface DataContextType {
   createChatSession: (userId: string, reportId?: string | null) => Promise<ChatSession>;
   assignAdminToSession: (sessionId: string, adminId: string) => Promise<void>;
   closeChatSession: (sessionId: string) => Promise<void>;
-  deleteChatSession: (sessionId: string) => Promise<void>;
+  hideChatSession: (sessionId: string) => Promise<void>;
   addChatMessage: (sessionId: string, senderId: string, content: string, type?: ChatMessageType, mediaUrl?: string, mediaName?: string) => Promise<ChatMessage>;
   markMessagesRead: (sessionId: string, readerId: string) => Promise<void>;
 
@@ -132,23 +132,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const raw = n as {
         id: string;
         user_id: string;
+        session_id?: string | null;
         type: NotificationType;
         title?: string;
         message?: string;
         link?: string;
         payload?: { title?: string; message?: string; link?: string };
         is_read: boolean;
+        archived_at?: string | null;
         created_at: string;
       };
 
       return {
         id: raw.id,
         user_id: raw.user_id,
+        session_id: raw.session_id ?? null,
         type: raw.type,
         title: raw.title ?? raw.payload?.title ?? "Notifikasi",
         message: raw.message ?? raw.payload?.message ?? "",
         link: raw.link ?? raw.payload?.link,
         is_read: raw.is_read,
+        archived_at: raw.archived_at ?? null,
         created_at: raw.created_at,
       };
     });
@@ -264,14 +268,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     queryKey: QUERY_KEYS.chatSessions(user?.id ?? "", user?.role ?? ""),
     queryFn: async () => {
       if (!user) return [];
-      const isPh = user.role === "PH";
-      if (isPh) {
-        const { data, error } = await supabase.from("chat_sessions").select("*").order("created_at", { ascending: false });
+      const isElevated = user.role === "PH" || user.role === "HR";
+      if (isElevated) {
+        const { data, error } = await supabase
+          .from("chat_sessions")
+          .select("*")
+          .is("hidden_at", null)
+          .order("created_at", { ascending: false });
         if (error) throw error;
         return (data ?? []) as ChatSession[];
       } else {
         const [sessionsByUser, reportIdsRes] = await Promise.all([
-          supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+          supabase.from("chat_sessions").select("*").eq("user_id", user.id).is("hidden_at", null).order("created_at", { ascending: false }),
           supabase.from("reports").select("id").eq("user_id", user.id),
         ]);
 
@@ -285,6 +293,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             .from("chat_sessions")
             .select("*")
             .in("report_id", reportIds)
+            .is("hidden_at", null)
             .order("created_at", { ascending: false });
           if (res.error) throw res.error;
           sessionsByReport = (res.data ?? []) as ChatSession[];
@@ -336,7 +345,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const adminProfiles = adminProfilesQuery.data ?? [];
+  const adminProfiles = useMemo(() => adminProfilesQuery.data ?? [], [adminProfilesQuery.data]);
 
   const appointmentsQuery = useQuery({
     queryKey: QUERY_KEYS.appointments(user?.id ?? "", user?.role ?? ""),
@@ -375,6 +384,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .from("notifications")
         .select("*")
         .eq("user_id", user.id)
+        .is("archived_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -421,65 +431,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       "admin_profiles",
     ];
 
-    const sessionIds = chatSessions.map((s) => s.id);
-
-    const handlePostgresChange = (table: string, payload: any) => {
+    const handlePostgresChange = (
+      table: string,
+      payload: { eventType: string; new: Record<string, unknown> },
+    ) => {
       invalidate(table);
 
       const eventType = payload.eventType;
       const newRow = payload.new;
 
-      if (table === "chat_messages") {
-        const queryKey = QUERY_KEYS.chatMessages(sessionIds);
-        if (eventType === "INSERT") {
-          const newMsg = {
-            ...newRow,
-            type: (newRow.type ?? "TEXT") as ChatMessageType,
-          } as ChatMessage;
-          queryClient.setQueryData(queryKey, (prev: ChatMessage[] | undefined) => {
-            if (!prev) return [newMsg];
-            if (prev.some((m) => m.id === newMsg.id)) return prev;
-            return [...prev, newMsg];
-          });
-        } else if (eventType === "UPDATE") {
-          const updatedMsg = {
-            ...newRow,
-            type: (newRow.type ?? "TEXT") as ChatMessageType,
-          } as ChatMessage;
-          queryClient.setQueryData(queryKey, (prev: ChatMessage[] | undefined) => {
-            if (!prev) return [];
-            return prev.map((m) => m.id === updatedMsg.id ? updatedMsg : m);
-          });
-        }
-      } else if (table === "chat_sessions") {
-        const queryKey = QUERY_KEYS.chatSessions(user.id, user.role);
-        if (eventType === "INSERT") {
-          queryClient.setQueryData(queryKey, (prev: ChatSession[] | undefined) => {
-            if (!prev) return [newRow];
-            if (prev.some((s) => s.id === newRow.id)) return prev;
-            return [newRow, ...prev];
-          });
-        } else if (eventType === "UPDATE") {
-          queryClient.setQueryData(queryKey, (prev: ChatSession[] | undefined) => {
-            if (!prev) return [];
-            return prev.map((s) => s.id === newRow.id ? newRow : s);
-          });
-        }
-      } else if (table === "appointments") {
-        const queryKey = QUERY_KEYS.appointments(user.id, user.role);
-        if (eventType === "INSERT") {
-          queryClient.setQueryData(queryKey, (prev: Appointment[] | undefined) => {
-            if (!prev) return [newRow];
-            if (prev.some((a) => a.id === newRow.id)) return prev;
-            return [newRow, ...prev];
-          });
-        } else if (eventType === "UPDATE") {
-          queryClient.setQueryData(queryKey, (prev: Appointment[] | undefined) => {
-            if (!prev) return [];
-            return prev.map((a) => a.id === newRow.id ? newRow : a);
-          });
-        }
-      } else if (table === "notifications") {
+      if (table === "notifications") {
         const queryKey = QUERY_KEYS.notifications(user.id);
         if (eventType === "INSERT") {
           const newNotif = mapNotifications([newRow])[0];
@@ -492,12 +453,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
           if (newNotif.user_id === user.id) {
             triggerNotificationPopup(newNotif.title, newNotif.message);
           }
-        } else if (eventType === "UPDATE") {
-          const updatedNotif = mapNotifications([newRow])[0];
-          queryClient.setQueryData(queryKey, (prev: Notification[] | undefined) => {
-            if (!prev) return [];
-            return prev.map((n) => n.id === updatedNotif.id ? updatedNotif : n);
-          });
         }
       }
     };
@@ -540,7 +495,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [queryClient, user, chatSessions, mapNotifications, toast]);
+  }, [queryClient, user, mapNotifications, toast]);
 
   const addNotification = useCallback(
     async (data: { user_id: string; type: NotificationType; title: string; message: string; link?: string }) => {
@@ -713,15 +668,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   const assignAdminToSession = useCallback(async (sessionId: string, adminId: string) => {
-    await supabase
-      .from("chat_sessions")
-      .update({ assigned_admin_id: adminId })
-      .eq("id", sessionId);
+    await callSecureApi(`/api/secure/chat/sessions/${sessionId}/assign`, {
+      method: "POST",
+      body: JSON.stringify({ adminId }),
+    });
 
     queryClient.setQueryData(QUERY_KEYS.chatSessions(user?.id ?? "", user?.role ?? ""), (prev: ChatSession[] | undefined) => 
       prev?.map((s) => s.id === sessionId ? { ...s, assigned_admin_id: adminId } : s)
     );
-  }, [queryClient, user?.id, user?.role]);
+  }, [callSecureApi, queryClient, user?.id, user?.role]);
 
   const closeChatSession = useCallback(
     async (sessionId: string) => {
@@ -737,22 +692,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [callSecureApi, queryClient, user?.id, user?.role]
   );
 
-  const deleteChatSession = useCallback(
+  const hideChatSession = useCallback(
     async (sessionId: string) => {
-      await callSecureApi<{ success: boolean }>(`/api/secure/chat/sessions/${sessionId}`, {
-        method: "DELETE",
-      });
-
-      queryClient.setQueryData(QUERY_KEYS.chatSessions(user?.id ?? "", user?.role ?? ""), (prev: ChatSession[] | undefined) =>
-        prev ? prev.filter((s) => s.id !== sessionId) : []
+      await callSecureApi<{ success: boolean; softDeleted: boolean }>(
+        `/api/secure/chat/sessions/${sessionId}`,
+        { method: "DELETE" },
       );
 
-      const sessionIds = chatSessions.map((s) => s.id).filter((id) => id !== sessionId);
-      queryClient.setQueryData(QUERY_KEYS.chatMessages(sessionIds), (prev: ChatMessage[] | undefined) =>
-        prev ? prev.filter((m) => m.session_id !== sessionId) : []
+      queryClient.setQueryData(
+        QUERY_KEYS.chatSessions(user?.id ?? "", user?.role ?? ""),
+        (prev: ChatSession[] | undefined) => prev?.filter((session) => session.id !== sessionId) ?? [],
       );
+      queryClient.setQueryData(
+        QUERY_KEYS.notifications(user?.id ?? ""),
+        (prev: Notification[] | undefined) =>
+          prev?.filter((notification) => notification.session_id !== sessionId) ?? [],
+      );
+      void queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
-    [callSecureApi, queryClient, user?.id, user?.role, chatSessions]
+    [callSecureApi, queryClient, user?.id, user?.role],
   );
 
   const addChatMessage = useCallback(
@@ -943,7 +902,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         lastSyncedAt,
         reloadData,
         reports, statusHistory, addReport, updateReportStatus, updateReportUrgency, updateReportNotes, deleteReport,
-        chatSessions, chatMessages, createChatSession, assignAdminToSession, closeChatSession, deleteChatSession, addChatMessage, markMessagesRead,
+        chatSessions, chatMessages, createChatSession, assignAdminToSession, closeChatSession, hideChatSession, addChatMessage, markMessagesRead,
         adminProfiles, updateAvailability, addAdminProfile, removeAdminProfile, getEffectiveStatus,
         appointments, addAppointment, updateAppointmentStatus,
         notifications, addNotification, markNotificationRead, markAllNotificationsRead, getUnreadCount,

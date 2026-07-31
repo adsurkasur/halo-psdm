@@ -64,7 +64,8 @@ export async function POST(request: Request) {
 
   await cleanupUserStorage("profile-pictures", auth.context.authUser.id);
   await cleanupUserStorage("report-attachments", auth.context.authUser.id);
-  await cleanupUserStorage("chat-media", auth.context.authUser.id);
+  // Chat media is retained with the immutable conversation history even when
+  // the sender deletes their account.
 
   // Snapshot identity onto existing reports before user is deleted
   const { data: userProfile } = await supabaseServer

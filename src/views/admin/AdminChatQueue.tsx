@@ -1,21 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Send, Lock, UserPlus, Image as ImageIcon, Paperclip, X, Trash2 } from "lucide-react";
+import { Send, Lock, UserPlus, Image as ImageIcon, Paperclip, X } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +16,7 @@ import { supabase } from "@/lib/supabase/client";
 import { compressImageForUpload, isCompressibleImage } from "@/lib/upload-compression";
 import { getChatMessagePreview, getTransformedPublicImageUrl, isVideoResource } from "@/lib/supabase-storage";
 import { MediaViewerDialog } from "@/components/shared/MediaViewerDialog";
+import { HideChatSessionDialog } from "@/components/shared/HideChatSessionDialog";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -42,7 +32,7 @@ export default function AdminChatQueue() {
     adminProfiles,
     assignAdminToSession,
     closeChatSession,
-    deleteChatSession,
+    hideChatSession,
     addChatMessage,
     markMessagesRead,
     updateAvailability,
@@ -60,7 +50,11 @@ export default function AdminChatQueue() {
   const querySessionId = searchParams.get("session");
 
   useEffect(() => {
-    if (querySessionId && chatSessions.some((s) => s.id === querySessionId)) {
+    const targetSession = querySessionId
+      ? chatSessions.find((s) => s.id === querySessionId)
+      : null;
+    if (targetSession) {
+      setStatusFilter(targetSession.status);
       setSelectedSessionId(querySessionId);
     }
   }, [querySessionId, chatSessions]);
@@ -124,15 +118,10 @@ export default function AdminChatQueue() {
     toast({ title: "Sesi Ditutup", description: "Sesi chat telah berhasil ditutup." });
   };
 
-  const handleDeleteSession = async () => {
+  const handleHideSession = async () => {
     if (!selectedSession) return;
-    try {
-      await deleteChatSession(selectedSession.id);
-      setSelectedSessionId(null);
-      toast({ title: "Sesi Chat Terhapus", description: "Sesi chat beserta percakapan berhasil dihapus." });
-    } catch (error) {
-      toast({ title: "Gagal menghapus chat", description: error instanceof Error ? error.message : "Terjadi kesalahan.", variant: "destructive" });
-    }
+    await hideChatSession(selectedSession.id);
+    setSelectedSessionId(null);
   };
 
   const sendMessage = async () => {
@@ -283,7 +272,7 @@ export default function AdminChatQueue() {
               ) : (
                 filteredSessions.map((session) => {
                   const sender = allUsers.find((u) => u.id === session.user_id);
-                  const senderName = sender?.name ?? "Pengirim";
+                  const senderName = sender?.name ?? session.user_name_snapshot ?? "Pengirim";
                   const msgs = chatMessages.filter((m) => m.session_id === session.id);
                   const lastMsg = msgs[msgs.length - 1];
                   const unreadCount = msgs.filter(
@@ -371,7 +360,7 @@ export default function AdminChatQueue() {
               <CardHeader className="border-b py-3 px-4 flex flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-3">
                   <UserAvatarWithPreview
-                    name={allUsers.find((u) => u.id === selectedSession.user_id)?.name ?? "Pengirim"}
+                    name={allUsers.find((u) => u.id === selectedSession.user_id)?.name ?? selectedSession.user_name_snapshot ?? "Pengirim"}
                     avatarUrl={allUsers.find((u) => u.id === selectedSession.user_id)?.avatar_url}
                     sizeClassName="h-9 w-9"
                     fallbackClassName="bg-primary text-primary-foreground text-xs"
@@ -379,7 +368,7 @@ export default function AdminChatQueue() {
                   />
                   <div>
                     <h3 className="font-semibold text-sm">
-                      {allUsers.find((u) => u.id === selectedSession.user_id)?.name ?? "Pengirim"}
+                      {allUsers.find((u) => u.id === selectedSession.user_id)?.name ?? selectedSession.user_name_snapshot ?? "Pengirim"}
                     </h3>
                     {selectedSession.report_id && (
                       <p className="text-[10px] text-muted-foreground">Klarifikasi laporan terkait</p>
@@ -388,9 +377,12 @@ export default function AdminChatQueue() {
                 </div>
                 <div className="flex items-center gap-2">
                   {selectedSession.status === "CLOSED" && (
-                    <Badge variant="outline" className="text-xs text-muted-foreground">
-                      Sesi Selesai
-                    </Badge>
+                    <>
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        Sesi Selesai
+                      </Badge>
+                      <HideChatSessionDialog onConfirm={handleHideSession} />
+                    </>
                   )}
                   {!selectedSession.assigned_admin_id ? (
                     <Button
@@ -412,28 +404,6 @@ export default function AdminChatQueue() {
                     </Badge>
                   ) : null}
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 border-destructive/30 gap-1 text-xs h-8">
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Hapus Chat</span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Hapus Sesi Chat ini?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tindakan ini tidak dapat dibatalkan. Seluruh percakapan dan berkas media di sesi ini akan terhapus secara permanen.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteSession} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          Ya, Hapus Chat
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                 </div>
               </CardHeader>
 
@@ -452,7 +422,9 @@ export default function AdminChatQueue() {
                       <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[75%] ${isMine ? "chat-bubble-sender" : "chat-bubble-receiver"}`}>
                           {!isMine && (
-                            <p className="text-[10px] font-medium opacity-70 mb-0.5">{msgSender?.name}</p>
+                            <p className="text-[10px] font-medium opacity-70 mb-0.5">
+                              {msgSender?.name ?? msg.sender_name_snapshot ?? "Pengirim"}
+                            </p>
                           )}
                           {msg.type === "IMAGE" && msg.media_url && (
                             <div className="mb-2">

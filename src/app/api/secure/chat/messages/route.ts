@@ -18,12 +18,23 @@ export async function POST(request: Request) {
 
   const { data: session } = await supabaseServer
     .from("chat_sessions")
-    .select("id, user_id, assigned_admin_id")
+    .select("id, user_id, assigned_admin_id, status, hidden_at")
     .eq("id", body.sessionId)
     .maybeSingle();
 
   if (!session) {
     return NextResponse.json({ error: "Session tidak ditemukan." }, { status: 404 });
+  }
+
+  if (session.hidden_at) {
+    return NextResponse.json({ error: "Sesi telah disembunyikan dan tidak dapat diubah." }, { status: 409 });
+  }
+
+  if (session.status === "CLOSED") {
+    return NextResponse.json(
+      { error: "Sesi telah ditutup. Riwayat tetap dapat dibaca tetapi tidak dapat ditambah." },
+      { status: 409 },
+    );
   }
 
   const isSender = auth.context.appUser.id === session.user_id;
@@ -39,6 +50,7 @@ export async function POST(request: Request) {
     id: crypto.randomUUID(),
     session_id: body.sessionId,
     sender_id: auth.context.appUser.id,
+    sender_name_snapshot: auth.context.appUser.name,
     content: body.content,
     type: body.type ?? "TEXT",
     media_url: body.mediaUrl,
@@ -61,6 +73,7 @@ export async function POST(request: Request) {
     await supabaseServer.from("notifications").insert({
       id: crypto.randomUUID(),
       user_id: targetUserId,
+      session_id: session.id,
       type: isSender ? "NEW_CHAT_MESSAGE" : "NEW_CHAT_REPLY",
       payload: {
         title: isSender ? "Pesan Baru" : "Balasan Chat",

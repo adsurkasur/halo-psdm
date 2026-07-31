@@ -131,7 +131,7 @@ CREATE TABLE public.report_status_history (
 -- ============================================================
 CREATE TABLE public.chat_sessions (
   id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  report_id         uuid        REFERENCES reports(id) ON DELETE CASCADE,
+  report_id         uuid        REFERENCES reports(id) ON DELETE SET NULL,
   user_id           uuid        REFERENCES users(id) ON DELETE SET NULL,
   assigned_admin_id uuid        REFERENCES users(id) ON DELETE SET NULL,
   status            text        NOT NULL DEFAULT 'OPEN',
@@ -146,7 +146,7 @@ CREATE TABLE public.chat_sessions (
 -- ============================================================
 CREATE TABLE public.chat_messages (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id  uuid        NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+  session_id  uuid        NOT NULL REFERENCES chat_sessions(id) ON DELETE RESTRICT,
   sender_id   uuid        REFERENCES users(id) ON DELETE SET NULL,
   content     text        NOT NULL DEFAULT '',
   type        text        NOT NULL DEFAULT 'TEXT',

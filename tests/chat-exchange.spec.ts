@@ -76,10 +76,23 @@ test.describe("Real-time Chat Exchange", () => {
     await page.getByTestId("admin-chat-send").click();
     await expect(page.getByText(phMsg)).toBeVisible({ timeout: 20_000 });
 
+    // Retention guard: closing keeps history; only audited soft-hide is available.
+    await expect(page.getByRole("button", { name: /Hapus Chat/i })).toHaveCount(0);
+    await page.getByRole("button", { name: "Tutup Sesi" }).click();
+    await expect(page.getByText("Sesi Selesai")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "Sembunyikan dari daftar" })).toBeVisible();
+
     // Step 8: Switch back to sender, verify PH message arrived
     await hardResetToLogin(page);
     await login(page, env!.senderEmail, env!.senderPassword);
     await page.goto(`/chat/${sessionId}`);
     await expect(page.getByText(phMsg)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Ditutup")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Hapus Chat/i })).toHaveCount(0);
+    await page.getByRole("button", { name: "Sembunyikan dari daftar" }).click();
+    await expect(page.getByText("Semua pesan, media, identitas pelaku,")).toBeVisible();
+    await page.getByRole("button", { name: "Ya, sembunyikan" }).click();
+    await expect(page).toHaveURL(/\/chat$/);
+    await expect(page.getByTestId(`chat-session-${sessionId}`)).toHaveCount(0);
   });
 });
