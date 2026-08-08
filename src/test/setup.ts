@@ -98,11 +98,13 @@ const initialDb: Record<TableName, Row[]> = {
 
 let db: Record<TableName, Row[]> = structuredClone(initialDb);
 let currentAuthUserId: string | null = null;
+let sharedIdentityByUser: Record<string, Row> = {};
 const authListeners = new Set<(event: string, session: { user: { id: string; email?: string | null } } | null) => void>();
 
 beforeEach(() => {
   db = structuredClone(initialDb);
   currentAuthUserId = null;
+  sharedIdentityByUser = {};
   authListeners.clear();
   window.localStorage.clear();
 
@@ -158,6 +160,30 @@ beforeEach(() => {
       }
 
       return new Response(JSON.stringify({ profile: authUser }), { status: 200 });
+    }
+
+    if (path === "/api/secure/profile/link-rapor" && method === "POST") {
+      if (body.accessCode !== "RAPOR-TEST-CODE") {
+        return new Response(JSON.stringify({ error: "Kode akses tidak cocok dengan Rapor aktif." }), { status: 400 });
+      }
+
+      Object.assign(currentUser, {
+        name: "Ade Surya Ananda",
+        biro: "RISTEK",
+        jabatan: "STAF_AHLI",
+      });
+      sharedIdentityByUser[currentAuthUserId] = {
+        auth_user_id: currentAuthUserId,
+        member_id: "member-u1",
+        canonical_name: "Ade Surya Ananda",
+        unit: "RISTEK",
+        position: "Staf Ahli",
+        verification_source: "rapor_access_code",
+        verified_at: new Date().toISOString(),
+        leaderboard_profile_id: "profile-u1",
+      };
+
+      return new Response(JSON.stringify({ identity: sharedIdentityByUser[currentAuthUserId] }), { status: 200 });
     }
 
     const statusMatch = path.match(/^\/api\/secure\/reports\/([^/]+)\/status$/);
@@ -476,6 +502,14 @@ const supabaseMock = {
         error: null,
       };
     },
+  },
+  rpc: async (functionName: string) => {
+    if (functionName === "get_my_arsc_identity") {
+      const identity = currentAuthUserId ? sharedIdentityByUser[currentAuthUserId] : undefined;
+      return { data: identity ? [identity] : [], error: null };
+    }
+
+    return { data: null, error: { message: `Unhandled test RPC: ${functionName}` } };
   },
   from(table: TableName) {
     return {

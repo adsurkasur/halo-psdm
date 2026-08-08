@@ -264,6 +264,9 @@ export default function LoginPage() {
           <p className="text-muted-foreground text-sm mt-1">
             Sistem Komunikasi Dua Arah — ARSC 2025/2026
           </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Akun yang sama dapat digunakan di ARSC Leaderboard.
+          </p>
         </div>
 
         {/* Auth Card */}

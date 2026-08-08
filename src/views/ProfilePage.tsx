@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { useNavigate } from "react-router-dom";
-import { Camera, Upload, Trash2 } from "lucide-react";
+import { Camera, Link2, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,20 @@ import {
 } from "@/data/domain";
 import { Separator } from "@/components/ui/separator";
 
+type SharedIdentity = {
+  auth_user_id: string;
+  member_id: string;
+  canonical_name: string;
+  unit: string;
+  position: string | null;
+  verification_source: string;
+  verified_at: string;
+  leaderboard_profile_id: string | null;
+};
+
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, syncProfileNow, logout } = useAuth();
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
@@ -51,9 +62,27 @@ export default function ProfilePage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [sharedIdentity, setSharedIdentity] = useState<SharedIdentity | null>(null);
+  const [raporAccessCode, setRaporAccessCode] = useState("");
+  const [linkingRapor, setLinkingRapor] = useState(false);
 
   const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
   const DELETE_CONFIRMATION_PHRASE = "delete account";
+
+  const loadSharedIdentity = useCallback(async () => {
+    if (!user) {
+      setSharedIdentity(null);
+      return;
+    }
+
+    const { data, error } = await supabase.rpc("get_my_arsc_identity");
+    if (error || !Array.isArray(data) || data.length === 0) {
+      setSharedIdentity(null);
+      return;
+    }
+
+    setSharedIdentity(data[0] as SharedIdentity);
+  }, [user]);
 
   // sync when user becomes available
   useEffect(() => {
@@ -64,8 +93,9 @@ export default function ProfilePage() {
       setJabatan(user.jabatan);
       setWhatsapp(user.whatsapp ?? "");
       setAvatarPreviewUrl(null);
+      void loadSharedIdentity();
     }
-  }, [user]);
+  }, [loadSharedIdentity, user]);
 
   const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixelsValue: Area) => {
     setCroppedAreaPixels(croppedAreaPixelsValue);
@@ -216,6 +246,49 @@ export default function ProfilePage() {
     }
   };
 
+  const handleLinkRapor = async () => {
+    if (!raporAccessCode.trim()) {
+      toast({ title: "Masukkan kode akses Rapor.", variant: "destructive" });
+      return;
+    }
+
+    setLinkingRapor(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
+
+      const response = await fetch("/api/secure/profile/link-rapor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ accessCode: raporAccessCode }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Identitas Rapor belum dapat ditautkan.");
+      }
+
+      setRaporAccessCode("");
+      const syncResult = await syncProfileNow();
+      if (!syncResult.success) {
+        throw new Error(syncResult.error ?? "Profil bersama belum dapat dimuat ulang.");
+      }
+      await loadSharedIdentity();
+      toast({ title: "Identitas ARSC berhasil disinkronkan." });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : "Gagal menghubungkan identitas Rapor.",
+        variant: "destructive",
+      });
+    } finally {
+      setLinkingRapor(false);
+    }
+  };
+
   const closeCropDialog = () => {
     setIsCropOpen(false);
     if (cropImageUrl) {
@@ -300,10 +373,12 @@ export default function ProfilePage() {
     setSaving(true);
     try {
       const result = await updateProfile({
-        name,
+        ...(sharedIdentity ? {} : {
+          name,
+          biro: biro as BiroBidang,
+          jabatan: jabatan as Jabatan,
+        }),
         email,
-        biro: biro as BiroBidang,
-        jabatan: jabatan as Jabatan,
         whatsapp: formattedWhatsapp,
         ...(password ? { password } : {}),
       });
@@ -344,6 +419,62 @@ export default function ProfilePage() {
       </div>
       <Card className="shadow-xl shadow-primary/5 border-primary/10">
         <CardContent className="p-6 md:p-8 space-y-10">
+          {/* Section: Shared ARSC Identity */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-1 bg-primary rounded-full" />
+              <h2 className="text-lg font-bold">Identitas ARSC</h2>
+            </div>
+
+            {sharedIdentity ? (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" />
+                  <div className="space-y-1">
+                    <p className="font-semibold text-emerald-700 dark:text-emerald-300">Identitas terverifikasi</p>
+                    <p className="text-sm text-muted-foreground">
+                      {sharedIdentity.canonical_name} · {sharedIdentity.unit}
+                      {sharedIdentity.position ? ` · ${sharedIdentity.position}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Nama, biro/bidang, dan jabatan bersumber dari Rapor ARSC serta dipakai bersama oleh Halo PSDM dan Leaderboard.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-primary/10 bg-muted/20 p-5 space-y-4">
+                <div className="space-y-1">
+                  <p className="font-semibold">Hubungkan data Rapor</p>
+                  <p className="text-sm text-muted-foreground">
+                    Masukkan kode unik Rapor sekali untuk menyamakan profil Halo PSDM dan ARSC Leaderboard.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Input
+                    type="password"
+                    value={raporAccessCode}
+                    onChange={(event) => setRaporAccessCode(event.target.value)}
+                    placeholder="Kode akses Rapor"
+                    autoComplete="off"
+                    className="rounded-xl"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleLinkRapor}
+                    disabled={linkingRapor || !raporAccessCode.trim()}
+                    className="gap-2 rounded-xl"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    {linkingRapor ? "Menghubungkan..." : "Hubungkan"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <Separator className="opacity-50" />
+
           {/* Section: Avatar */}
           <section className="space-y-4">
             <div className="flex items-center gap-2">
@@ -419,6 +550,7 @@ export default function ProfilePage() {
                   id="profile-name"
                   value={name} 
                   onChange={(e) => setName(e.target.value)} 
+                  readOnly={Boolean(sharedIdentity)}
                   className="rounded-xl border-primary/10 focus:border-primary focus:ring-primary/20"
                   placeholder="Masukkan nama lengkap"
                 />
@@ -433,7 +565,7 @@ export default function ProfilePage() {
                   placeholder="email@contoh.com"
                 />
                 <p className="text-[10px] text-muted-foreground px-1">
-                  💡 Memerlukan konfirmasi ulang pada email baru dan lama.
+                  Perubahan email memerlukan konfirmasi pada alamat lama dan baru.
                 </p>
               </div>
               <div className="space-y-2">
@@ -464,7 +596,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold ml-1">Biro / Bidang</Label>
-                <Select value={biro} onValueChange={(v) => setBiro(v as BiroBidang)}>
+                <Select value={biro} onValueChange={(v) => setBiro(v as BiroBidang)} disabled={Boolean(sharedIdentity)}>
                   <SelectTrigger className="rounded-xl border-primary/10">
                     <SelectValue placeholder="Pilih biro" />
                   </SelectTrigger>
@@ -479,7 +611,7 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold ml-1">Jabatan</Label>
-                <Select value={jabatan} onValueChange={(v) => setJabatan(v as Jabatan)}>
+                <Select value={jabatan} onValueChange={(v) => setJabatan(v as Jabatan)} disabled={Boolean(sharedIdentity)}>
                   <SelectTrigger className="rounded-xl border-primary/10">
                     <SelectValue placeholder="Pilih jabatan" />
                   </SelectTrigger>

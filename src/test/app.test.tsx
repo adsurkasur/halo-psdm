@@ -180,6 +180,30 @@ describe("app behavior", () => {
     expect(await screen.findByText(/Profil diperbarui/i)).toBeInTheDocument();
   });
 
+  it("links the signed-in account to the shared Rapor identity", async () => {
+    render(
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+        <AuthProvider>
+          <DataProvider>
+            <MemoryRouter initialEntries={["/profile"]}>
+              <AutoLogin>
+                <Toaster />
+                <ProfilePage />
+              </AutoLogin>
+            </MemoryRouter>
+          </DataProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    );
+
+    const codeInput = await screen.findByPlaceholderText("Kode akses Rapor");
+    fireEvent.change(codeInput, { target: { value: "RAPOR-TEST-CODE" } });
+    fireEvent.click(screen.getByRole("button", { name: "Hubungkan" }));
+
+    expect(await screen.findByText("Identitas terverifikasi")).toBeInTheDocument();
+    expect(screen.getByText(/Ade Surya Ananda · RISTEK · Staf Ahli/i)).toBeInTheDocument();
+  });
+
   it("renders admin management page and supports search", async () => {
     render(
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>

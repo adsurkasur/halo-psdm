@@ -46,12 +46,13 @@ export async function POST(request: Request) {
 
   const { data: publicUrlData } = supabaseServer.storage.from(PROFILE_BUCKET).getPublicUrl(avatarPath);
 
-  const update = await supabaseServer
-    .from("users")
-    .update({ avatar_url: publicUrlData.publicUrl })
-    .eq("id", auth.context.authUser.id);
+  const update = await supabaseServer.rpc("set_shared_profile_avatar", {
+    p_user_id: auth.context.authUser.id,
+    p_avatar_url: publicUrlData.publicUrl,
+  });
 
   if (update.error) {
+    await supabaseServer.storage.from(PROFILE_BUCKET).remove([avatarPath]);
     return NextResponse.json({ error: update.error.message }, { status: 400 });
   }
 
