@@ -6,16 +6,17 @@ on:
   pull_request:
     branches: [main, master, develop]
 
+# These are public, local-only defaults. Browser E2E replaces them with values
+# emitted by the isolated Supabase instance started inside the GitHub runner.
 env:
-  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-  RAPOR_ACCESS_CODE_PEPPER: ${{ secrets.RAPOR_ACCESS_CODE_PEPPER }}
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:55321
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_only
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ci_only
+  SUPABASE_SECRET_KEY: sb_secret_ci_only
+  SUPABASE_SERVICE_ROLE_KEY: sb_secret_ci_only
+  RAPOR_ACCESS_CODE_PEPPER: ci-only-pepper-not-used-for-production-data
 
 jobs:
-  # ──────────────────────────────────────────────
-  # Stage 1: Lint + Type Check
-  # ──────────────────────────────────────────────
   quality:
     name: Lint & Type Check
     runs-on: ubuntu-latest
@@ -32,7 +33,7 @@ jobs:
         with:
           bun-version: 1.3.10
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Verify shared identity contract
@@ -41,15 +42,12 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      - name: Type Check
+      - name: Type check
         run: bunx tsc --noEmit
 
       - name: Unit and component tests
         run: bun run test
 
-  # ──────────────────────────────────────────────
-  # Stage 2: Production Build
-  # ──────────────────────────────────────────────
   build:
     name: Build
     needs: quality
@@ -67,7 +65,7 @@ jobs:
         with:
           bun-version: 1.3.10
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Restore Next.js build cache
@@ -81,45 +79,22 @@ jobs:
       - name: Build Next.js
         run: bun run build
 
-      - name: Verify and Package Build
-        run: |
-          echo "Checking workspace content..."
-          ls -la
-          if [ ! -d ".next" ]; then
-            echo "::error::.next directory not found! Check build logs."
-            exit 1
-          fi
-          if [ ! -f ".next/BUILD_ID" ]; then
-            echo "::error::BUILD_ID not found in .next! Build may be incomplete."
-            exit 1
-          fi
-          echo "Packaging build into tarball..."
-          tar -cf next-build.tar .next
-          ls -lh next-build.tar
+      - name: Verify build output
+        run: test -f .next/BUILD_ID
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: nextjs-build-tar
-          path: next-build.tar
-          retention-days: 1
-
-  # ──────────────────────────────────────────────
-  # Stage 3: E2E Tests (Playwright)
-  # ──────────────────────────────────────────────
   e2e:
-    name: E2E Tests
+    name: Isolated E2E Tests
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      E2E_PH_EMAIL: ${{ secrets.E2E_PH_EMAIL }}
-      E2E_PH_PASSWORD: ${{ secrets.E2E_PH_PASSWORD }}
-      E2E_SENDER_EMAIL: ${{ secrets.E2E_SENDER_EMAIL }}
-      E2E_SENDER_PASSWORD: ${{ secrets.E2E_SENDER_PASSWORD }}
-      E2E_HR_EMAIL: ${{ secrets.E2E_HR_EMAIL }}
-      E2E_HR_PASSWORD: ${{ secrets.E2E_HR_PASSWORD }}
-      E2E_REPORT_ID: ${{ secrets.E2E_REPORT_ID }}
+      E2E_PH_EMAIL: e2e.ph@localhost.invalid
+      E2E_PH_PASSWORD: CI-only-password-2026-PH
+      E2E_SENDER_EMAIL: e2e.sender@localhost.invalid
+      E2E_SENDER_PASSWORD: CI-only-password-2026-MEMBER
+      E2E_HR_EMAIL: e2e.hr@localhost.invalid
+      E2E_HR_PASSWORD: CI-only-password-2026-HR
+      E2E_REPORT_ID: 00000000-0000-4000-8000-000000000101
     steps:
       - uses: actions/checkout@v4
 
@@ -133,32 +108,59 @@ jobs:
         with:
           bun-version: 1.3.10
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: nextjs-build-tar
-          path: .
+      - name: Start isolated Supabase
+        run: npx --yes supabase@2.113.0 start
 
-      - name: Extract build artifacts
+      - name: Export isolated Supabase configuration
+        shell: bash
         run: |
-          if [ ! -f "next-build.tar" ]; then
-            echo "::error::next-build.tar not found after download!"
-            ls -la
+          npx --yes supabase@2.113.0 status -o env > supabase-status.env
+
+          read_value() {
+            grep -E "^$1=" supabase-status.env | tail -n 1 | cut -d= -f2- | sed 's/^"//; s/"$//'
+          }
+
+          api_url="$(read_value API_URL)"
+          publishable_key="$(read_value PUBLISHABLE_KEY)"
+          anon_key="$(read_value ANON_KEY)"
+          secret_key="$(read_value SECRET_KEY)"
+          service_role_key="$(read_value SERVICE_ROLE_KEY)"
+
+          if [ "$api_url" != "http://127.0.0.1:55321" ]; then
+            echo "::error::Refusing non-local E2E target: $api_url"
             exit 1
           fi
-          tar -xf next-build.tar
-          ls -d .next
 
-      - name: Install Playwright Browsers
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$api_url"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$publishable_key"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon_key"
+            echo "SUPABASE_SECRET_KEY=$secret_key"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$service_role_key"
+          } >> "$GITHUB_ENV"
+
+      - name: Apply schema-only fixtures
+        shell: bash
+        run: |
+          docker exec -i supabase_db_halo-psdm-ci psql -v ON_ERROR_STOP=1 -U postgres -d postgres < tests/e2e/database/shared-schema.sql
+          docker exec -i supabase_db_halo-psdm-ci psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/migrations/08_chat_history_retention_and_audit.sql
+
+      - name: Seed CI-only accounts and records
+        run: node tests/e2e/seed-local-supabase.mjs
+
+      - name: Build against isolated Supabase
+        run: bun run build
+
+      - name: Install Playwright browser
         run: bunx playwright install --with-deps chromium
 
-      - name: Run E2E Tests
+      - name: Run browser E2E
         run: bunx playwright test --project=chromium
 
-      - name: Upload Playwright Report
+      - name: Upload Playwright report
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
@@ -166,9 +168,10 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # ──────────────────────────────────────────────
-  # Stage 4: Dependency Audit
-  # ──────────────────────────────────────────────
+      - name: Stop isolated Supabase
+        if: ${{ always() }}
+        run: npx --yes supabase@2.113.0 stop --no-backup
+
   security:
     name: Dependency Audit
     runs-on: ubuntu-latest
@@ -185,9 +188,12 @@ jobs:
         with:
           bun-version: 1.3.10
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Run dependency check
-        run: bun pm ls --all 2>&1 | head -50
+      - name: Block critical dependency advisories
+        run: bun audit --audit-level critical
+
+      - name: Report high dependency advisories
+        run: bun audit --audit-level high
         continue-on-error: true

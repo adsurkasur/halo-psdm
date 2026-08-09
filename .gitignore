@@ -29,6 +29,7 @@ test-results
 *.tsbuildinfo
 .turbo
 .vercel
+supabase/.branches/
 
 # Local incident evidence and production exports
 user_reports/
