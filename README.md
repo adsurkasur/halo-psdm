@@ -1,5 +1,7 @@
 # Halo PSDM
 
+> Maintainers and AI contributors: read [`docs/MAINTAINER_GUIDE.md`](docs/MAINTAINER_GUIDE.md) before changing identity, chat retention, database policies, or deployment state.
+
 Halo PSDM is a two-way communication platform for ARSC PSDM (2025/2026).
 It centralizes member support workflows so reports, chat sessions, and follow-up actions are tracked in one place.
 
