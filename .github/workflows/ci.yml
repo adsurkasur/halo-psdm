@@ -21,7 +21,7 @@ jobs:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js 24
         uses: actions/setup-node@v4
@@ -53,7 +53,7 @@ jobs:
     needs: quality
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js 24
         uses: actions/setup-node@v4
@@ -96,7 +96,7 @@ jobs:
       E2E_HR_PASSWORD: CI-only-password-2026-HR
       E2E_REPORT_ID: 00000000-0000-4000-8000-000000000101
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js 24
         uses: actions/setup-node@v4
@@ -176,7 +176,7 @@ jobs:
     name: Dependency Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js 24
         uses: actions/setup-node@v4
