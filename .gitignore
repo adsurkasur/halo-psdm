@@ -45,3 +45,7 @@ halo-psdm-private-backups/
 *.njsproj
 *.sln
 *.sw?
+
+# Allow modular documentation logs
+!logs/
+!logs/*.md
