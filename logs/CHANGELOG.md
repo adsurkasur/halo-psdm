@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- Planned-change spec `docs/MULTI_ZONE_MIGRATION.md` for serving Halo at `/app/halo-psdm` on the shared ARSC domain (documentation only).
 - Modular logging protocol (`logs/` directory with activity, decision, and changelog files).
 - Mandatory `AGENTS.md` guidelines for AI agents and contributors.
 

@@ -63,3 +63,11 @@ Run `bun run test:e2e` only in the documented isolated/local environment with de
 ## Local verification note (2026-08-15)
 
 Lint, 3 Vitest files/11 tests, and the shared identity contract passed. Build correctly failed when Supabase variables were absent, then passed using the repository CI workflow's non-secret local placeholder values. No E2E, production accounts, or remote migration checks were run.
+
+## Planned deployment change: one ARSC domain (2026-09-28)
+
+The owner approved serving Halo at `https://<domain>/app/halo-psdm` through Next.js Multi-Zones. The main zone is the new `adsurkasur/arsc-home` repo. **Not implemented yet.** Read `docs/MULTI_ZONE_MIGRATION.md` before changing routing, API paths, auth redirect URLs, or `next.config.ts`.
+
+- After migration, Halo and Leaderboard share one origin, so their Supabase session cookie is shared (owner-approved SSO). This changes logout semantics: logging out of one app logs out of both.
+- basePath work is classified as a deployment change, not a feature, under the September freeze (DEC-003). All verification commands above still apply.
+- Cross-system map and release gates: arsc-home `docs/ECOSYSTEM.md` and `docs/MULTI_ZONES_RUNBOOK.md`. Umbrella context: `ARSC_SYSTEM_HANDOFF_ADDENDUM_2026-09-28.md` in the managed ARSC workspace.
