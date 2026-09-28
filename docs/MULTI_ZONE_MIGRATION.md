@@ -1,5 +1,5 @@
 ---
-status: approved-not-started
+status: implemented-behind-env (feat/multi-zone-basepath), not activated
 last_verified: 2026-09-28
 audience: maintainers-and-ai
 sensitivity: internal
@@ -64,3 +64,12 @@ Use synthetic accounts only (see `MAINTAINER_GUIDE.md`).
 ## Rollback
 
 Unset `ZONE_HALO_PSDM_URL` in arsc-home and remove the 308 redirect. The app still works at its alias under `/app/halo-psdm`. For a full rollback, revert the basePath PR.
+
+## Implementation notes (2026-09-28, branch `feat/multi-zone-basepath`)
+
+- **Activation is an env var, not a code change.** `NEXT_PUBLIC_BASE_PATH` is empty by default, so merging keeps today's behavior.
+  - Set it to `/app/halo-psdm` only when arsc-home's `ZONE_HALO_PSDM_URL` points at this deployment **and** the Supabase Auth allow-list contains `https://<domain>/app/halo-psdm/login` (and `?recovery=1`).
+- `src/lib/base-path.ts` is the single source of truth. It feeds `next.config` `basePath`, the `<BrowserRouter basename>`, `callSecureApi`, the direct `/api/secure` fetches, and the auth redirect URLs. It is tested by `src/lib/base-path.test.ts`.
+- The test mocks in `src/test/setup.ts` still match `/api/secure/...`, because the base path is empty in tests.
+- Verified locally with a zone build served through arsc-home's rewrite: the SPA entry, `/login`, and deep routes such as `/admin/reports` return 200 through the catch-all, and secure API routes are reachable under the base path.
+- **Windows / Git Bash**: use `MSYS_NO_PATHCONV=1` when passing `/app/halo-psdm` on the command line.

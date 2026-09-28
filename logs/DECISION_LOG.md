@@ -22,3 +22,16 @@
 - **Decision**: Halo sets `basePath: "/app/halo-psdm"` from a single `BASE_PATH` constant, with `BrowserRouter basename`, `withBase()` for `/api/secure` calls and auth redirect URLs, and an "ARSC" back link. The old host 308-redirects after the rewrite is proven. SSO with Leaderboard through the shared same-origin Supabase cookie was accepted by the owner. The September freeze is interpreted as not blocking this, because it is a deployment change and not a feature.
 - **Alternatives**: Vercel Microfrontends, subdomains, links only (see arsc-home DEC-009).
 - **Consequences**: Supabase Auth redirect allow-list must include the new URLs. Logout is shared with Leaderboard. Spec: `docs/MULTI_ZONE_MIGRATION.md`.
+
+### [DEC-004] basePath is env-driven (off by default)
+- **Date**: 2026-09-28
+- **Status**: Accepted
+- **Context**: DEC-003 approved serving Halo under `/app/halo-psdm`. A hard-coded basePath would move production on merge and break the current URL, the react-router routes, and the Supabase auth redirect URLs before arsc-home and the allow-list are ready.
+- **Decision**:
+  - `basePath` and the router `basename` come from `NEXT_PUBLIC_BASE_PATH`, which is empty by default and validated.
+  - `callSecureApi` and the direct secure-API fetches use `withBase()`, and the auth redirect URLs include the base path.
+  - Activation is an env change on the deployment, made by the owner following the arsc-home runbook, once the Supabase allow-list is updated.
+- **Consequences**:
+  - Reversible: unset the env var and redeploy.
+  - SSO with Leaderboard on the shared origin, as approved.
+  - API route handlers need no change, because Next mounts them under basePath.

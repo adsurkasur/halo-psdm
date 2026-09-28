@@ -27,6 +27,7 @@ import {
   type Jabatan,
 } from "@/data/domain";
 import { Separator } from "@/components/ui/separator";
+import { withBase } from "@/lib/base-path";
 
 type SharedIdentity = {
   auth_user_id: string;
@@ -214,7 +215,7 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append("avatar", avatarFile);
 
-      const response = await fetch("/api/secure/profile/avatar", {
+      const response = await fetch(withBase("/api/secure/profile/avatar"), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -258,7 +259,7 @@ export default function ProfilePage() {
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
 
-      const response = await fetch("/api/secure/profile/link-rapor", {
+      const response = await fetch(withBase("/api/secure/profile/link-rapor"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -317,7 +318,7 @@ export default function ProfilePage() {
         throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
       }
 
-      const response = await fetch("/api/secure/profile/delete-account", {
+      const response = await fetch(withBase("/api/secure/profile/delete-account"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
