@@ -14,6 +14,7 @@ import { useData } from "@/contexts/DataContext";
 import { supabase } from "@/lib/supabase/client";
 import { compressImageForUpload, isCompressibleImage } from "@/lib/upload-compression";
 import { CATEGORY_LABELS, BIRO_LABELS, JABATAN_LABELS, type ReportCategory, type Urgency } from "@/data/domain";
+import { withBase } from "@/lib/base-path";
 
 const categories = Object.entries(CATEGORY_LABELS) as [ReportCategory, string][];
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
@@ -160,7 +161,7 @@ export default function ReportForm({
         const formData = new FormData();
         formData.append("attachment", uploadAttachment);
 
-        const response = await fetch("/api/secure/reports/attachments", {
+        const response = await fetch(withBase("/api/secure/reports/attachments"), {
           method: "POST",
           headers: {
             Authorization: `Bearer ${accessToken}`,

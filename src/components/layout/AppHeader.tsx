@@ -14,6 +14,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { JABATAN_LABELS } from "@/data/domain";
 import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview";
+import { BASE_PATH } from "@/lib/base-path";
 
 export function AppHeader() {
   const { user, logout } = useAuth();
@@ -56,6 +57,12 @@ export function AppHeader() {
     <header className="h-14 border-b bg-card flex items-center justify-between px-4 sticky top-0 z-30">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="mr-1" />
+        {/* Back to the ARSC site (cross-zone: plain <a>, only when served under the shared domain) */}
+        {BASE_PATH && (
+          <a href="/" className="hidden text-sm font-semibold text-muted-foreground hover:text-foreground sm:inline">
+            ← ARSC
+          </a>
+        )}
         <Link to="/" className="font-bold text-lg tracking-tight text-primary hover:opacity-80 transition-opacity">
           Halo PSDM
         </Link>

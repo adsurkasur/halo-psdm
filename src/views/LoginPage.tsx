@@ -13,6 +13,7 @@ import {
   type Jabatan,
 } from "@/data/domain";
 import { supabase } from "@/lib/supabase/client";
+import { BASE_PATH } from "@/lib/base-path";
 
 type AuthMode = "login" | "register";
 
@@ -186,7 +187,7 @@ export default function LoginPage() {
     }
 
     setForgotPasswordLoading(true);
-    const redirectTo = `${window.location.origin}/login?recovery=1`;
+    const redirectTo = `${window.location.origin}${BASE_PATH}/login?recovery=1`;
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
     setForgotPasswordLoading(false);
 
@@ -255,6 +256,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-700 p-4">
       <div className="w-full max-w-md">
+        {/* Back to the ARSC site (cross-zone: plain <a>, only when served under the shared domain) */}
+        {BASE_PATH && (
+          <a href="/" className="mb-6 inline-block text-sm font-semibold text-muted-foreground hover:text-foreground">
+            ← ARSC
+          </a>
+        )}
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary text-primary-foreground text-2xl font-bold shadow-lg shadow-primary/30">

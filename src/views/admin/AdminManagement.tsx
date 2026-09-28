@@ -18,6 +18,7 @@ import { UserAvatarWithPreview } from "@/components/shared/UserAvatarWithPreview
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
+import { withBase } from "@/lib/base-path";
 
 export default function AdminManagement() {
   const { adminProfiles, addAdminProfile, removeAdminProfile, getEffectiveStatus } = useData();
@@ -42,7 +43,7 @@ export default function AdminManagement() {
         throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
       }
 
-      const response = await fetch("/api/secure/auth/verify-user", {
+      const response = await fetch(withBase("/api/secure/auth/verify-user"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

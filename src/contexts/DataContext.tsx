@@ -20,6 +20,7 @@ import {
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { withBase } from "@/lib/base-path";
 
 interface DataContextType {
   isBusy: boolean;
@@ -191,7 +192,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }, API_TIMEOUT_MS);
 
       try {
-        const response = await fetch(path, {
+        const response = await fetch(withBase(path), {
           ...init,
           headers: {
             "Content-Type": "application/json",

@@ -27,6 +27,7 @@ import AdminRekap from "@/views/admin/AdminRekap";
 import AdminManagement from "@/views/admin/AdminManagement";
 import AdminAppointmentTracker from "@/views/admin/AdminAppointmentTracker";
 import NotFound from "./views/NotFound";
+import { BASE_PATH } from "@/lib/base-path";
 
 const queryClient = new QueryClient();
 
@@ -225,7 +226,7 @@ const App = () => (
         <Sonner />
         <AuthProvider>
           <DataProvider>
-            <BrowserRouter>
+            <BrowserRouter basename={BASE_PATH || undefined}>
               <GlobalBusyPopup />
               <GlobalDataIssueBanner />
               <AppRoutes />

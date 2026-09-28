@@ -16,6 +16,7 @@ import { getChatMessagePreview, getTransformedPublicImageUrl, isVideoResource } 
 import { MediaViewerDialog } from "@/components/shared/MediaViewerDialog";
 import { HideChatSessionDialog } from "@/components/shared/HideChatSessionDialog";
 import { AVAILABILITY_LABELS, type ChatMessageType } from "@/data/domain";
+import { withBase } from "@/lib/base-path";
 
 const MAX_MEDIA_SIZE = 10 * 1024 * 1024;
 
@@ -100,7 +101,7 @@ export default function ChatRoom() {
         formData.append("sessionId", session.id);
         formData.append("media", mediaPreview.file);
 
-        const response = await fetch("/api/secure/chat/media", {
+        const response = await fetch(withBase("/api/secure/chat/media"), {
           method: "POST",
           headers: {
             Authorization: `Bearer ${accessToken}`,

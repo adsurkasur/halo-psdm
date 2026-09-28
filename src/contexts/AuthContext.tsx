@@ -9,6 +9,7 @@ import {
   JABATAN_LABELS,
 } from "@/data/domain";
 import { supabase } from "@/lib/supabase/client";
+import { BASE_PATH, withBase } from "@/lib/base-path";
 
 type UsersRow = {
   id: string;
@@ -260,7 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const response = await fetch("/api/secure/auth/sync-profile", {
+      const response = await fetch(withBase("/api/secure/auth/sync-profile"), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -490,7 +491,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/login` : undefined,
+          emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}${BASE_PATH}/login` : undefined,
           data: {
             name: data.name,
             biro: data.biro,
