@@ -14,3 +14,11 @@
 - **Decision**: Declare `next: ^16.3.3` so the manifest cannot resolve a vulnerable release; keep `bun audit --audit-level critical` blocking and the high-level report as a warning.
 - **Alternatives rejected**: Lowering the blocking threshold, and `bun update` of transitive dev tooling (it rewrote them as direct dependencies on new major versions).
 - **Consequences**: Critical gate green; residual dev-only high advisories remain visible as CI warnings for a follow-up lockfile refresh.
+
+### [DEC-003] Serve Halo under `/app/halo-psdm` on the shared ARSC domain (Multi-Zones)
+- **Date**: 2026-09-28
+- **Status**: Accepted (not implemented)
+- **Context**: The owner wants one domain for all ARSC apps. The new `arsc-home` company-profile repo is the main zone and rewrites `/app/<name>/*` to each app's Vercel deployment.
+- **Decision**: Halo sets `basePath: "/app/halo-psdm"` from a single `BASE_PATH` constant, with `BrowserRouter basename`, `withBase()` for `/api/secure` calls and auth redirect URLs, and an "ARSC" back link. The old host 308-redirects after the rewrite is proven. SSO with Leaderboard through the shared same-origin Supabase cookie was accepted by the owner. The September freeze is interpreted as not blocking this, because it is a deployment change and not a feature.
+- **Alternatives**: Vercel Microfrontends, subdomains, links only (see arsc-home DEC-009).
+- **Consequences**: Supabase Auth redirect allow-list must include the new URLs. Logout is shared with Leaderboard. Spec: `docs/MULTI_ZONE_MIGRATION.md`.
